@@ -1,0 +1,297 @@
+import fs from 'fs';
+import path from 'path';
+import { ScheduleItem, ScheduleSettings } from '@/types/schedule';
+import { User } from '@/types/user';
+
+const DATA_DIR = path.join(process.cwd(), 'data');
+const SCHEDULE_FILE = path.join(DATA_DIR, 'schedule.json');
+const SETTINGS_FILE = path.join(DATA_DIR, 'settings.json');
+const USERS_FILE = path.join(DATA_DIR, 'users.json');
+
+export const DEFAULT_USERS: User[] = [
+  { username: 'thanhhuong', password: '1515', displayName: 'Thanh Hương' },
+  { username: 'chinhan', password: '1515', displayName: 'Chí Nhân' },
+];
+
+function ensureDataDir() {
+  if (!fs.existsSync(DATA_DIR)) {
+    fs.mkdirSync(DATA_DIR, { recursive: true });
+  }
+}
+
+export function getUsersLocal(): User[] {
+  try {
+    ensureDataDir();
+    if (!fs.existsSync(USERS_FILE)) {
+      fs.writeFileSync(USERS_FILE, JSON.stringify(DEFAULT_USERS, null, 2), 'utf-8');
+      return [...DEFAULT_USERS];
+    }
+    const raw = fs.readFileSync(USERS_FILE, 'utf-8');
+    return JSON.parse(raw);
+  } catch (err) {
+    console.error('Error reading users local:', err);
+    return [...DEFAULT_USERS];
+  }
+}
+
+export function saveUsersLocal(users: User[]) {
+  try {
+    ensureDataDir();
+    fs.writeFileSync(USERS_FILE, JSON.stringify(users, null, 2), 'utf-8');
+  } catch (err) {
+    console.error('Error saving users local:', err);
+  }
+}
+
+export function getUserLocal(username: string): User | undefined {
+  const users = getUsersLocal();
+  return users.find((u) => u.username === username);
+}
+
+export function verifyUserPasswordLocal(username: string, pass: string): boolean {
+  const user = getUserLocal(username);
+  if (!user) return false;
+  return user.password === pass;
+}
+
+export function updateUserPasswordLocal(username: string, newPass: string): boolean {
+  const users = getUsersLocal();
+  const idx = users.findIndex((u) => u.username === username);
+  if (idx === -1) return false;
+  users[idx].password = newPass;
+  saveUsersLocal(users);
+  return true;
+}
+
+export function getLocalScheduleItems(): ScheduleItem[] {
+  try {
+    ensureDataDir();
+    if (!fs.existsSync(SCHEDULE_FILE)) return [];
+    const raw = fs.readFileSync(SCHEDULE_FILE, 'utf-8');
+    return JSON.parse(raw);
+  } catch (err) {
+    console.error('Error reading local schedule:', err);
+    return [];
+  }
+}
+
+export function saveLocalScheduleItems(items: ScheduleItem[]) {
+  try {
+    ensureDataDir();
+    fs.writeFileSync(SCHEDULE_FILE, JSON.stringify(items, null, 2), 'utf-8');
+  } catch (err) {
+    console.error('Error saving local schedule:', err);
+  }
+}
+
+export function getScheduleItemsForUserLocal(username: string): ScheduleItem[] {
+  try {
+    ensureDataDir();
+    const userScheduleFile = path.join(DATA_DIR, `schedule_${username}.json`);
+    if (fs.existsSync(userScheduleFile)) {
+      const raw = fs.readFileSync(userScheduleFile, 'utf-8');
+      return JSON.parse(raw);
+    }
+    // Inheritance: thanhhuong falls back to legacy schedule.json
+    if (username === 'thanhhuong') {
+      return getLocalScheduleItems();
+    }
+    return [];
+  } catch (err) {
+    console.error(`Error reading schedule for user ${username}:`, err);
+    return [];
+  }
+}
+
+export function saveScheduleItemsForUserLocal(username: string, items: ScheduleItem[]): ScheduleItem[] {
+  try {
+    ensureDataDir();
+    const userScheduleFile = path.join(DATA_DIR, `schedule_${username}.json`);
+    fs.writeFileSync(userScheduleFile, JSON.stringify(items, null, 2), 'utf-8');
+    if (username === 'thanhhuong') {
+      saveLocalScheduleItems(items);
+    }
+  } catch (err) {
+    console.error(`Error saving schedule for user ${username}:`, err);
+  }
+  return items;
+}
+
+export function addLocalScheduleItem(item: Omit<ScheduleItem, 'id'>): ScheduleItem {
+  const items = getLocalScheduleItems();
+  const newItem: ScheduleItem = { ...item, id: 'local_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7) };
+  items.push(newItem);
+  saveLocalScheduleItems(items);
+  return newItem;
+}
+
+export function updateLocalScheduleItem(id: string, update: Partial<ScheduleItem>): boolean {
+  const items = getLocalScheduleItems();
+  const idx = items.findIndex((i) => i.id === id);
+  if (idx === -1) return false;
+  items[idx] = { ...items[idx], ...update };
+  saveLocalScheduleItems(items);
+  return true;
+}
+
+export function deleteLocalScheduleItem(id: string): boolean {
+  const items = getLocalScheduleItems();
+  const filtered = items.filter((i) => i.id !== id);
+  saveLocalScheduleItems(filtered);
+  return true;
+}
+
+const DEFAULT_SETTINGS: ScheduleSettings = {
+  morningTime: '07:00',
+  leadTimeMinutes: 30,
+  enableMorning: true,
+  enableLeadTime: true,
+  telegramBotToken: 'TELEGRAM_BOT_TOKEN_REVOKED',
+  telegramChatId: 'CHAT_ID_REVOKED',
+  employeeName: 'Thanh Hương',
+  hourlyRate: 26000,
+  enableShiftReminder: true,
+  shiftReminderLeadMinutes: 30,
+  shiftReminderTemplate: '🏃‍♂️ Dậy đi làm cha ơi! Ca {Ca} ({ThờiGian}) ở {ĐịaĐiểm} nè. Đứng dậy sửa soạn lẹ không trễ giờ chừ!',
+  enableCheckInReminder: true,
+  checkInLeadMinutes: 15,
+  checkInTemplate: '🚨 Alo alo! Ca {Ca} tới đít rồi nè! Check-in lẹ không là bị trừ lương sấp mặt bây giờ 💸',
+  enableCheckOutReminder: true,
+  checkOutLagMinutes: 10,
+  checkOutTemplate: '🏃‍♀️ Hết ca rồi lượn lẹ! Ca {Ca} xong rồi nè. Bấm Check-out rồi vọt về thôi 🥳',
+  enableNotesReminder: true,
+  notesLeadMinutes: 15,
+  notesTemplate: '📝 Note ca {Ca} nè: {GhiChú}. Quên cái này là ăn chửi ráng chịu nha! ⚡',
+  notesTimingMode: 'before_shift',
+  notesFixedTime: '08:00',
+  userNotes: [],
+  enableMorningSummary: true,
+  morningSummaryTime: '07:00',
+  morningSummaryTemplate: '☀️ Dậy đi cày em ơi! Hôm nay cày ca {Ca} ({ThờiGian}) ở {ĐịaĐiểm} nè. Chúc cày cuốc vui vẻ không bị ăn chửi nhé 🔥',
+  customNotifications: [],
+  customWebhookUrl: 'https://schedule-telegram-app.vercel.app/api/telegram-webhook',
+  sentRemindersLog: {},
+  allowedChatIdsStr: '',
+};
+
+export function getLocalSettings(): ScheduleSettings {
+  try {
+    ensureDataDir();
+    if (!fs.existsSync(SETTINGS_FILE)) {
+      return { ...DEFAULT_SETTINGS };
+    }
+    const raw = fs.readFileSync(SETTINGS_FILE, 'utf-8');
+    const parsed = JSON.parse(raw);
+    return {
+      morningTime: parsed.morningTime || '07:00',
+      leadTimeMinutes: Number(parsed.leadTimeMinutes) || 30,
+      enableMorning: Boolean(parsed.enableMorning ?? true),
+      enableLeadTime: Boolean(parsed.enableLeadTime ?? true),
+      telegramBotToken: parsed.telegramBotToken || 'TELEGRAM_BOT_TOKEN_REVOKED',
+      telegramChatId: parsed.telegramChatId || 'CHAT_ID_REVOKED',
+      employeeName: parsed.employeeName || 'Thanh Hương',
+      hourlyRate: typeof parsed.hourlyRate === 'number' ? parsed.hourlyRate : 26000,
+      geminiApiKey: parsed.geminiApiKey || '',
+      customWebhookUrl: parsed.customWebhookUrl || 'https://schedule-telegram-app.vercel.app/api/telegram-webhook',
+      enableShiftReminder: parsed.enableShiftReminder ?? true,
+      shiftReminderLeadMinutes: parsed.shiftReminderLeadMinutes !== undefined ? Number(parsed.shiftReminderLeadMinutes) : 30,
+      shiftReminderTemplate: parsed.shiftReminderTemplate || '🔔 Tới giờ đi làm rồi kìaaaaa 🏃‍♀️ Ca {Ca} ({ThờiGian}) ở {ĐịaĐiểm} nè. Đứng dậy sửa soạn liền đi bé ơiii!',
+      enableCheckInReminder: parsed.enableCheckInReminder ?? true,
+      checkInLeadMinutes: parsed.checkInLeadMinutes !== undefined ? Number(parsed.checkInLeadMinutes) : 15,
+      checkInTemplate: parsed.checkInTemplate || '📍 Alo alo! Ca {Ca} tới đít rồi nè 🚨 Mau mau Check-in không là bị phạt tiền nha bé iu 💸!',
+      enableCheckOutReminder: parsed.enableCheckOutReminder ?? true,
+      checkOutLagMinutes: parsed.checkOutLagMinutes !== undefined ? Number(parsed.checkOutLagMinutes) : 10,
+      checkOutTemplate: parsed.checkOutTemplate || '✅ Hếtttt giời rồiiii! 🎉 Ca {Ca} xong rồi nè. Mau mau Check-out rồi lượn về với tui nhanh lênnnn! 💕',
+      enableNotesReminder: parsed.enableNotesReminder ?? true,
+      notesLeadMinutes: parsed.notesLeadMinutes !== undefined ? Number(parsed.notesLeadMinutes) : 15,
+      notesTemplate: parsed.notesTemplate || '📝 Note nhẹ cho bé nè: {GhiChú} ✨ Đừng có quên đó nheee!',
+      notesTimingMode: parsed.notesTimingMode || 'before_shift',
+      notesFixedTime: parsed.notesFixedTime || '08:00',
+      userNotes: Array.isArray(parsed.userNotes) ? parsed.userNotes : [],
+      enableMorningSummary: parsed.enableMorningSummary ?? true,
+      morningSummaryTime: parsed.morningSummaryTime || '07:00',
+      morningSummaryTemplate: parsed.morningSummaryTemplate || '☀️ Chào buổi sáng công chúa! 👑 Hôm nay bé có ca {Ca} ({ThờiGian}) ở {ĐịaĐiểm} nè. Chúc em bé một ngày làm việc siêu vui vẻ nhaaa ❤️',
+      telegramSessionState: parsed.telegramSessionState || { userState: 'IDLE' },
+      customNotifications: Array.isArray(parsed.customNotifications) ? parsed.customNotifications : [],
+      sentRemindersLog: typeof parsed.sentRemindersLog === 'object' && parsed.sentRemindersLog !== null ? parsed.sentRemindersLog : {},
+    };
+  } catch (err) {
+    return { ...DEFAULT_SETTINGS };
+  }
+}
+
+export function saveLocalSettings(settings: ScheduleSettings): ScheduleSettings {
+  try {
+    ensureDataDir();
+    fs.writeFileSync(SETTINGS_FILE, JSON.stringify(settings, null, 2), 'utf-8');
+  } catch (err) {
+    console.error('Error saving local settings:', err);
+  }
+  return settings;
+}
+
+export function getSettingsForUserLocal(username: string): ScheduleSettings {
+  try {
+    ensureDataDir();
+    const baseSettings = getLocalSettings();
+    const userSettingsFile = path.join(DATA_DIR, `settings_${username}.json`);
+    if (fs.existsSync(userSettingsFile)) {
+      const raw = fs.readFileSync(userSettingsFile, 'utf-8');
+      const parsed = JSON.parse(raw);
+      const user = getUserLocal(username);
+      const defaultEmpName = user ? user.displayName : username;
+      const empName = (username !== 'thanhhuong' && (!parsed.employeeName || parsed.employeeName === 'Thanh Hương'))
+        ? defaultEmpName
+        : (parsed.employeeName || defaultEmpName);
+      return {
+        ...DEFAULT_SETTINGS,
+        geminiApiKey: baseSettings.geminiApiKey || '',
+        telegramBotToken: baseSettings.telegramBotToken || DEFAULT_SETTINGS.telegramBotToken,
+        allowedChatIdsStr: baseSettings.allowedChatIdsStr || '',
+        ...parsed,
+        employeeName: empName,
+        username,
+      };
+    }
+    // Inheritance: thanhhuong inherits legacy settings.json
+    if (username === 'thanhhuong') {
+      const settings = getLocalSettings();
+      return { ...settings, username: 'thanhhuong' };
+    }
+    // Other users get default settings with employeeName set to user's displayName & inherited API keys
+    const user = getUserLocal(username);
+    const empName = user ? user.displayName : username;
+    return {
+      ...DEFAULT_SETTINGS,
+      geminiApiKey: baseSettings.geminiApiKey || '',
+      telegramBotToken: baseSettings.telegramBotToken || DEFAULT_SETTINGS.telegramBotToken,
+      allowedChatIdsStr: baseSettings.allowedChatIdsStr || '',
+      employeeName: empName,
+      username,
+    };
+  } catch (err) {
+    const user = getUserLocal(username);
+    const empName = user ? user.displayName : username;
+    return {
+      ...DEFAULT_SETTINGS,
+      employeeName: empName,
+      username,
+    };
+  }
+}
+
+export function saveSettingsForUserLocal(username: string, settings: ScheduleSettings): ScheduleSettings {
+  try {
+    ensureDataDir();
+    const userSettingsFile = path.join(DATA_DIR, `settings_${username}.json`);
+    const settingsToSave = { ...settings, username };
+    fs.writeFileSync(userSettingsFile, JSON.stringify(settingsToSave, null, 2), 'utf-8');
+    if (username === 'thanhhuong') {
+      saveLocalSettings(settingsToSave);
+    }
+    return settingsToSave;
+  } catch (err) {
+    console.error(`Error saving settings for user ${username}:`, err);
+    return settings;
+  }
+}

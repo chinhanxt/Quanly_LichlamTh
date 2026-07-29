@@ -1,0 +1,68 @@
+[
+  {
+    "id": "local_1785153178152_9zoik",
+    "dayOfWeek": "Thu2",
+    "date": "2026-07-27",
+    "startTime": "18:00",
+    "endTime": "22:00",
+    "subject": "Ca làm Highlands Coffee",
+    "location": "Highlands Coffee",
+    "note": "B18",
+    "reminderEnabled": true
+  },
+  {
+    "id": "local_1785153178154_a0mu8",
+    "dayOfWeek": "Thu3",
+    "date": "2026-07-28",
+    "startTime": "16:00",
+    "endTime": "22:00",
+    "subject": "Ca làm Highlands Coffee",
+    "location": "Highlands Coffee",
+    "note": "B16",
+    "reminderEnabled": true
+  },
+  {
+    "id": "local_1785153178185_cexvz",
+    "dayOfWeek": "Thu4",
+    "date": "2026-07-29",
+    "startTime": "18:00",
+    "endTime": "22:00",
+    "subject": "Ca làm Highlands Coffee",
+    "location": "Highlands Coffee",
+    "note": "B18",
+    "reminderEnabled": true
+  },
+  {
+    "id": "local_1785153178355_9ihjw",
+    "dayOfWeek": "Thu5",
+    "date": "2026-07-30",
+    "startTime": "18:00",
+    "endTime": "22:00",
+    "subject": "Ca làm Highlands Coffee",
+    "location": "Highlands Coffee",
+    "note": "B18",
+    "reminderEnabled": true
+  },
+  {
+    "id": "local_1785153178359_osw8a",
+    "dayOfWeek": "Thu6",
+    "date": "2026-07-31",
+    "startTime": "18:00",
+    "endTime": "22:00",
+    "subject": "Ca làm Highlands Coffee",
+    "location": "Highlands Coffee",
+    "note": "B18",
+    "reminderEnabled": true
+  },
+  {
+    "id": "local_1785153178361_p30s0",
+    "dayOfWeek": "Thu7",
+    "date": "2026-08-01",
+    "startTime": "15:00",
+    "endTime": "22:00",
+    "subject": "Ca làm Highlands Coffee",
+    "location": "Highlands Coffee",
+    "note": "B",
+    "reminderEnabled": true
+  }
+]
