@@ -1,0 +1,58 @@
+'use client';
+import React from 'react';
+import { Bell, Settings, LogOut } from 'lucide-react';
+import { useAuth } from '@/components/AuthProvider';
+
+interface HeaderProps {
+  onOpenNotifications: () => void;
+  onOpenSettings: () => void;
+}
+
+export const Header: React.FC<HeaderProps> = ({ onOpenNotifications, onOpenSettings }) => {
+  const { user, logout } = useAuth();
+
+  return (
+    <header className="flex flex-row items-center justify-between py-4 px-1 mb-2 gap-2">
+      <div className="min-w-0">
+        <h1 className="text-xl sm:text-2xl font-bold text-slate-900 leading-tight">
+          Xin chào, <span className="text-purple-600 font-black">{user?.displayName || 'Thanh Hương'}</span>
+        </h1>
+        <p className="text-xs sm:text-sm text-slate-500 font-medium mt-0.5">Quản lý lịch học & lịch làm việc</p>
+      </div>
+
+      {/* 3 Icon Action Bar (Icon-only, clean, no text wrapping) */}
+      <div className="flex items-center gap-1.5 shrink-0">
+        {/* Notification Bell Icon */}
+        <button
+          onClick={onOpenNotifications}
+          className="p-2.5 bg-white hover:bg-purple-50 rounded-2xl shadow-sm border border-purple-100 text-purple-600 active:scale-95 transition-all cursor-pointer relative"
+          aria-label="Thông báo"
+          title="Thông báo"
+        >
+          <Bell className="w-5 h-5 text-purple-600" />
+          <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-emerald-500 rounded-full animate-pulse ring-2 ring-white" />
+        </button>
+
+        {/* Settings Gear Icon */}
+        <button
+          onClick={onOpenSettings}
+          className="p-2.5 bg-white hover:bg-purple-50 rounded-2xl shadow-sm border border-purple-100 text-slate-600 hover:text-purple-600 active:scale-95 transition-all cursor-pointer"
+          aria-label="Cài đặt hệ thống"
+          title="Cài đặt hệ thống"
+        >
+          <Settings className="w-5 h-5" />
+        </button>
+
+        {/* Red SVG LogOut Door Icon */}
+        <button
+          onClick={logout}
+          className="p-2.5 bg-rose-50/80 hover:bg-rose-100 rounded-2xl shadow-sm border border-rose-200/60 text-rose-600 active:scale-95 transition-all cursor-pointer"
+          aria-label="Đăng xuất"
+          title="Đăng xuất"
+        >
+          <LogOut className="w-5 h-5 text-rose-600" />
+        </button>
+      </div>
+    </header>
+  );
+};
