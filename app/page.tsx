@@ -104,15 +104,18 @@ export default function Home() {
     setDeletingId(null);
     setItems((prev) => prev.filter((i) => i.id !== targetId));
     try {
-      await fetch(`/api/schedule/${targetId}`, { method: 'DELETE' });
-      await fetchItems();
-      showToast({
-        type: 'info',
-        title: 'Đã xóa ca làm việc',
-        message: 'Ca làm việc đã được xóa khỏi thời khóa biểu.',
-      });
+      const res = await fetch(`/api/schedule/${targetId}`, { method: 'DELETE' });
+      const json = await res.json();
+      if (json.success) {
+        showToast({
+          type: 'info',
+          title: 'Đã xóa ca làm việc',
+          message: 'Ca làm việc đã được xóa khỏi thời khóa biểu.',
+        });
+      }
     } catch (e) {
-      console.error(e);
+      console.error('Delete API error:', e);
+    } finally {
       fetchItems();
     }
   };

@@ -183,9 +183,10 @@ export function updateScheduleItemForUserLocal(username: string, id: string, upd
 
 export function deleteScheduleItemForUserLocal(username: string, id: string): boolean {
   const items = getScheduleItemsForUserLocal(username);
+  const initialLen = items.length;
   let filtered = items.filter((i) => i.id !== id);
 
-  if (filtered.length === items.length && id) {
+  if (filtered.length === initialLen && id) {
     filtered = items.filter((i) => !(i.id && (i.id.includes(id) || id.includes(i.id))));
   }
 
@@ -194,7 +195,7 @@ export function deleteScheduleItemForUserLocal(username: string, id: string): bo
   if (username === 'thanhhuong') {
     saveLocalScheduleItems(filtered);
   }
-  return true;
+  return filtered.length < initialLen || initialLen === 0;
 }
 
 export function addLocalScheduleItem(item: Omit<ScheduleItem, 'id'>): ScheduleItem {
