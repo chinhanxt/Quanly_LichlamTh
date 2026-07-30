@@ -4,7 +4,7 @@ import { Bell, Settings, LogOut } from 'lucide-react';
 import { useAuth } from '@/components/AuthProvider';
 
 interface HeaderProps {
-  onOpenNotifications: () => void;
+  onOpenNotifications?: () => void;
   onOpenSettings: () => void;
 }
 
