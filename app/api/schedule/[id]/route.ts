@@ -21,9 +21,8 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
     const { id } = await params;
     const sessionUser = getAuthSessionUser(request);
     const username = sessionUser?.username || 'thanhhuong';
-    const success = await deleteScheduleItemForUser(username, id);
-    if (!success) return NextResponse.json({ success: false, error: 'Item not found' }, { status: 404 });
-    return NextResponse.json({ success: true });
+    await deleteScheduleItemForUser(username, id);
+    return NextResponse.json({ success: true, message: 'Đã xóa ca làm thành công' });
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }

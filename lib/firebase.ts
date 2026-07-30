@@ -249,9 +249,11 @@ export async function updateScheduleItemForUser(username: string, id: string, it
 }
 
 export async function deleteScheduleItemForUser(username: string, id: string): Promise<boolean> {
+  let firestoreDeleted = false;
   try {
     const docRef = doc(db, `schedules_${username}`, id);
     await deleteDoc(docRef);
+    firestoreDeleted = true;
     if (username === 'thanhhuong') {
       try {
         await deleteDoc(doc(db, 'schedule', id));
@@ -260,7 +262,8 @@ export async function deleteScheduleItemForUser(username: string, id: string): P
   } catch (error) {
     console.warn(`Firebase deleteScheduleItemForUser failed for ${username}, deleting from local db fallback:`, error);
   }
-  return deleteScheduleItemForUserLocal(username, id);
+  const localDeleted = deleteScheduleItemForUserLocal(username, id);
+  return firestoreDeleted || localDeleted;
 }
 
 // CRUD for Schedule Items with local fallback (legacy)
