@@ -154,11 +154,7 @@ export async function getScheduleItemsForUser(username: string): Promise<Schedul
         username,
       });
     });
-    if (items.length > 0) return items;
-    if (username === 'thanhhuong') {
-      const legacyItems = await getScheduleItems();
-      if (legacyItems.length > 0) return legacyItems;
-    }
+    return items;
   } catch (error) {
     console.warn(`Firebase getScheduleItemsForUser failed for ${username}, falling back to local db:`, error);
   }
