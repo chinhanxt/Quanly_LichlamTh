@@ -1,6 +1,6 @@
 'use client';
-import React, { useState, useEffect } from 'react';
-import { Plus } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Plus, Camera } from 'lucide-react';
 import { Header } from '@/components/Header';
 import { DaySelector } from '@/components/DaySelector';
 import { ScheduleCard } from '@/components/ScheduleCard';
@@ -11,7 +11,9 @@ import { SettingsTab } from '@/components/SettingsTab';
 import { SalaryTab } from '@/components/SalaryTab';
 import { NotesTab } from '@/components/NotesTab';
 import { NotificationsTab } from '@/components/NotificationsTab';
+import { OcrPreviewModal } from '@/components/OcrPreviewModal';
 import { ScheduleItem, ScheduleSettings } from '@/types/schedule';
+import { parseScheduleImage, ParsedShiftResult } from '@/lib/ocr-parser';
 import { useToast } from '@/components/ui/Toast';
 import { ConfirmModal } from '@/components/ui/ConfirmModal';
 
@@ -35,6 +37,12 @@ export default function Home() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<ScheduleItem | null>(null);
   const [loading, setLoading] = useState(true);
+
+  // OCR Import States
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isOcrLoading, setIsOcrLoading] = useState(false);
+  const [ocrPreviewShifts, setOcrPreviewShifts] = useState<ParsedShiftResult[]>([]);
+  const [isOcrPreviewOpen, setIsOcrPreviewOpen] = useState(false);
 
   useEffect(() => {
     fetchItems();
@@ -129,6 +137,82 @@ export default function Home() {
     });
   };
 
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setIsOcrLoading(true);
+    showToast({
+      type: 'info',
+      title: 'Đang quét ảnh lịch...',
+      message: 'Đang bóc tách thông tin ca làm việc từ ảnh...',
+    });
+
+    try {
+      const res = await parseScheduleImage(
+        file,
+        settings.employeeName || 'Thanh Hương',
+        settings.geminiApiKey
+      );
+      if (res.success && res.data) {
+        setOcrPreviewShifts(res.data);
+        setIsOcrPreviewOpen(true);
+      } else {
+        showToast({
+          type: 'error',
+          title: 'Lỗi đọc ảnh',
+          message: res.error || 'Không thể đọc dữ liệu lịch từ ảnh.',
+        });
+      }
+    } catch (err: any) {
+      showToast({
+        type: 'error',
+        title: 'Lỗi OCR',
+        message: err.message || 'Lỗi xử lý ảnh',
+      });
+    } finally {
+      setIsOcrLoading(false);
+      if (e.target) e.target.value = '';
+    }
+  };
+
+  const handleConfirmOcrSave = async (parsedShifts: ParsedShiftResult[]) => {
+    const itemsToSave: Partial<ScheduleItem>[] = parsedShifts
+      .filter((s) => !s.isOff)
+      .map((s) => ({
+        dayOfWeek: s.dayOfWeek,
+        date: s.date || '',
+        startTime: s.startTime,
+        endTime: s.endTime,
+        subject: s.subject || `Highlands Coffee (Ca ${s.shiftCode})`,
+        location: 'Highlands Coffee',
+        note: s.shiftCode,
+        reminderEnabled: true,
+      }));
+
+    try {
+      const res = await fetch('/api/schedule', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(itemsToSave),
+      });
+      const json = await res.json();
+      if (json.success) {
+        showToast({
+          type: 'success',
+          title: 'Nhập lịch thành công',
+          message: 'Đã lưu lịch làm việc mới vào thời khóa biểu!',
+        });
+        fetchItems();
+      }
+    } catch (err: any) {
+      showToast({
+        type: 'error',
+        title: 'Lỗi lưu lịch',
+        message: err.message || 'Không thể lưu lịch làm việc.',
+      });
+    }
+  };
+
   const filteredItems = items.filter((item) => {
     if (item.date && selectedDate) {
       return item.date === selectedDate;
@@ -190,16 +274,35 @@ export default function Home() {
               )}
             </div>
 
-            {/* Floating Action Button (+) */}
-            <button
-              onClick={() => {
-                setEditingItem(null);
-                setIsModalOpen(true);
-              }}
-              className="fixed bottom-20 right-6 w-14 h-14 bg-brand-600 text-white rounded-full flex items-center justify-center shadow-pill hover:bg-brand-700 active:scale-95 transition-all z-30"
-            >
-              <Plus className="w-7 h-7 text-white" />
-            </button>
+            {/* Floating Action Buttons: Import Ảnh & (+) Thêm Lịch */}
+            <div className="fixed bottom-20 right-6 flex items-center gap-3 z-30">
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleFileChange}
+                accept="image/*"
+                className="hidden"
+              />
+
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isOcrLoading}
+                className="px-4 py-3 bg-white hover:bg-slate-50 text-brand-700 font-extrabold text-xs rounded-full shadow-lg border border-slate-200/80 flex items-center gap-2 transition-all active:scale-95 cursor-pointer disabled:opacity-50"
+              >
+                <Camera className="w-4 h-4 text-brand-600" />
+                <span>{isOcrLoading ? 'Đang đọc...' : 'Import Ảnh'}</span>
+              </button>
+
+              <button
+                onClick={() => {
+                  setEditingItem(null);
+                  setIsModalOpen(true);
+                }}
+                className="w-14 h-14 bg-brand-600 text-white rounded-full flex items-center justify-center shadow-pill hover:bg-brand-700 active:scale-95 transition-all cursor-pointer shrink-0"
+              >
+                <Plus className="w-7 h-7 text-white" />
+              </button>
+            </div>
           </>
         ) : activeTab === 'salary' ? (
           <SalaryTab items={items} settings={settings} onSaveSettings={handleSaveSettings} />
@@ -221,6 +324,13 @@ export default function Home() {
         onSave={handleSaveItem}
         initialData={editingItem}
         currentDay={selectedDay}
+      />
+
+      <OcrPreviewModal
+        isOpen={isOcrPreviewOpen}
+        onClose={() => setIsOcrPreviewOpen(false)}
+        initialShifts={ocrPreviewShifts}
+        onConfirmSave={handleConfirmOcrSave}
       />
 
       <SettingsDrawer
