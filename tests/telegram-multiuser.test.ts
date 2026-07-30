@@ -17,8 +17,8 @@ test('Multi-User Database Scoping', async (t) => {
   });
 
   await t.test('should isolate schedule items per user', async () => {
-    saveScheduleItemsForUserLocal('thanhhuong', [{ id: '1', subject: 'Thanh Hương Shift', dayOfWeek: 'Thu2', startTime: '08:00', endTime: '12:00', location: '', note: '', reminderEnabled: true }]);
-    saveScheduleItemsForUserLocal('chinhan', [{ id: '2', subject: 'Chí Nhân Shift', dayOfWeek: 'Thu3', startTime: '13:00', endTime: '17:00', location: '', note: '', reminderEnabled: true }]);
+    saveScheduleItemsForUserLocal('thanhhuong', [{ id: '1', subject: 'Thanh Hương Shift', dayOfWeek: 'Thu2', startTime: '08:00', endTime: '12:00', location: '', note: '', reminderEnabled: true }], false);
+    saveScheduleItemsForUserLocal('chinhan', [{ id: '2', subject: 'Chí Nhân Shift', dayOfWeek: 'Thu3', startTime: '13:00', endTime: '17:00', location: '', note: '', reminderEnabled: true }], false);
 
     const items1 = getScheduleItemsForUserLocal('thanhhuong');
     const items2 = getScheduleItemsForUserLocal('chinhan');
