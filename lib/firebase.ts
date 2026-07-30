@@ -25,6 +25,9 @@ import {
   saveSettingsForUserLocal,
   getScheduleItemsForUserLocal,
   saveScheduleItemsForUserLocal,
+  addScheduleItemForUserLocal,
+  updateScheduleItemForUserLocal,
+  deleteScheduleItemForUserLocal,
 } from './local-db';
 
 const firebaseConfig = {
@@ -162,86 +165,118 @@ export async function getScheduleItemsForUser(username: string): Promise<Schedul
   return getScheduleItemsForUserLocal(username);
 }
 
-export async function saveScheduleItemsForUser(username: string, items: ScheduleItem[]): Promise<ScheduleItem[]> {
+export async function saveScheduleItemsForUser(username: string, newItems: ScheduleItem[], merge: boolean = true): Promise<ScheduleItem[]> {
   try {
     const userColRef = collection(db, `schedules_${username}`);
-    const existingSnap = await getDocs(userColRef);
-    for (const docSnap of existingSnap.docs) {
-      await deleteDoc(doc(db, `schedules_${username}`, docSnap.id));
+    let itemsToSave = newItems;
+
+    if (merge) {
+      const existingItems = await getScheduleItemsForUser(username);
+      const newDates = new Set(newItems.map((i) => i.date).filter((d): d is string => Boolean(d && d.trim())));
+      const newDays = new Set(newItems.map((i) => i.dayOfWeek));
+      const hasItemsWithoutDate = newItems.some((i) => !i.date || !i.date.trim());
+
+      const preserved = existingItems.filter((existing) => {
+        if (existing.date && existing.date.trim()) {
+          if (newDates.size > 0 && newDates.has(existing.date.trim())) {
+            return false; // Overwrite
+          }
+          return true; // Keep
+        }
+        if (hasItemsWithoutDate && newDays.has(existing.dayOfWeek)) {
+          return false; // Overwrite
+        }
+        return true; // Keep
+      });
+
+      const deletedItems = existingItems.filter((existing) => !preserved.includes(existing));
+      for (const oldItem of deletedItems) {
+        if (oldItem.id) {
+          try {
+            await deleteDoc(doc(db, `schedules_${username}`, oldItem.id));
+          } catch {}
+        }
+      }
+
+      itemsToSave = newItems;
+    } else {
+      const existingSnap = await getDocs(userColRef);
+      for (const docSnap of existingSnap.docs) {
+        await deleteDoc(doc(db, `schedules_${username}`, docSnap.id));
+      }
     }
-    for (const item of items) {
+
+    for (const item of itemsToSave) {
       const { id, ...itemData } = item;
-      await addDoc(userColRef, { ...itemData, username });
-    }
-    if (username === 'thanhhuong') {
-      await saveScheduleItemsForWeek(items);
+      if (id) {
+        await setDoc(doc(db, `schedules_${username}`, id), { ...itemData, username }, { merge: true });
+      } else {
+        await addDoc(userColRef, { ...itemData, username });
+      }
     }
   } catch (error) {
     console.warn(`Firebase saveScheduleItemsForUser failed for ${username}, saving local fallback:`, error);
   }
-  return saveScheduleItemsForUserLocal(username, items);
+  return saveScheduleItemsForUserLocal(username, newItems, merge);
+}
+
+export async function addScheduleItemForUser(username: string, item: Omit<ScheduleItem, 'id'>): Promise<ScheduleItem> {
+  try {
+    const docRef = await addDoc(collection(db, `schedules_${username}`), { ...item, username });
+    const newItem = { ...item, id: docRef.id, username };
+    addScheduleItemForUserLocal(username, newItem);
+    return newItem;
+  } catch (error) {
+    console.warn(`Firebase addScheduleItemForUser failed for ${username}, using local db fallback:`, error);
+    return addScheduleItemForUserLocal(username, item);
+  }
+}
+
+export async function updateScheduleItemForUser(username: string, id: string, itemUpdate: Partial<ScheduleItem>): Promise<boolean> {
+  try {
+    const docRef = doc(db, `schedules_${username}`, id);
+    await setDoc(docRef, itemUpdate, { merge: true });
+    if (username === 'thanhhuong') {
+      try {
+        await setDoc(doc(db, 'schedule', id), itemUpdate, { merge: true });
+      } catch {}
+    }
+  } catch (error) {
+    console.warn(`Firebase updateScheduleItemForUser failed for ${username}, updating local db fallback:`, error);
+  }
+  return updateScheduleItemForUserLocal(username, id, itemUpdate);
+}
+
+export async function deleteScheduleItemForUser(username: string, id: string): Promise<boolean> {
+  try {
+    const docRef = doc(db, `schedules_${username}`, id);
+    await deleteDoc(docRef);
+    if (username === 'thanhhuong') {
+      try {
+        await deleteDoc(doc(db, 'schedule', id));
+      } catch {}
+    }
+  } catch (error) {
+    console.warn(`Firebase deleteScheduleItemForUser failed for ${username}, deleting from local db fallback:`, error);
+  }
+  return deleteScheduleItemForUserLocal(username, id);
 }
 
 // CRUD for Schedule Items with local fallback (legacy)
 export async function getScheduleItems(): Promise<ScheduleItem[]> {
-  try {
-    const querySnapshot = await getDocs(collection(db, 'schedule'));
-    const items: ScheduleItem[] = [];
-    querySnapshot.forEach((docSnap) => {
-      const data = docSnap.data();
-      items.push({
-        id: docSnap.id,
-        dayOfWeek: data.dayOfWeek,
-        date: data.date || '',
-        startTime: data.startTime,
-        endTime: data.endTime,
-        subject: data.subject,
-        location: data.location || '',
-        note: data.note || '',
-        reminderEnabled: Boolean(data.reminderEnabled),
-      });
-    });
-    if (items.length > 0) return items;
-  } catch (error) {
-    console.warn('Firebase getScheduleItems failed, falling back to local db:', error);
-  }
-  return getLocalScheduleItems();
+  return getScheduleItemsForUser('thanhhuong');
 }
 
 export async function addScheduleItem(item: Omit<ScheduleItem, 'id'>): Promise<ScheduleItem> {
-  try {
-    const docRef = await addDoc(collection(db, 'schedule'), item);
-    const newItem = { ...item, id: docRef.id };
-    addLocalScheduleItem(item); // Keep local backup synced
-    return newItem;
-  } catch (error) {
-    console.warn('Firebase addScheduleItem failed, using local db fallback:', error);
-    return addLocalScheduleItem(item);
-  }
+  return addScheduleItemForUser('thanhhuong', item);
 }
 
 export async function updateScheduleItem(id: string, item: Partial<ScheduleItem>): Promise<boolean> {
-  try {
-    const docRef = doc(db, 'schedule', id);
-    await updateDoc(docRef, item as any);
-    updateLocalScheduleItem(id, item);
-    return true;
-  } catch (error) {
-    console.warn('Firebase updateScheduleItem failed, updating local db fallback:', error);
-    return updateLocalScheduleItem(id, item);
-  }
+  return updateScheduleItemForUser('thanhhuong', id, item);
 }
 
 export async function deleteScheduleItem(id: string): Promise<boolean> {
-  try {
-    const docRef = doc(db, 'schedule', id);
-    await deleteDoc(docRef);
-    deleteLocalScheduleItem(id);
-    return true;
-  } catch (error) {
-    console.warn('Firebase deleteScheduleItem failed, deleting from local db fallback:', error);
-    return deleteLocalScheduleItem(id);
-  }
+  return deleteScheduleItemForUser('thanhhuong', id);
 }
 
 // CRUD for Settings with local fallback (legacy)

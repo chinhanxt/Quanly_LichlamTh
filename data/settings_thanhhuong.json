@@ -1,0 +1,70 @@
+{
+  "morningTime": "07:00",
+  "leadTimeMinutes": 30,
+  "enableMorning": true,
+  "enableLeadTime": true,
+  "telegramBotToken": "mock-token",
+  "telegramChatId": "CHAT_ID_REVOKED",
+  "employeeName": "Thanh Hương",
+  "hourlyRate": 26000,
+  "enableShiftReminder": true,
+  "shiftReminderLeadMinutes": 30,
+  "shiftReminderTemplate": "🏃‍♂️ Dậy đi làm cha ơi! Ca {Ca} ({ThờiGian}) ở {ĐịaĐiểm} nè. Đứng dậy sửa soạn lẹ không trễ giờ chừ!",
+  "enableCheckInReminder": true,
+  "checkInLeadMinutes": 15,
+  "checkInTemplate": "🚨 Alo alo! Ca {Ca} tới đít rồi nè! Check-in lẹ không là bị trừ lương sấp mặt bây giờ 💸",
+  "enableCheckOutReminder": true,
+  "checkOutLagMinutes": 10,
+  "checkOutTemplate": "🏃‍♀️ Hết ca rồi lượn lẹ! Ca {Ca} xong rồi nè. Bấm Check-out rồi vọt về thôi 🥳",
+  "enableNotesReminder": true,
+  "notesLeadMinutes": 15,
+  "notesTemplate": "📝 Note ca {Ca} nè: {GhiChú}. Quên cái này là ăn chửi ráng chịu nha! ⚡",
+  "notesTimingMode": "before_shift",
+  "notesFixedTime": "08:00",
+  "userNotes": [
+    {
+      "createdFormatted": "15:32:26 30/7/2026",
+      "createdAt": "2026-07-30T08:32:26.455Z",
+      "content": "Họp team tuần tới lúc 9h sáng",
+      "completed": false,
+      "id": "note_1785400346455_gzhnn"
+    },
+    {
+      "id": "note_1785400366140_odbks",
+      "content": "Họp team tuần tới lúc 9h sáng",
+      "completed": false,
+      "createdFormatted": "15:32:46 30/7/2026",
+      "createdAt": "2026-07-30T08:32:46.140Z"
+    },
+    {
+      "createdAt": "2026-07-30T08:34:36.787Z",
+      "completed": false,
+      "content": "Họp team tuần tới lúc 9h sáng",
+      "createdFormatted": "15:34:36 30/7/2026",
+      "id": "note_1785400476787_txz2p"
+    },
+    {
+      "createdAt": "2026-07-30T08:36:29.768Z",
+      "createdFormatted": "15:36:29 30/7/2026",
+      "id": "note_1785400589768_sersm",
+      "completed": false,
+      "content": "Họp team tuần tới lúc 9h sáng"
+    }
+  ],
+  "enableMorningSummary": true,
+  "morningSummaryTime": "07:00",
+  "morningSummaryTemplate": "☀️ Dậy đi cày em ơi! Hôm nay cày ca {Ca} ({ThờiGian}) ở {ĐịaĐiểm} nè. Chúc cày cuốc vui vẻ không bị ăn chửi nhé 🔥",
+  "customNotifications": [],
+  "customWebhookUrl": "https://schedule-telegram-app.vercel.app/api/telegram-webhook",
+  "sentRemindersLog": {},
+  "allowedChatIdsStr": "CHAT_ID_REVOKED",
+  "geminiApiKey": "",
+  "username": "thanhhuong",
+  "telegramSessionState": {
+    "userState": "IDLE"
+  },
+  "allowedChatIds": [
+    "CHAT_ID_REVOKED",
+    "7461754110"
+  ]
+}

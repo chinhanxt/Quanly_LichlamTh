@@ -15,6 +15,7 @@ interface Props {
 export const ScheduleFormModal: React.FC<Props> = ({ isOpen, onClose, onSave, initialData, currentDay }) => {
   const [form, setForm] = useState<{
     dayOfWeek: ScheduleItem['dayOfWeek'];
+    date?: string;
     startTime: string;
     endTime: string;
     subject: string;
@@ -23,6 +24,7 @@ export const ScheduleFormModal: React.FC<Props> = ({ isOpen, onClose, onSave, in
     reminderEnabled: boolean;
   }>({
     dayOfWeek: currentDay as ScheduleItem['dayOfWeek'],
+    date: '',
     startTime: '08:00',
     endTime: '10:00',
     subject: '',
@@ -35,6 +37,7 @@ export const ScheduleFormModal: React.FC<Props> = ({ isOpen, onClose, onSave, in
     if (initialData) {
       setForm({
         dayOfWeek: initialData.dayOfWeek,
+        date: initialData.date || '',
         startTime: initialData.startTime,
         endTime: initialData.endTime,
         subject: initialData.subject,
@@ -43,7 +46,7 @@ export const ScheduleFormModal: React.FC<Props> = ({ isOpen, onClose, onSave, in
         reminderEnabled: initialData.reminderEnabled,
       });
     } else {
-      setForm((prev) => ({ ...prev, dayOfWeek: currentDay as ScheduleItem['dayOfWeek'] }));
+      setForm((prev) => ({ ...prev, dayOfWeek: currentDay as ScheduleItem['dayOfWeek'], date: '' }));
     }
   }, [initialData, currentDay]);
 

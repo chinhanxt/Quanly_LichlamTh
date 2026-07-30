@@ -9,7 +9,7 @@
     "location": "Highlands Coffee",
     "note": "B16",
     "reminderEnabled": true,
-    "username": "thanhhuong"
+    "username": "test_user_merge_123"
   },
   {
     "id": "past_1",
@@ -21,16 +21,6 @@
     "location": "Highlands Coffee",
     "note": "A11",
     "reminderEnabled": true,
-    "username": "thanhhuong"
-  },
-  {
-    "id": "1",
-    "subject": "Thanh Hương Shift",
-    "dayOfWeek": "Thu2",
-    "startTime": "08:00",
-    "endTime": "12:00",
-    "location": "",
-    "note": "",
-    "reminderEnabled": true
+    "username": "test_user_merge_123"
   }
 ]
