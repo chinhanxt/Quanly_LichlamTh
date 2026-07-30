@@ -2,6 +2,9 @@ import { NextResponse } from 'next/server';
 import { getSettingsForUser, saveSettingsForUser } from '@/lib/firebase';
 import { getAuthSessionUser } from '@/lib/auth-session';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 export async function GET(request: Request) {
   try {
     const sessionUser = getAuthSessionUser(request);
