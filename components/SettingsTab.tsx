@@ -1,6 +1,6 @@
 'use client';
 import React, { useState, useEffect, useRef } from 'react';
-import { Send, ShieldCheck, Database, CheckCircle2, RefreshCw, Trash2, Plus, Lock, KeyRound } from 'lucide-react';
+import { Send, ShieldCheck, Database, CheckCircle2, RefreshCw, Trash2, Plus, Lock, KeyRound, Copy } from 'lucide-react';
 import { ScheduleSettings } from '@/types/schedule';
 import { Card } from './ui/Card';
 import { useToast } from './ui/Toast';
@@ -192,6 +192,19 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({ settings, onSaveSettin
     }
   };
 
+  const handleCopyCronUrl = () => {
+    const origin = typeof window !== 'undefined' ? window.location.origin : 'https://schedule-telegram-app.vercel.app';
+    const cronUrl = `${origin}/api/cron/reminders`;
+    navigator.clipboard.writeText(cronUrl);
+    setCopiedCronUrl(true);
+    showToast({
+      type: 'success',
+      title: 'Đã sao chép Webcron URL',
+      message: 'Đã copy URL nhắc nhở để dán vào console.cron-job.org!'
+    });
+    setTimeout(() => setCopiedCronUrl(false), 2500);
+  };
+
   return (
     <div className="space-y-4 pb-12">
       <div className="flex items-center justify-between mb-4">
@@ -373,23 +386,7 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({ settings, onSaveSettin
 
             <div>
               <label className="block text-xs font-semibold text-slate-700 mb-1">
-                5. Mức lương theo giờ (VNĐ/giờ)
-              </label>
-              <input
-                type="number"
-                value={form.hourlyRate ?? 26000}
-                onChange={(e) => updateForm({ ...form, hourlyRate: Number(e.target.value) })}
-                placeholder="26000"
-                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono text-slate-800 focus:outline-none focus:border-brand-600"
-              />
-              <p className="text-[10px] text-slate-400 mt-1">
-                Mức lương tính theo mỗi giờ làm việc, dùng để tự động tính tổng lương tuần & tháng.
-              </p>
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">
-                6. Webhook URL Telegram tùy chỉnh
+                5. Webhook URL Telegram tùy chỉnh
               </label>
               <input
                 type="text"
@@ -412,6 +409,31 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({ settings, onSaveSettin
                   <span>{settingUpWebhook ? 'Đang kích hoạt...' : 'Kích hoạt Webhook'}</span>
                 </button>
               </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">
+                6. Webcron Hẹn Giờ Nhắc Nhở Tự Động (cron-job.org)
+              </label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  readOnly
+                  value={typeof window !== 'undefined' ? `${window.location.origin}/api/cron/reminders` : 'https://schedule-telegram-app.vercel.app/api/cron/reminders'}
+                  className="flex-1 px-3 py-2 bg-slate-100 border border-slate-200 rounded-xl text-xs font-mono text-slate-600 select-all focus:outline-none"
+                />
+                <button
+                  type="button"
+                  onClick={handleCopyCronUrl}
+                  className="px-3 py-2 bg-brand-50 border border-brand-200 text-brand-700 font-bold rounded-xl text-xs hover:bg-brand-100 active:scale-95 transition-all flex items-center gap-1.5 cursor-pointer shrink-0"
+                >
+                  {copiedCronUrl ? <CheckCircle2 className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4 text-brand-600" />}
+                  <span>{copiedCronUrl ? 'Đã chép!' : 'Copy URL'}</span>
+                </button>
+              </div>
+              <p className="text-[10px] text-slate-400 mt-1">
+                Dán URL này vào trang hẹn giờ <a href="https://console.cron-job.org/jobs" target="_blank" rel="noreferrer" className="text-brand-600 underline font-semibold">console.cron-job.org</a> (tần suất 1 - 5 phút/lần) để tự động kích hoạt thông báo Telegram.
+              </p>
             </div>
           </div>
 
