@@ -142,7 +142,6 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({ settings, onSaveSettin
           title: 'Gemini API Key không hợp lệ',
           message: json.error || 'Vui lòng kiểm tra lại API Key'
         });
-      }
     } catch (err: any) {
       showToast({
         type: 'error',
@@ -151,6 +150,44 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({ settings, onSaveSettin
       });
     } finally {
       setTestingGemini(false);
+    }
+  };
+
+  const [settingUpWebhook, setSettingUpWebhook] = useState(false);
+
+  const handleSetupWebhook = async () => {
+    setSettingUpWebhook(true);
+    try {
+      const res = await fetch('/api/telegram-setup-webhook', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          telegramBotToken: form.telegramBotToken,
+          customWebhookUrl: form.customWebhookUrl,
+        }),
+      });
+      const json = await res.json();
+      if (json.success) {
+        showToast({
+          type: 'success',
+          title: 'Kích hoạt Webhook thành công',
+          message: `Đã kết nối Webhook Telegram tới URL: ${json.webhookUrl}`
+        });
+      } else {
+        showToast({
+          type: 'error',
+          title: 'Kích hoạt Webhook thất bại',
+          message: json.error || 'Không thể thiết lập Webhook với Telegram'
+        });
+      }
+    } catch (err: any) {
+      showToast({
+        type: 'error',
+        title: 'Lỗi kích hoạt Webhook',
+        message: err.message || 'Lỗi kết nối máy chủ'
+      });
+    } finally {
+      setSettingUpWebhook(false);
     }
   };
 
@@ -329,6 +366,49 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({ settings, onSaveSettin
                 >
                   <ShieldCheck className="w-3.5 h-3.5 text-brand-600" />
                   <span>{testingGemini ? 'Đang test...' : 'Test Gemini API Key'}</span>
+                </button>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">
+                5. Mức lương theo giờ (VNĐ/giờ)
+              </label>
+              <input
+                type="number"
+                value={form.hourlyRate ?? 26000}
+                onChange={(e) => updateForm({ ...form, hourlyRate: Number(e.target.value) })}
+                placeholder="26000"
+                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono text-slate-800 focus:outline-none focus:border-brand-600"
+              />
+              <p className="text-[10px] text-slate-400 mt-1">
+                Mức lương tính theo mỗi giờ làm việc, dùng để tự động tính tổng lương tuần & tháng.
+              </p>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">
+                6. Webhook URL Telegram tùy chỉnh
+              </label>
+              <input
+                type="text"
+                value={form.customWebhookUrl || ''}
+                onChange={(e) => updateForm({ ...form, customWebhookUrl: e.target.value })}
+                placeholder="https://schedule-telegram-app.vercel.app/api/telegram-webhook"
+                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono text-slate-800 focus:outline-none focus:border-brand-600"
+              />
+              <div className="flex items-center justify-between mt-1.5 flex-wrap gap-2">
+                <p className="text-[10px] text-slate-400">
+                  URL Webhook để Telegram tự động gửi tin nhắn & ảnh lịch về ứng dụng.
+                </p>
+                <button
+                  type="button"
+                  onClick={handleSetupWebhook}
+                  disabled={settingUpWebhook}
+                  className="px-3 py-1.5 bg-sky-50 border border-sky-200 text-sky-700 font-bold rounded-xl text-xs hover:bg-sky-100 active:scale-95 transition-all flex items-center gap-1.5 cursor-pointer"
+                >
+                  <Send className="w-3.5 h-3.5 text-sky-600" />
+                  <span>{settingUpWebhook ? 'Đang kích hoạt...' : 'Kích hoạt Webhook'}</span>
                 </button>
               </div>
             </div>
