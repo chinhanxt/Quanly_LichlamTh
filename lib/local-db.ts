@@ -183,7 +183,12 @@ export function updateScheduleItemForUserLocal(username: string, id: string, upd
 
 export function deleteScheduleItemForUserLocal(username: string, id: string): boolean {
   const items = getScheduleItemsForUserLocal(username);
-  const filtered = items.filter((i) => i.id !== id);
+  let filtered = items.filter((i) => i.id !== id);
+
+  if (filtered.length === items.length && id) {
+    filtered = items.filter((i) => !(i.id && (i.id.includes(id) || id.includes(i.id))));
+  }
+
   const userScheduleFile = path.join(DATA_DIR, `schedule_${username}.json`);
   fs.writeFileSync(userScheduleFile, JSON.stringify(filtered, null, 2), 'utf-8');
   if (username === 'thanhhuong') {
