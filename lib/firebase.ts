@@ -211,7 +211,8 @@ export async function saveScheduleItemsForUser(username: string, newItems: Sched
       if (id) {
         await setDoc(doc(db, `schedules_${username}`, id), { ...itemData, username }, { merge: true });
       } else {
-        await addDoc(userColRef, { ...itemData, username });
+        const docRef = await addDoc(userColRef, { ...itemData, username });
+        item.id = docRef.id;
       }
     }
   } catch (error) {

@@ -100,14 +100,21 @@ export default function Home() {
 
   const confirmDelete = async () => {
     if (!deletingId) return;
-    await fetch(`/api/schedule/${deletingId}`, { method: 'DELETE' });
+    const targetId = deletingId;
     setDeletingId(null);
-    fetchItems();
-    showToast({
-      type: 'info',
-      title: 'Đã xóa ca làm việc',
-      message: 'Ca làm việc đã được xóa khỏi thời khóa biểu.',
-    });
+    setItems((prev) => prev.filter((i) => i.id !== targetId));
+    try {
+      await fetch(`/api/schedule/${targetId}`, { method: 'DELETE' });
+      await fetchItems();
+      showToast({
+        type: 'info',
+        title: 'Đã xóa ca làm việc',
+        message: 'Ca làm việc đã được xóa khỏi thời khóa biểu.',
+      });
+    } catch (e) {
+      console.error(e);
+      fetchItems();
+    }
   };
 
   const handleSaveSettings = async (newSettings: ScheduleSettings) => {
