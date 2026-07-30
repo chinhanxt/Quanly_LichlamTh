@@ -1,29 +1,5 @@
 [
   {
-    "id": "current_1",
-    "dayOfWeek": "Thu3",
-    "date": "2026-07-28",
-    "startTime": "16:00",
-    "endTime": "22:00",
-    "subject": "Highlands Coffee",
-    "location": "Highlands Coffee",
-    "note": "B16",
-    "reminderEnabled": true,
-    "username": "thanhhuong"
-  },
-  {
-    "id": "past_1",
-    "dayOfWeek": "Thu2",
-    "date": "2026-07-20",
-    "startTime": "08:00",
-    "endTime": "12:00",
-    "subject": "Highlands Coffee",
-    "location": "Highlands Coffee",
-    "note": "A11",
-    "reminderEnabled": true,
-    "username": "thanhhuong"
-  },
-  {
     "id": "1",
     "subject": "Thanh Hương Shift",
     "dayOfWeek": "Thu2",

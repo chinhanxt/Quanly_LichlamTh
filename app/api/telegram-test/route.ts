@@ -10,7 +10,7 @@ export async function POST(request: Request) {
     try {
       const body = await request.json();
       botToken = body.telegramBotToken;
-      chatId = body.telegramChatId;
+      chatId = body.allowedChatIdsStr || body.allowedChatIds || body.telegramChatId;
       customMessage = body.message;
     } catch {
       // Body may be empty, proceed with defaults
