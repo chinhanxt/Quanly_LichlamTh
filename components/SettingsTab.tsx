@@ -1,9 +1,11 @@
 'use client';
 import React, { useState, useEffect, useRef } from 'react';
-import { Send, ShieldCheck, Database, CheckCircle2, RefreshCw } from 'lucide-react';
+import { Send, ShieldCheck, Database, CheckCircle2, RefreshCw, Trash2, Plus, Lock, KeyRound } from 'lucide-react';
 import { ScheduleSettings } from '@/types/schedule';
 import { Card } from './ui/Card';
 import { useToast } from './ui/Toast';
+
+import { useAuth } from '@/components/AuthProvider';
 
 interface SettingsTabProps {
   settings: ScheduleSettings;
@@ -11,12 +13,42 @@ interface SettingsTabProps {
 }
 
 export const SettingsTab: React.FC<SettingsTabProps> = ({ settings, onSaveSettings }) => {
+  const { changePassword } = useAuth();
   const [form, setForm] = useState<ScheduleSettings>(settings);
   const [savingStatus, setSavingStatus] = useState<'saved' | 'saving' | 'idle'>('idle');
   const [testingTelegram, setTestingTelegram] = useState(false);
   const [testingGemini, setTestingGemini] = useState(false);
   const { showToast } = useToast();
   const [copiedCronUrl, setCopiedCronUrl] = useState(false);
+
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [changingPass, setChangingPass] = useState(false);
+
+  const handleChangePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (newPassword !== confirmPassword) {
+      showToast({ type: 'error', title: 'Lỗi', message: 'Mật khẩu mới và xác nhận không khớp' });
+      return;
+    }
+    if (newPassword.length < 4) {
+      showToast({ type: 'error', title: 'Lỗi', message: 'Mật khẩu mới phải từ 4 ký tự trở lên' });
+      return;
+    }
+    setChangingPass(true);
+    try {
+      await changePassword(currentPassword, newPassword);
+      showToast({ type: 'success', title: 'Thành công', message: 'Đã cập nhật mật khẩu thành công!' });
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+    } catch (err: any) {
+      showToast({ type: 'error', title: 'Lỗi', message: err.message || 'Đổi mật khẩu thất bại' });
+    } finally {
+      setChangingPass(false);
+    }
+  };
 
   const isInitialMount = useRef(true);
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);

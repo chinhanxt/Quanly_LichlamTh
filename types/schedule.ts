@@ -8,6 +8,7 @@ export interface ScheduleItem {
   location: string;  // "Highlands Coffee"
   note: string;      // "B18"
   reminderEnabled: boolean;
+  username?: string;
 }
 
 export type CustomNotificationTimingMode = 'before_shift' | 'after_shift' | 'fixed_time';
@@ -21,6 +22,16 @@ export interface CustomNotificationItem {
   lagMinutes?: number;  // Cho 'after_shift'
   fixedTime?: string;   // Cho 'fixed_time' (vd: "12:00")
   template: string;
+}
+
+export interface UserNote {
+  id: string;
+  content: string;
+  createdAt: string;
+  createdFormatted?: string;
+  completed: boolean;
+  targetDate?: string;
+  targetShiftCode?: string;
 }
 
 export interface NotificationSettings {
@@ -43,6 +54,9 @@ export interface NotificationSettings {
   enableNotesReminder?: boolean;
   notesLeadMinutes?: number;         // Default: 15
   notesTemplate?: string;
+  notesTimingMode?: 'before_shift' | 'fixed_time';
+  notesFixedTime?: string;
+  userNotes?: UserNote[];
 
   // 5. Nhắc Lịch Buổi Sáng (Morning Summary)
   enableMorningSummary?: boolean;
@@ -57,6 +71,7 @@ export interface NotificationSettings {
 }
 
 export interface ScheduleSettings extends NotificationSettings {
+  username?: string;
   morningTime: string;       // "07:00"
   leadTimeMinutes: number;   // 30
   enableMorning: boolean;    // true
@@ -69,4 +84,9 @@ export interface ScheduleSettings extends NotificationSettings {
   customWebhookUrl?: string; // Webhook URL công khai tùy chỉnh
   allowedChatIds?: string[]; // Danh sách Chat ID được phép tương tác
   allowedChatIdsStr?: string; // Chuỗi Chat ID phân cách bằng dấu phẩy
+  telegramSessionState?: {
+    userState: 'IDLE' | 'AWAITING_NOTE' | 'AWAITING_OCR_CONFIRM';
+    pendingScheduleData?: ScheduleItem[];
+    pendingId?: string;
+  };
 }

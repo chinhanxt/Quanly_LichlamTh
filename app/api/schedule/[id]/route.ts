@@ -2,12 +2,13 @@ import { NextResponse } from 'next/server';
 import { updateScheduleItem, deleteScheduleItem } from '@/lib/firebase';
 import { getAuthSessionUser } from '@/lib/auth-session';
 
-export async function PUT(request: Request, { params }: { params: { id: string } }) {
+export async function PUT(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const { id } = await params;
     const sessionUser = getAuthSessionUser(request);
     const username = sessionUser?.username || 'thanhhuong';
     const body = await request.json();
-    const success = await updateScheduleItem(params.id, { ...body, username });
+    const success = await updateScheduleItem(id, { ...body, username });
     if (!success) return NextResponse.json({ success: false, error: 'Item not found' }, { status: 404 });
     return NextResponse.json({ success: true });
   } catch (error: any) {
@@ -15,11 +16,12 @@ export async function PUT(request: Request, { params }: { params: { id: string }
   }
 }
 
-export async function DELETE(request: Request, { params }: { params: { id: string } }) {
+export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const { id } = await params;
     const sessionUser = getAuthSessionUser(request);
     const username = sessionUser?.username || 'thanhhuong';
-    const success = await deleteScheduleItem(params.id);
+    const success = await deleteScheduleItem(id);
     if (!success) return NextResponse.json({ success: false, error: 'Item not found' }, { status: 404 });
     return NextResponse.json({ success: true });
   } catch (error: any) {

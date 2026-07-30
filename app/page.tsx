@@ -8,11 +8,19 @@ import { ScheduleFormModal } from '@/components/ScheduleFormModal';
 import { SettingsDrawer } from '@/components/SettingsDrawer';
 import { BottomNav } from '@/components/BottomNav';
 import { SettingsTab } from '@/components/SettingsTab';
+import { SalaryTab } from '@/components/SalaryTab';
+import { NotesTab } from '@/components/NotesTab';
+import { NotificationsTab } from '@/components/NotificationsTab';
 import { ScheduleItem, ScheduleSettings } from '@/types/schedule';
+import { useToast } from '@/components/ui/Toast';
+import { ConfirmModal } from '@/components/ui/ConfirmModal';
 
 export default function Home() {
-  const [activeTab, setActiveTab] = useState<'schedule' | 'settings'>('schedule');
+  const { showToast } = useToast();
+  const [activeTab, setActiveTab] = useState<'schedule' | 'salary' | 'notes' | 'notifications' | 'settings'>('schedule');
   const [selectedDay, setSelectedDay] = useState<string>('Thu2');
+  const [selectedDate, setSelectedDate] = useState<string>('');
+  const [activeWeekDays, setActiveWeekDays] = useState<Array<{ key: string; fullDateIso: string }>>([]);
   const [items, setItems] = useState<ScheduleItem[]>([]);
   const [settings, setSettings] = useState<ScheduleSettings>({
     morningTime: '07:00',
@@ -62,6 +70,11 @@ export default function Home() {
     }
   };
 
+  const handleSelectDay = (dayKey: string, fullDateIso: string) => {
+    setSelectedDay(dayKey);
+    setSelectedDate(fullDateIso);
+  };
+
   const handleSaveItem = async (data: Partial<ScheduleItem>) => {
     if (editingItem) {
       await fetch(`/api/schedule/${editingItem.id}`, {
@@ -93,7 +106,7 @@ export default function Home() {
     showToast({
       type: 'info',
       title: 'Đã xóa ca làm việc',
-      message: 'Ca làm việc đã được xóa khỏi thời khóa biểu.'
+      message: 'Ca làm việc đã được xóa khỏi thời khóa biểu.',
     });
   };
 
@@ -106,12 +119,20 @@ export default function Home() {
     });
   };
 
-  const filteredItems = items.filter((item) => item.dayOfWeek === selectedDay);
+  const filteredItems = items.filter((item) => {
+    if (item.date && selectedDate) {
+      return item.date === selectedDate;
+    }
+    return item.dayOfWeek === selectedDay;
+  });
 
   return (
     <div className="min-h-screen bg-surface-bg pb-24">
       <div className="max-w-md mx-auto px-4 pt-4">
-        <Header onOpenSettings={() => setActiveTab('settings')} />
+        <Header
+          onOpenSettings={() => setActiveTab('settings')}
+          onOpenNotifications={() => setActiveTab('notifications')}
+        />
 
         {activeTab === 'schedule' ? (
           <>
@@ -172,13 +193,17 @@ export default function Home() {
           </>
         ) : activeTab === 'salary' ? (
           <SalaryTab items={items} settings={settings} onSaveSettings={handleSaveSettings} />
+        ) : activeTab === 'notes' ? (
+          <NotesTab settings={settings} onSaveSettings={handleSaveSettings} />
+        ) : activeTab === 'notifications' ? (
+          <NotificationsTab settings={settings} onSaveSettings={handleSaveSettings} />
         ) : (
           <SettingsTab settings={settings} onSaveSettings={handleSaveSettings} />
         )}
       </div>
 
       {/* Bottom Navigation */}
-      <BottomNav activeTab={activeTab} onChangeTab={setActiveTab} />
+      <BottomNav activeTab={activeTab as any} onChangeTab={setActiveTab as any} />
 
       <ScheduleFormModal
         isOpen={isModalOpen}
@@ -193,6 +218,14 @@ export default function Home() {
         onClose={() => setIsSettingsOpen(false)}
         settings={settings}
         onSaveSettings={handleSaveSettings}
+      />
+
+      <ConfirmModal
+        isOpen={Boolean(deletingId)}
+        onCancel={() => setDeletingId(null)}
+        onConfirm={confirmDelete}
+        title="Xác nhận xóa ca làm"
+        message="Bạn có chắc chắn muốn xóa ca làm này khỏi thời khóa biểu không?"
       />
     </div>
   );

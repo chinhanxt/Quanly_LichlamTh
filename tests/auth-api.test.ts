@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { POST as loginPOST } from '../app/api/auth/login/route';
 import { GET as meGET } from '../app/api/auth/me/route';
+import { updateUserPasswordInFirestore } from '../lib/firebase';
 
 test('Auth API Routes', async (t) => {
   await t.test('should reject invalid credentials on login', async () => {
@@ -31,6 +32,7 @@ test('Auth API Routes', async (t) => {
   });
 
   await t.test('should accept valid credentials for chinhan', async () => {
+    await updateUserPasswordInFirestore('chinhan', '1515');
     const req = new Request('http://localhost/api/auth/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
