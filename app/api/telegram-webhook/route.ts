@@ -14,7 +14,7 @@ import {
   getScheduleItemsForUser,
   saveScheduleItemsForUser,
 } from '@/lib/firebase';
-import { sendTelegramMessage, getTelegramFilePath, downloadTelegramPhotoBuffer } from '@/lib/telegram';
+import { sendTelegramMessage, getTelegramFilePath, downloadTelegramPhotoBuffer, getUserChatIds } from '@/lib/telegram';
 import {
   getMainMenuKeyboard,
   getSalaryMenuKeyboard,
@@ -77,30 +77,20 @@ export async function POST(request: Request) {
 
     // Find matching user by chatId / senderId
     let matchedUser = userSettingsList.find(({ settings }) => {
-      const allowedStr = settings.allowedChatIdsStr || settings.telegramChatId || '';
-      const allowedList = allowedStr
-        .split(',')
-        .map((s) => s.trim())
-        .filter(Boolean);
+      const allowedList = getUserChatIds(settings);
       return (
         (chatId && allowedList.includes(chatId)) ||
-        (senderId && allowedList.includes(senderId)) ||
-        (settings.telegramChatId && (settings.telegramChatId === chatId || settings.telegramChatId === senderId))
+        (senderId && allowedList.includes(senderId))
       );
     });
 
     // Fallback: Check root settings if no user matched directly
     if (!matchedUser && chatId) {
       const rootSettings = await getSettings();
-      const allowedStr = rootSettings.allowedChatIdsStr || rootSettings.telegramChatId || '';
-      const allowedList = allowedStr
-        .split(',')
-        .map((s) => s.trim())
-        .filter(Boolean);
+      const allowedList = getUserChatIds(rootSettings);
       if (
-        allowedList.includes(chatId) ||
-        (senderId && allowedList.includes(senderId)) ||
-        (rootSettings.telegramChatId && (rootSettings.telegramChatId === chatId || rootSettings.telegramChatId === senderId))
+        (chatId && allowedList.includes(chatId)) ||
+        (senderId && allowedList.includes(senderId))
       ) {
         matchedUser = { username: 'thanhhuong', settings: rootSettings };
       }

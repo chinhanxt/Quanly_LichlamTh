@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getScheduleItemsForUser, getSettingsForUser, saveSettingsForUser } from '@/lib/firebase';
-import { sendTelegramMessage } from '@/lib/telegram';
+import { sendTelegramMessage, getUserChatIds } from '@/lib/telegram';
 import { ScheduleItem } from '@/types/schedule';
 
 export const dynamic = 'force-dynamic';
@@ -92,6 +92,8 @@ export async function GET(request: Request) {
     for (const username of DEFAULT_USERNAMES) {
       const settings = await getSettingsForUser(username);
       if (!settings.telegramBotToken) continue;
+      const targetChatIds = getUserChatIds(settings);
+      if (targetChatIds.length === 0) continue;
 
       let sentLog = pruneOldLogs(settings.sentRemindersLog || {});
       let logUpdated = false;
@@ -126,7 +128,7 @@ export async function GET(request: Request) {
           const msg = allTodayShifts
             .map((shift) => formatNotificationMessage(template, shift))
             .join('\n\n');
-          await sendTelegramMessage(msg, settings.telegramBotToken, settings.telegramChatId);
+          await sendTelegramMessage(msg, settings.telegramBotToken, targetChatIds);
           sentLog[morningKey] = new Date().toISOString();
           logUpdated = true;
           logs.push(`[${username}] Sent morning summary`);
@@ -152,7 +154,7 @@ export async function GET(request: Request) {
           const shiftKey = `${currentYYYYMMDD}_${item.id}_shift_start`;
           if (diffMinutes >= 0 && diffMinutes <= shiftLeadMins && !sentLog[shiftKey]) {
             const msg = formatNotificationMessage(template, item);
-            await sendTelegramMessage(msg, settings.telegramBotToken, settings.telegramChatId);
+            await sendTelegramMessage(msg, settings.telegramBotToken, targetChatIds);
             sentLog[shiftKey] = new Date().toISOString();
             logUpdated = true;
             logs.push(`[${username}] Sent shift reminder for ${item.subject || item.note || 'Ca làm'}`);
@@ -177,7 +179,7 @@ export async function GET(request: Request) {
           const checkInKey = `${currentYYYYMMDD}_${item.id}_check_in`;
           if (diffMinutes >= 0 && diffMinutes <= checkInLeadMins && !sentLog[checkInKey]) {
             const msg = formatNotificationMessage(template, item);
-            await sendTelegramMessage(msg, settings.telegramBotToken, settings.telegramChatId);
+            await sendTelegramMessage(msg, settings.telegramBotToken, targetChatIds);
             sentLog[checkInKey] = new Date().toISOString();
             logUpdated = true;
             logs.push(`[${username}] Sent check-in reminder for ${item.subject || item.note || 'Ca làm'}`);
@@ -202,7 +204,7 @@ export async function GET(request: Request) {
           const checkOutKey = `${currentYYYYMMDD}_${item.id}_check_out`;
           if (lagMinutes >= 0 && lagMinutes <= checkOutLagMins + 30 && !sentLog[checkOutKey]) {
             const msg = formatNotificationMessage(template, item);
-            await sendTelegramMessage(msg, settings.telegramBotToken, settings.telegramChatId);
+            await sendTelegramMessage(msg, settings.telegramBotToken, targetChatIds);
             sentLog[checkOutKey] = new Date().toISOString();
             logUpdated = true;
             logs.push(`[${username}] Sent check-out reminder for ${item.subject || item.note || 'Ca làm'}`);
@@ -250,7 +252,7 @@ export async function GET(request: Request) {
               if (noteTexts.length > 0) {
                 const ghiChuFormatted = noteTexts.map((n) => `• ${n}`).join('\n');
                 const msg = formatNotificationMessage(template, item, ghiChuFormatted);
-                await sendTelegramMessage(msg, settings.telegramBotToken, settings.telegramChatId);
+                await sendTelegramMessage(msg, settings.telegramBotToken, targetChatIds);
                 sentLog[notesKey] = new Date().toISOString();
                 logUpdated = true;
                 logs.push(`[${username}] Sent notes reminder for ${item.subject || item.note || 'Ca làm'}`);
@@ -297,7 +299,7 @@ export async function GET(request: Request) {
               } as ScheduleItem);
 
               const msg = formatNotificationMessage(template, firstShift, ghiChuFormatted);
-              await sendTelegramMessage(msg, settings.telegramBotToken, settings.telegramChatId);
+              await sendTelegramMessage(msg, settings.telegramBotToken, targetChatIds);
               sentLog[fixedNotesKey] = new Date().toISOString();
               logUpdated = true;
               logs.push(`[${username}] Sent fixed-time notes reminder at ${notesFixedTime}`);
@@ -323,7 +325,7 @@ export async function GET(request: Request) {
               const customKey = `${currentYYYYMMDD}_${item.id}_custom_${customItem.id}`;
               if (diffMinutes >= 0 && diffMinutes <= customLeadMins && !sentLog[customKey]) {
                 const msg = formatNotificationMessage(customItem.template, item);
-                await sendTelegramMessage(msg, settings.telegramBotToken, settings.telegramChatId);
+                await sendTelegramMessage(msg, settings.telegramBotToken, targetChatIds);
                 sentLog[customKey] = new Date().toISOString();
                 logUpdated = true;
                 logs.push(`[${username}] Sent custom before-shift reminder (${customItem.title}) for ${item.subject || item.note || 'Ca làm'}`);
@@ -339,7 +341,7 @@ export async function GET(request: Request) {
               const customKey = `${currentYYYYMMDD}_${item.id}_custom_${customItem.id}`;
               if (diffMinutes >= 0 && diffMinutes <= customLagMins + 30 && !sentLog[customKey]) {
                 const msg = formatNotificationMessage(customItem.template, item);
-                await sendTelegramMessage(msg, settings.telegramBotToken, settings.telegramChatId);
+                await sendTelegramMessage(msg, settings.telegramBotToken, targetChatIds);
                 sentLog[customKey] = new Date().toISOString();
                 logUpdated = true;
                 logs.push(`[${username}] Sent custom after-shift reminder (${customItem.title}) for ${item.subject || item.note || 'Ca làm'}`);
@@ -351,7 +353,7 @@ export async function GET(request: Request) {
             if (currentTimeStr >= targetTime && !sentLog[customKey]) {
               const firstShift = todayItems[0] || ({ startTime: '18:00', endTime: '22:00', subject: 'Highlands Coffee', location: 'Highlands Coffee', note: 'B18' } as ScheduleItem);
               const msg = formatNotificationMessage(customItem.template, firstShift);
-              await sendTelegramMessage(msg, settings.telegramBotToken, settings.telegramChatId);
+              await sendTelegramMessage(msg, settings.telegramBotToken, targetChatIds);
               sentLog[customKey] = new Date().toISOString();
               logUpdated = true;
               logs.push(`[${username}] Sent custom fixed-time reminder (${customItem.title}) at ${targetTime}`);

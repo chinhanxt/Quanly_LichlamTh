@@ -59,61 +59,126 @@ function postTelegramCurl(token: string, endpoint: string, payload: any): Promis
   });
 }
 
+export function getUserChatIds(settings: any): string[] {
+  const chatIds = new Set<string>();
+  if (!settings) return [];
+
+  if (settings.telegramChatId && typeof settings.telegramChatId === 'string' && settings.telegramChatId.trim()) {
+    settings.telegramChatId
+      .split(',')
+      .map((s: string) => s.trim())
+      .filter(Boolean)
+      .forEach((id: string) => chatIds.add(id));
+  }
+
+  if (settings.allowedChatIdsStr && typeof settings.allowedChatIdsStr === 'string' && settings.allowedChatIdsStr.trim()) {
+    settings.allowedChatIdsStr
+      .split(',')
+      .map((s: string) => s.trim())
+      .filter(Boolean)
+      .forEach((id: string) => chatIds.add(id));
+  }
+
+  if (Array.isArray(settings.allowedChatIds)) {
+    settings.allowedChatIds
+      .map((s: any) => String(s || '').trim())
+      .filter(Boolean)
+      .forEach((id: string) => chatIds.add(id));
+  }
+
+  return Array.from(chatIds);
+}
+
 export async function sendTelegramMessage(
   text: string,
   customToken?: string,
-  customChatId?: string,
+  customChatId?: string | string[],
   replyMarkup?: any
 ): Promise<{ success: boolean; error?: string }> {
   const token = customToken || process.env.TELEGRAM_BOT_TOKEN;
-  const chatId = customChatId || process.env.TELEGRAM_CHAT_ID;
+  let rawChatId = customChatId || process.env.TELEGRAM_CHAT_ID;
 
-  if (!token || !chatId) {
+  if (!token || !rawChatId) {
     const msg = 'Thiếu thông tin Telegram Bot Token hoặc Chat ID';
     console.error(msg);
     return { success: false, error: msg };
   }
 
-  const payloadMarkdown = {
-    chat_id: chatId,
-    text: text,
-    parse_mode: 'Markdown',
-    ...(replyMarkup ? { reply_markup: replyMarkup } : {}),
-  };
-
-  const payloadPlain = {
-    chat_id: chatId,
-    text: text,
-    ...(replyMarkup ? { reply_markup: replyMarkup } : {}),
-  };
-
-  // Attempt 1: HTTPS with family 4 & Markdown
-  try {
-    const res = await postTelegramHttps(token, 'sendMessage', payloadMarkdown);
-    if (res.ok) return { success: true };
-
-    // If Markdown failed (HTTP 400), try plain text
-    console.warn('Telegram Markdown failed, retrying plain text:', res.description);
-    const retryRes = await postTelegramHttps(token, 'sendMessage', payloadPlain);
-    if (retryRes.ok) return { success: true };
-  } catch (err: any) {
-    console.warn('Telegram HTTPS family 4 failed, attempting curl fallback:', err.message);
+  let chatIds: string[] = [];
+  if (Array.isArray(rawChatId)) {
+    chatIds = rawChatId.map((id) => String(id).trim()).filter(Boolean);
+  } else {
+    chatIds = String(rawChatId)
+      .split(',')
+      .map((id) => id.trim())
+      .filter(Boolean);
   }
 
-  // Attempt 2: Curl Fallback
-  try {
-    const curlOk = await postTelegramCurl(token, 'sendMessage', payloadMarkdown);
-    if (curlOk) return { success: true };
+  // Deduplicate Chat IDs
+  chatIds = Array.from(new Set(chatIds));
 
-    const curlPlainOk = await postTelegramCurl(token, 'sendMessage', payloadPlain);
-    if (curlPlainOk) return { success: true };
-  } catch (curlErr: any) {
-    console.error('Telegram curl fallback error:', curlErr.message);
+  if (chatIds.length === 0) {
+    return { success: false, error: 'Không có Chat ID hợp lệ' };
+  }
+
+  let overallSuccess = true;
+  let lastError = '';
+
+  for (const chatId of chatIds) {
+    const payloadMarkdown = {
+      chat_id: chatId,
+      text: text,
+      parse_mode: 'Markdown',
+      ...(replyMarkup ? { reply_markup: replyMarkup } : {}),
+    };
+
+    const payloadPlain = {
+      chat_id: chatId,
+      text: text,
+      ...(replyMarkup ? { reply_markup: replyMarkup } : {}),
+    };
+
+    let sent = false;
+
+    // Attempt 1: HTTPS with family 4 & Markdown
+    try {
+      const res = await postTelegramHttps(token, 'sendMessage', payloadMarkdown);
+      if (res.ok) {
+        sent = true;
+      } else {
+        console.warn(`Telegram Markdown failed for chat_id ${chatId}, retrying plain text:`, res.description);
+        const retryRes = await postTelegramHttps(token, 'sendMessage', payloadPlain);
+        if (retryRes.ok) sent = true;
+        else lastError = retryRes.description || res.description || 'Gửi thất bại';
+      }
+    } catch (err: any) {
+      console.warn(`Telegram HTTPS family 4 failed for chat_id ${chatId}, attempting curl fallback:`, err.message);
+      lastError = err.message;
+    }
+
+    if (!sent) {
+      // Attempt 2: Curl Fallback
+      try {
+        const curlOk = await postTelegramCurl(token, 'sendMessage', payloadMarkdown);
+        if (curlOk) {
+          sent = true;
+        } else {
+          const curlPlainOk = await postTelegramCurl(token, 'sendMessage', payloadPlain);
+          if (curlPlainOk) sent = true;
+        }
+      } catch (curlErr: any) {
+        console.error(`Telegram curl fallback error for chat_id ${chatId}:`, curlErr.message);
+      }
+    }
+
+    if (!sent) {
+      overallSuccess = false;
+    }
   }
 
   return {
-    success: false,
-    error: 'Không thể gửi tin nhắn Telegram. Vui lòng kiểm tra lại Bot Token & Chat ID!',
+    success: overallSuccess,
+    ...(overallSuccess ? {} : { error: lastError || 'Không thể gửi tin nhắn Telegram. Vui lòng kiểm tra lại Bot Token & Chat ID!' }),
   };
 }
 
