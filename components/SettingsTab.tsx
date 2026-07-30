@@ -142,6 +142,7 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({ settings, onSaveSettin
           title: 'Gemini API Key không hợp lệ',
           message: json.error || 'Vui lòng kiểm tra lại API Key'
         });
+      }
     } catch (err: any) {
       showToast({
         type: 'error',
