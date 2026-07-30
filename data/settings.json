@@ -21,56 +21,15 @@
   "notesTemplate": "📝 Note ca {Ca} nè: {GhiChú}. Quên cái này là ăn chửi ráng chịu nha! ⚡",
   "notesTimingMode": "before_shift",
   "notesFixedTime": "08:00",
-  "userNotes": [
-    {
-      "completed": false,
-      "id": "note_1785400346455_gzhnn",
-      "createdAt": "2026-07-30T08:32:26.455Z",
-      "createdFormatted": "15:32:26 30/7/2026",
-      "content": "Họp team tuần tới lúc 9h sáng"
-    },
-    {
-      "id": "note_1785400366140_odbks",
-      "createdAt": "2026-07-30T08:32:46.140Z",
-      "content": "Họp team tuần tới lúc 9h sáng",
-      "createdFormatted": "15:32:46 30/7/2026",
-      "completed": false
-    },
-    {
-      "id": "note_1785400476787_txz2p",
-      "createdFormatted": "15:34:36 30/7/2026",
-      "content": "Họp team tuần tới lúc 9h sáng",
-      "completed": false,
-      "createdAt": "2026-07-30T08:34:36.787Z"
-    },
-    {
-      "content": "Họp team tuần tới lúc 9h sáng",
-      "createdFormatted": "15:36:29 30/7/2026",
-      "id": "note_1785400589768_sersm",
-      "createdAt": "2026-07-30T08:36:29.768Z",
-      "completed": false
-    },
-    {
-      "createdAt": "2026-07-30T08:40:11.866Z",
-      "createdFormatted": "15:40:11 30/7/2026",
-      "content": "Họp team tuần tới lúc 9h sáng",
-      "completed": false,
-      "id": "note_1785400811866_lvv0p"
-    },
-    {
-      "completed": false,
-      "id": "note_1785401379873_cloo2",
-      "createdFormatted": "15:49:39 30/7/2026",
-      "createdAt": "2026-07-30T08:49:39.873Z",
-      "content": "Họp team tuần tới lúc 9h sáng"
-    }
-  ],
+  "userNotes": [],
   "enableMorningSummary": true,
   "morningSummaryTime": "07:00",
   "morningSummaryTemplate": "☀️ Dậy đi cày em ơi! Hôm nay cày ca {Ca} ({ThờiGian}) ở {ĐịaĐiểm} nè. Chúc cày cuốc vui vẻ không bị ăn chửi nhé 🔥",
   "customNotifications": [],
   "customWebhookUrl": "https://schedule-telegram-app.vercel.app/api/telegram-webhook",
-  "sentRemindersLog": {},
+  "sentRemindersLog": {
+    "2026-07-30_morning_summary_07:00": "2026-07-30T08:50:29.292Z"
+  },
   "allowedChatIdsStr": "5842766685",
   "geminiApiKey": "",
   "username": "thanhhuong",
