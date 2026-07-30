@@ -103,42 +103,105 @@ export function getScheduleItemsForUserLocal(username: string): ScheduleItem[] {
   }
 }
 
-export function saveScheduleItemsForUserLocal(username: string, items: ScheduleItem[]): ScheduleItem[] {
+export function saveScheduleItemsForUserLocal(username: string, newItems: ScheduleItem[], merge: boolean = true): ScheduleItem[] {
   try {
     ensureDataDir();
     const userScheduleFile = path.join(DATA_DIR, `schedule_${username}.json`);
-    fs.writeFileSync(userScheduleFile, JSON.stringify(items, null, 2), 'utf-8');
-    if (username === 'thanhhuong') {
-      saveLocalScheduleItems(items);
+    let existingItems: ScheduleItem[] = [];
+    if (fs.existsSync(userScheduleFile)) {
+      try {
+        existingItems = JSON.parse(fs.readFileSync(userScheduleFile, 'utf-8'));
+      } catch {}
+    } else if (username === 'thanhhuong' && fs.existsSync(SCHEDULE_FILE)) {
+      existingItems = getLocalScheduleItems();
     }
+
+    let mergedItems: ScheduleItem[];
+
+    if (merge && existingItems.length > 0) {
+      const newDates = new Set(newItems.map((i) => i.date).filter((d): d is string => Boolean(d && d.trim())));
+      const newDays = new Set(newItems.map((i) => i.dayOfWeek));
+      const hasItemsWithoutDate = newItems.some((i) => !i.date || !i.date.trim());
+
+      const preserved = existingItems.filter((existing) => {
+        if (existing.date && existing.date.trim()) {
+          if (newDates.size > 0 && newDates.has(existing.date.trim())) {
+            return false; // Overwrite
+          }
+          return true; // Keep
+        }
+        if (hasItemsWithoutDate && newDays.has(existing.dayOfWeek)) {
+          return false; // Overwrite
+        }
+        return true; // Keep
+      });
+
+      mergedItems = [...preserved, ...newItems];
+    } else {
+      mergedItems = newItems;
+    }
+
+    fs.writeFileSync(userScheduleFile, JSON.stringify(mergedItems, null, 2), 'utf-8');
+    if (username === 'thanhhuong') {
+      saveLocalScheduleItems(mergedItems);
+    }
+    return mergedItems;
   } catch (err) {
     console.error(`Error saving schedule for user ${username}:`, err);
+    return newItems;
   }
-  return items;
 }
 
-export function addLocalScheduleItem(item: Omit<ScheduleItem, 'id'>): ScheduleItem {
-  const items = getLocalScheduleItems();
-  const newItem: ScheduleItem = { ...item, id: 'local_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7) };
+export function addScheduleItemForUserLocal(username: string, item: Omit<ScheduleItem, 'id'> & { id?: string }): ScheduleItem {
+  const items = getScheduleItemsForUserLocal(username);
+  const newItem: ScheduleItem = {
+    ...item,
+    id: item.id || ('local_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7)),
+    username,
+  };
   items.push(newItem);
-  saveLocalScheduleItems(items);
+  const userScheduleFile = path.join(DATA_DIR, `schedule_${username}.json`);
+  fs.writeFileSync(userScheduleFile, JSON.stringify(items, null, 2), 'utf-8');
+  if (username === 'thanhhuong') {
+    saveLocalScheduleItems(items);
+  }
   return newItem;
 }
 
-export function updateLocalScheduleItem(id: string, update: Partial<ScheduleItem>): boolean {
-  const items = getLocalScheduleItems();
+export function updateScheduleItemForUserLocal(username: string, id: string, update: Partial<ScheduleItem>): boolean {
+  const items = getScheduleItemsForUserLocal(username);
   const idx = items.findIndex((i) => i.id === id);
   if (idx === -1) return false;
   items[idx] = { ...items[idx], ...update };
-  saveLocalScheduleItems(items);
+  const userScheduleFile = path.join(DATA_DIR, `schedule_${username}.json`);
+  fs.writeFileSync(userScheduleFile, JSON.stringify(items, null, 2), 'utf-8');
+  if (username === 'thanhhuong') {
+    saveLocalScheduleItems(items);
+  }
   return true;
 }
 
-export function deleteLocalScheduleItem(id: string): boolean {
-  const items = getLocalScheduleItems();
+export function deleteScheduleItemForUserLocal(username: string, id: string): boolean {
+  const items = getScheduleItemsForUserLocal(username);
   const filtered = items.filter((i) => i.id !== id);
-  saveLocalScheduleItems(filtered);
+  const userScheduleFile = path.join(DATA_DIR, `schedule_${username}.json`);
+  fs.writeFileSync(userScheduleFile, JSON.stringify(filtered, null, 2), 'utf-8');
+  if (username === 'thanhhuong') {
+    saveLocalScheduleItems(filtered);
+  }
   return true;
+}
+
+export function addLocalScheduleItem(item: Omit<ScheduleItem, 'id'>): ScheduleItem {
+  return addScheduleItemForUserLocal('thanhhuong', item);
+}
+
+export function updateLocalScheduleItem(id: string, update: Partial<ScheduleItem>): boolean {
+  return updateScheduleItemForUserLocal('thanhhuong', id, update);
+}
+
+export function deleteLocalScheduleItem(id: string): boolean {
+  return deleteScheduleItemForUserLocal('thanhhuong', id);
 }
 
 const DEFAULT_SETTINGS: ScheduleSettings = {

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getScheduleItemsForUser, saveScheduleItemsForUser, addScheduleItem } from '@/lib/firebase';
+import { getScheduleItemsForUser, saveScheduleItemsForUser, addScheduleItemForUser } from '@/lib/firebase';
 import { getAuthSessionUser } from '@/lib/auth-session';
 
 export async function GET(request: Request) {
@@ -19,10 +19,10 @@ export async function POST(request: Request) {
     const username = sessionUser?.username || 'thanhhuong';
     const body = await request.json();
     if (Array.isArray(body)) {
-      await saveScheduleItemsForUser(username, body);
-      return NextResponse.json({ success: true, message: 'Đã lưu và ghi đè lịch làm việc tuần thành công' });
+      const merged = await saveScheduleItemsForUser(username, body);
+      return NextResponse.json({ success: true, message: 'Đã lưu và cập nhật lịch làm việc thành công', data: merged });
     }
-    const newItem = await addScheduleItem({ ...body, username });
+    const newItem = await addScheduleItemForUser(username, body);
     return NextResponse.json({ success: true, data: newItem });
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
