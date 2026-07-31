@@ -49,7 +49,7 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    const { rawText } = body;
+    const { rawText, autoAddK = true } = body;
 
     if (!rawText || typeof rawText !== 'string' || !rawText.trim()) {
       return NextResponse.json({ success: false, error: 'Vui lòng nhập nội dung thu/chi!' }, { status: 400 });
@@ -77,7 +77,7 @@ export async function POST(request: Request) {
 Nhiệm vụ: Phân tích câu nhập liệu thu/chi chứa tiếng lóng, viết tắt, tiền tệ VNĐ thành mảng JSON chuẩn.
 
 QUY TẮC TIỀN TỆ & TIẾNG LÓNG VN:
-- "k", "kđ", "ngàn", "cành", "lách": x 1.000 (Vd: 50k = 50000, 3 cành = 3000)
+${autoAddK ? '- TỰ ĐỘNG THÊM "K" BẬT: Bất kỳ số nguyên nào đứng một mình KHÔNG kèm đơn vị (ví dụ người dùng gõ "45", "30", "150", "500") BẮT BUỘC mặc định quy đổi thành x 1.000 VNĐ (Ví dụ: "45" -> 45.000 VNĐ, "30" -> 30.000 VNĐ, "150" -> 150.000 VNĐ). Trừ khi người dùng đã gõ rõ từ khác như "củ", "tr", "triệu", "k", "lách".\n' : ''}- "k", "kđ", "ngàn", "cành", "lách": x 1.000 (Vd: 50k = 50000, 3 cành = 3000)
 - "tr", "triệu", "củ", "khoai", "m": x 1.000.000 (Vd: 2 củ = 2000000, 1.5tr = 1500000)
 - "loét", "xị", "lốp", "vé": 100.000 (Vd: 3 loét = 300000, 5 xị = 500000)
 - "chục": 10 (Vd: "5 chục" = 50000; "2 chục củ" = 20000000)
