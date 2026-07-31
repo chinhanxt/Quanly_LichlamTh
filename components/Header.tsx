@@ -20,10 +20,10 @@ export const Header: React.FC<HeaderProps> = ({ onOpenNotifications, onOpenSetti
           className="w-11 h-11 rounded-full object-cover border-2 border-purple-200 shadow-sm shrink-0"
         />
         <div className="min-w-0">
-          <h1 className="text-xl sm:text-2xl font-bold text-slate-900 leading-tight truncate">
-            Xin chào, <span className="text-purple-600 font-black">{user?.displayName || 'Thanh Hương'}</span>
+          <p className="text-[11px] font-extrabold text-slate-400 uppercase tracking-wider leading-none mb-0.5">Xin chào,</p>
+          <h1 className="text-lg sm:text-xl font-black text-purple-600 leading-tight truncate">
+            {user?.displayName || (user?.username === 'chinhan' ? 'Nguyễn Chí Nhân' : 'Thanh Hương')}
           </h1>
-          <p className="text-xs sm:text-sm text-slate-500 font-medium mt-0.5 truncate">Quản lý lịch học & lịch làm việc</p>
         </div>
       </div>
 
