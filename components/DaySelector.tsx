@@ -47,6 +47,12 @@ export function getWeekDates(weekOffset: number = 0) {
   });
 }
 
+export function getTodayInfo() {
+  const weekDays = getWeekDates(0);
+  const today = weekDays.find((w) => w.isToday) || weekDays[0];
+  return { dayKey: today.key, dateIso: today.fullDateIso };
+}
+
 export const DaySelector: React.FC<DaySelectorProps> = ({
   selectedDay,
   selectedDate,

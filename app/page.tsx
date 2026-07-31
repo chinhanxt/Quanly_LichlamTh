@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Plus, Camera } from 'lucide-react';
 import { Header } from '@/components/Header';
-import { DaySelector } from '@/components/DaySelector';
+import { DaySelector, getTodayInfo } from '@/components/DaySelector';
 import { ScheduleCard } from '@/components/ScheduleCard';
 import { ScheduleFormModal } from '@/components/ScheduleFormModal';
 import { SettingsDrawer } from '@/components/SettingsDrawer';
@@ -20,8 +20,8 @@ import { ConfirmModal } from '@/components/ui/ConfirmModal';
 export default function Home() {
   const { showToast } = useToast();
   const [activeTab, setActiveTab] = useState<'schedule' | 'salary' | 'notes' | 'notifications' | 'settings'>('schedule');
-  const [selectedDay, setSelectedDay] = useState<string>('Thu2');
-  const [selectedDate, setSelectedDate] = useState<string>('');
+  const [selectedDay, setSelectedDay] = useState<string>(() => getTodayInfo().dayKey);
+  const [selectedDate, setSelectedDate] = useState<string>(() => getTodayInfo().dateIso);
   const [activeWeekDays, setActiveWeekDays] = useState<Array<{ key: string; fullDateIso: string }>>([]);
   const [items, setItems] = useState<ScheduleItem[]>([]);
   const [settings, setSettings] = useState<ScheduleSettings>({
@@ -214,8 +214,11 @@ export default function Home() {
   };
 
   const filteredItems = items.filter((item) => {
-    if (item.date && selectedDate) {
-      return item.date === selectedDate;
+    if (selectedDate) {
+      if (item.date) {
+        return item.date === selectedDate;
+      }
+      return item.dayOfWeek === selectedDay;
     }
     return item.dayOfWeek === selectedDay;
   });
@@ -324,6 +327,7 @@ export default function Home() {
         onSave={handleSaveItem}
         initialData={editingItem}
         currentDay={selectedDay}
+        currentDate={selectedDate}
       />
 
       <OcrPreviewModal
