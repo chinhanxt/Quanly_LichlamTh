@@ -16,58 +16,66 @@ export const ScheduleCard: React.FC<ScheduleCardProps> = ({ item, onEdit, onDele
   const rawNote = item.note ? item.note.replace(/^Ca\s+/i, '') : '';
   const displayNote = item.note ? getCleanShiftCodeName(rawNote, item.startTime, item.endTime) : '';
 
+  // Check if displayNote just duplicates time range (e.g. "Ca 07:30-11:30")
+  const isTimeDuplicate = displayNote && displayNote.toLowerCase().includes(item.startTime);
+
   return (
-    <Card className="mb-4 relative overflow-hidden group hover:border-brand-500/30 transition-all shadow-soft">
-      <div className="flex items-start justify-between">
-        <div className="flex-1">
-          <div className="flex items-center gap-2 mb-2 flex-wrap">
-            <span className="bg-brand-600 text-white font-black text-xs px-3 py-1 rounded-full flex items-center gap-1 shadow-xs">
-              <Clock className="w-3.5 h-3.5" />
+    <Card className="p-3.5 mb-2.5 relative overflow-hidden group hover:border-brand-500/30 transition-all shadow-xs rounded-2xl">
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex-1 min-w-0">
+          {/* Header Row: Time Range Badge + Telegram Status Pill */}
+          <div className="flex items-center gap-1.5 mb-1.5 flex-wrap">
+            <span className="bg-brand-600 text-white font-black text-[11px] px-2.5 py-0.5 rounded-full flex items-center gap-1 shadow-2xs shrink-0">
+              <Clock className="w-3 h-3" />
               {format24hRange(item.startTime, item.endTime)}
             </span>
+
             {item.reminderEnabled ? (
-              <span className="text-emerald-700 bg-emerald-50 border border-emerald-200/80 text-[11px] font-bold px-2.5 py-0.5 rounded-full flex items-center gap-1">
-                <Bell className="w-3.5 h-3.5 text-emerald-600" /> Tự động báo Telegram
+              <span className="text-emerald-700 bg-emerald-50 border border-emerald-200/80 text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1 shrink-0">
+                <Bell className="w-3 h-3 text-emerald-600" /> Tự động báo Telegram
               </span>
             ) : (
-              <span className="text-slate-500 bg-slate-100 border border-slate-200 text-[11px] font-bold px-2.5 py-0.5 rounded-full flex items-center gap-1">
-                <BellOff className="w-3.5 h-3.5 text-slate-400" /> Tắt thông báo
+              <span className="text-slate-500 bg-slate-100 border border-slate-200 text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1 shrink-0">
+                <BellOff className="w-3 h-3 text-slate-400" /> Tắt thông báo
               </span>
             )}
           </div>
 
-          <h3 className="text-lg font-extrabold text-surface-textPrimary mb-1">{item.subject}</h3>
-          
+          {/* Shift Subject Title */}
+          <h3 className="text-sm font-black text-slate-900 leading-tight mb-1 truncate">{item.subject}</h3>
+
+          {/* Location */}
           {item.location && (
-            <p className="text-xs font-semibold text-surface-textSecondary flex items-center gap-1.5 mb-2">
-              <MapPin className="w-4 h-4 text-brand-500 shrink-0" />
-              {item.location}
+            <p className="text-[11px] font-medium text-slate-500 flex items-center gap-1 mb-1 truncate">
+              <MapPin className="w-3.5 h-3.5 text-brand-500 shrink-0" />
+              <span className="truncate">{item.location}</span>
             </p>
           )}
 
-          {/* Large, Prominent Purple Shift Code Badge (B18 / B16...) */}
-          {displayNote && (
-            <div className="mt-2.5 inline-flex items-center gap-1.5 bg-brand-50 border-2 border-brand-300 text-brand-900 px-3.5 py-1.5 rounded-2xl shadow-2xs">
-              <Tag className="w-4 h-4 text-brand-600 stroke-[2.5]" />
-              <span className="text-sm font-black text-brand-950 tracking-wide">{displayNote}</span>
+          {/* Compact Shift Note Badge (B18 / CTV...) - Hide if just duplicates time */}
+          {displayNote && !isTimeDuplicate && (
+            <div className="mt-1 inline-flex items-center gap-1 bg-brand-50 border border-brand-200 text-brand-900 px-2 py-0.5 rounded-lg text-[10px] font-bold">
+              <Tag className="w-3 h-3 text-brand-600" />
+              <span className="truncate">{displayNote}</span>
             </div>
           )}
         </div>
 
-        <div className="flex items-center gap-1 ml-3">
+        {/* Action Buttons: Edit & Delete */}
+        <div className="flex items-center gap-0.5 shrink-0 -mr-1 -mt-0.5">
           <button
             onClick={() => onEdit(item)}
-            className="p-2 text-slate-400 hover:text-brand-600 hover:bg-brand-50 rounded-full transition-colors cursor-pointer"
+            className="p-1.5 text-slate-400 hover:text-brand-600 hover:bg-brand-50 rounded-lg transition-colors cursor-pointer"
             aria-label="Sửa ca làm"
           >
-            <Edit3 className="w-4 h-4" />
+            <Edit3 className="w-3.5 h-3.5" />
           </button>
           <button
             onClick={() => onDelete(item.id)}
-            className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-full transition-colors cursor-pointer"
+            className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
             aria-label="Xóa ca làm"
           >
-            <Trash2 className="w-4 h-4" />
+            <Trash2 className="w-3.5 h-3.5" />
           </button>
         </div>
       </div>
