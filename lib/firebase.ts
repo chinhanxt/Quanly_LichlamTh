@@ -98,6 +98,25 @@ export async function getSettingsForUser(username: string): Promise<ScheduleSett
       const data = docSnap.data();
       const defaultRate = username === 'chinhan' ? 100000 : 26000;
       const rate = typeof data.hourlyRate === 'number' && data.hourlyRate !== 26000 ? data.hourlyRate : defaultRate;
+
+      if (username === 'chinhan') {
+        if (!data.shiftReminderTemplate || data.shiftReminderTemplate.includes('🏃‍♂️') || data.shiftReminderTemplate.includes('Dậy đi làm cha ơi')) {
+          data.shiftReminderTemplate = local.shiftReminderTemplate;
+        }
+        if (!data.checkInTemplate || data.checkInTemplate.includes('🚨') || data.checkInTemplate.includes('tới đít rồi nè')) {
+          data.checkInTemplate = local.checkInTemplate;
+        }
+        if (!data.checkOutTemplate || data.checkOutTemplate.includes('🏃‍♀️') || data.checkOutTemplate.includes('Hết ca rồi lượn lẹ')) {
+          data.checkOutTemplate = local.checkOutTemplate;
+        }
+        if (!data.notesTemplate || data.notesTemplate.includes('📝') || data.notesTemplate.includes('ăn chửi')) {
+          data.notesTemplate = local.notesTemplate;
+        }
+        if (!data.morningSummaryTemplate || data.morningSummaryTemplate.includes('☀️') || data.morningSummaryTemplate.includes('Dậy đi cày')) {
+          data.morningSummaryTemplate = local.morningSummaryTemplate;
+        }
+      }
+
       return {
         ...local,
         ...data,
