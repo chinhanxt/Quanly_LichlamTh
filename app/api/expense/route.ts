@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getAuthSessionUser } from '@/lib/auth-session';
-import { getSettingsForUser, getExpenseItemsForUser, addExpenseItemForUser, deleteExpenseItemForUser } from '@/lib/firebase';
+import { getSettingsForUser } from '@/lib/firebase';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -15,8 +15,25 @@ export async function GET(request: Request) {
       return NextResponse.json({ success: true, data: [] });
     }
 
-    const items = await getExpenseItemsForUser(username);
-    return NextResponse.json({ success: true, data: items });
+    const userSettings = await getSettingsForUser(username);
+    const appsScriptUrl = userSettings.expenseAppsScriptUrl;
+
+    if (!appsScriptUrl || !appsScriptUrl.startsWith('http')) {
+      return NextResponse.json({ 
+        success: true, 
+        data: [], 
+        warning: 'Chưa cài đặt Apps Script Webhook URL trong Cài Đặt!' 
+      });
+    }
+
+    // Read directly from Google Sheet via Apps Script doGet
+    const res = await fetch(appsScriptUrl, { cache: 'no-store' });
+    if (!res.ok) {
+      return NextResponse.json({ success: true, data: [] });
+    }
+
+    const json = await res.json();
+    return NextResponse.json({ success: true, data: json.items || [] });
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
@@ -39,6 +56,15 @@ export async function POST(request: Request) {
     }
 
     const userSettings = await getSettingsForUser(username);
+    const appsScriptUrl = userSettings.expenseAppsScriptUrl;
+
+    if (!appsScriptUrl || !appsScriptUrl.startsWith('http')) {
+      return NextResponse.json({ 
+        success: false, 
+        error: 'Chưa dán Apps Script Webhook URL trong Cài Đặt! Vui lòng làm theo hướng dẫn 2 bước để liên kết Google Sheet làm Database.' 
+      }, { status: 400 });
+    }
+
     const groqKey = userSettings.groqApiKey || process.env.GROQ_API_KEY || '';
     const groqModel = userSettings.groqModel || 'llama-3.3-70b-versatile';
 
@@ -105,40 +131,37 @@ CẤU TRÚC JSON TRẢ VỀ BẮT BUỘC:
       return NextResponse.json({ success: false, error: 'AI không tìm thấy thông tin thu/chi nào trong đoạn văn trên.' }, { status: 400 });
     }
 
-    const savedItems = [];
-    for (const item of parsedObj.items) {
-      const saved = await addExpenseItemForUser(username, {
-        date: item.date || todayStr,
-        type: item.type === 'Thu' ? 'Thu' : 'Chi',
-        category: item.category || 'Khác',
-        amount: Number(item.amount) || 0,
-        description: item.description || rawText,
-        rawText: rawText,
-      });
-      savedItems.push(saved);
+    // Send parsed items directly to Google Sheet Web App
+    const sheetRes = await fetch(appsScriptUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'append_expenses',
+        items: parsedObj.items.map((item: any) => ({
+          date: item.date || todayStr,
+          type: item.type === 'Thu' ? 'Thu' : 'Chi',
+          category: item.category || 'Khác',
+          amount: Number(item.amount) || 0,
+          description: item.description || rawText,
+          rawText: rawText,
+        })),
+      }),
+    });
+
+    if (!sheetRes.ok) {
+      const errText = await sheetRes.text();
+      return NextResponse.json({ success: false, error: `Google Sheet Lỗi (${sheetRes.status}): ${errText}` }, { status: 500 });
     }
 
-    // Attempt pushing to Google Sheet via Webhook if configured
-    const appsScriptUrl = userSettings.expenseAppsScriptUrl;
-    if (appsScriptUrl && appsScriptUrl.startsWith('http')) {
-      try {
-        await fetch(appsScriptUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            action: 'append_expenses',
-            items: savedItems,
-          }),
-        });
-      } catch (e) {
-        console.warn('Apps Script sync warn:', e);
-      }
+    const sheetJson = await sheetRes.json();
+    if (!sheetJson.success) {
+      return NextResponse.json({ success: false, error: sheetJson.error || 'Lỗi lưu vào Google Sheet' }, { status: 500 });
     }
 
     return NextResponse.json({
       success: true,
-      message: `Đã phân tích và lưu thành công ${savedItems.length} giao dịch!`,
-      data: savedItems,
+      message: `Đã bóc tách & lưu trực tiếp ${sheetJson.count || parsedObj.items.length} giao dịch vào Google Sheet!`,
+      data: sheetJson.items || parsedObj.items,
     });
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message || 'Lỗi xử lý API' }, { status: 500 });
@@ -152,12 +175,32 @@ export async function DELETE(request: Request) {
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
 
+    if (username !== 'chinhan') {
+      return NextResponse.json({ success: false, error: 'Chỉ hỗ trợ tài khoản Chí Nhân' }, { status: 403 });
+    }
+
     if (!id) {
       return NextResponse.json({ success: false, error: 'Thiếu id giao dịch' }, { status: 400 });
     }
 
-    const deleted = await deleteExpenseItemForUser(username, id);
-    return NextResponse.json({ success: true, deleted });
+    const userSettings = await getSettingsForUser(username);
+    const appsScriptUrl = userSettings.expenseAppsScriptUrl;
+
+    if (!appsScriptUrl || !appsScriptUrl.startsWith('http')) {
+      return NextResponse.json({ success: false, error: 'Chưa cài đặt Webhook Apps Script URL' }, { status: 400 });
+    }
+
+    const res = await fetch(appsScriptUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'delete_expense',
+        id: id,
+      }),
+    });
+
+    const json = await res.json();
+    return NextResponse.json(json);
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
