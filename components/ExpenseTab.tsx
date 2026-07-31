@@ -384,7 +384,6 @@ export const ExpenseTab: React.FC<ExpenseTabProps> = ({ settings, onSaveSettings
           <label className="text-xs font-bold text-gray-800 flex items-center gap-1.5">
             <Sparkles className="w-4 h-4 text-amber-500 animate-pulse" /> Nhập Văn Bản Thu/Chi
           </label>
-          <span className="text-[10px] text-gray-400 font-medium">Bóc tách tự động bằng AI</span>
         </div>
 
         <textarea
@@ -440,12 +439,12 @@ export const ExpenseTab: React.FC<ExpenseTabProps> = ({ settings, onSaveSettings
           {isParsing ? (
             <>
               <RefreshCw className="w-4 h-4 animate-spin" />
-              <span>AI đang bóc tách...</span>
+              <span>Đang gửi...</span>
             </>
           ) : (
             <>
               <Send className="w-4 h-4" />
-              <span>Phân Tích & Ghi Vào Google Sheet</span>
+              <span>Gửi thu/chi</span>
             </>
           )}
         </button>
@@ -593,20 +592,24 @@ export const ExpenseTab: React.FC<ExpenseTabProps> = ({ settings, onSaveSettings
 
                       if (dayItems.length > 0) {
                         if (dayExpense > 0 && dayIncome === 0) {
-                          badgeText = dayExpense >= 1000000 
-                            ? `-${(dayExpense / 1000000).toFixed(1)}M` 
-                            : `-${Math.round(dayExpense / 1000)}k`;
+                          const formatted = dayExpense >= 1000000 
+                            ? `${(dayExpense / 1000000).toFixed(1).replace('.0', '')}M` 
+                            : `${Math.round(dayExpense / 1000)}k`;
+                          badgeText = `-${formatted}đ`;
                           badgeStyle = 'bg-rose-500 text-white font-bold';
                         } else if (dayIncome > 0 && dayExpense === 0) {
-                          badgeText = dayIncome >= 1000000 
-                            ? `+${(dayIncome / 1000000).toFixed(1)}M` 
-                            : `+${Math.round(dayIncome / 1000)}k`;
+                          const formatted = dayIncome >= 1000000 
+                            ? `${(dayIncome / 1000000).toFixed(1).replace('.0', '')}M` 
+                            : `${Math.round(dayIncome / 1000)}k`;
+                          badgeText = `+${formatted}đ`;
                           badgeStyle = 'bg-emerald-500 text-white font-bold';
                         } else {
-                          badgeText = dayNet >= 0 
-                            ? `+${Math.round(dayNet / 1000)}k` 
-                            : `-${Math.round(Math.abs(dayNet) / 1000)}k`;
-                          badgeStyle = dayNet >= 0 ? 'bg-emerald-600 text-white' : 'bg-rose-600 text-white';
+                          const absVal = Math.abs(dayNet);
+                          const formatted = absVal >= 1000000 
+                            ? `${(absVal / 1000000).toFixed(1).replace('.0', '')}M` 
+                            : `${Math.round(absVal / 1000)}k`;
+                          badgeText = dayNet >= 0 ? `+${formatted}đ` : `-${formatted}đ`;
+                          badgeStyle = dayNet >= 0 ? 'bg-emerald-500 text-white font-bold' : 'bg-rose-500 text-white font-bold';
                         }
                       }
 
@@ -618,7 +621,7 @@ export const ExpenseTab: React.FC<ExpenseTabProps> = ({ settings, onSaveSettings
                               setSelectedDayIso(isSelected ? null : day.dateIso);
                             }
                           }}
-                          className={`flex flex-col items-center py-2 px-0.5 rounded-2xl border text-center transition-all cursor-pointer ${
+                          className={`flex flex-col items-center py-2 px-0.5 rounded-2xl border text-center transition-all cursor-pointer select-none ${
                             isSelected
                               ? 'border-brand-500 bg-brand-50/50 shadow-sm ring-2 ring-brand-400/30'
                               : day.isCurrentMonth
@@ -635,7 +638,7 @@ export const ExpenseTab: React.FC<ExpenseTabProps> = ({ settings, onSaveSettings
                           </span>
 
                           <span
-                            className={`text-[9px] px-1 py-0.5 rounded-lg w-full truncate my-0.5 ${badgeStyle}`}
+                            className={`text-[9px] px-0.5 py-0.5 rounded-lg w-full truncate whitespace-nowrap overflow-hidden my-0.5 leading-tight block ${badgeStyle}`}
                           >
                             {badgeText}
                           </span>
