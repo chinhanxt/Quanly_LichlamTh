@@ -393,6 +393,7 @@ export default function Home() {
             settings={settings}
             onSaveSettings={handleSaveSettings}
             onSyncSheet={(m, y) => handleSyncGoogleSheet(m, y)}
+            items={items}
           />
         ) : activeTab === 'notifications' ? (
           <NotificationsTab settings={settings} onSaveSettings={handleSaveSettings} />
