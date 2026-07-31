@@ -37,21 +37,22 @@ export interface WeeklyGridGroup {
 
 export const SalaryTab: React.FC<SalaryTabProps> = ({ items, settings, onSaveSettings }) => {
   // 1. Hourly rate state & inline edit
-  const currentRate = settings.hourlyRate || 26000;
+  const defaultRateForUser = (settings.username === 'chinhan' || settings.employeeName?.includes('Nhân')) ? 100000 : 26000;
+  const currentRate = (settings.hourlyRate && settings.hourlyRate !== 26000) ? settings.hourlyRate : defaultRateForUser;
   const [hourlyRate, setHourlyRate] = useState<number>(currentRate);
   const [isEditingRate, setIsEditingRate] = useState<boolean>(false);
   const [rateInput, setRateInput] = useState<string>(currentRate.toString());
   const [viewMode, setViewMode] = useState<ViewMode>('table');
 
   useEffect(() => {
-    const rate = settings.hourlyRate || 26000;
+    const rate = (settings.hourlyRate && settings.hourlyRate !== 26000) ? settings.hourlyRate : defaultRateForUser;
     setHourlyRate(rate);
     setRateInput(rate.toString());
-  }, [settings.hourlyRate]);
+  }, [settings.hourlyRate, defaultRateForUser]);
 
   const handleSaveRate = async () => {
     const parsed = parseInt(rateInput.replace(/\D/g, ''), 10);
-    const validRate = isNaN(parsed) || parsed <= 0 ? 26000 : parsed;
+    const validRate = isNaN(parsed) || parsed <= 0 ? defaultRateForUser : parsed;
     setHourlyRate(validRate);
     setRateInput(validRate.toString());
     setIsEditingRate(false);
@@ -89,6 +90,28 @@ export const SalaryTab: React.FC<SalaryTabProps> = ({ items, settings, onSaveSet
   const currentMonthData = getMonthRange(monthOffset);
   const [fromDate, setFromDate] = useState<string>(currentMonthData.fromDate);
   const [toDate, setToDate] = useState<string>(currentMonthData.toDate);
+
+  // Auto-switch to month containing items if current selected range has 0 items
+  useEffect(() => {
+    if (items && items.length > 0) {
+      const dates = items.map((i) => i.date).filter((d): d is string => Boolean(d && d.trim()));
+      if (dates.length > 0) {
+        const hasCurrentItems = items.some(
+          (i) => i.date && i.date >= fromDate && i.date <= toDate
+        );
+        if (!hasCurrentItems) {
+          const firstDateIso = dates[0];
+          const d = new Date(firstDateIso + 'T00:00:00');
+          const now = new Date();
+          const offset = (d.getFullYear() - now.getFullYear()) * 12 + (d.getMonth() - now.getMonth());
+          setMonthOffset(offset);
+          const range = getMonthRange(offset);
+          setFromDate(range.fromDate);
+          setToDate(range.toDate);
+        }
+      }
+    }
+  }, [items]);
 
   const handleMonthStep = (delta: number) => {
     const newOffset = monthOffset + delta;
