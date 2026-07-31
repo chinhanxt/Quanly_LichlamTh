@@ -18,10 +18,11 @@ const DAY_MAP: Record<number, ScheduleItem['dayOfWeek']> = {
   6: 'Thu7',
 };
 
-function formatNotificationMessage(template: string, shift: ScheduleItem, overrideGhiChu?: string): string {
-  const caName = shift.note || shift.subject || 'Ca làm';
+function formatNotificationMessage(template: string, shift: ScheduleItem, username: string, overrideGhiChu?: string): string {
+  const isChinhan = username === 'chinhan';
+  const caName = shift.note || shift.subject || (isChinhan ? 'Ca Sáng' : 'Ca làm');
   const thoiGian = `${shift.startTime} - ${shift.endTime}`;
-  const diaDiem = shift.location || 'Highlands Coffee';
+  const diaDiem = shift.location || (isChinhan ? 'Viện Trí tuệ nhân tạo và Chuyển đổi số' : 'Highlands Coffee');
   const ghiChu = overrideGhiChu !== undefined ? overrideGhiChu : (shift.note || 'Không có');
 
   return template
@@ -126,7 +127,7 @@ export async function GET(request: Request) {
             settings.morningSummaryTemplate ||
             '☀️ Chào buổi sáng! Hôm nay bạn có ca {Ca} từ {ThờiGian} tại {ĐịaĐiểm}.';
           const msg = allTodayShifts
-            .map((shift) => formatNotificationMessage(template, shift))
+            .map((shift) => formatNotificationMessage(template, shift, username))
             .join('\n\n');
           await sendTelegramMessage(msg, settings.telegramBotToken, targetChatIds);
           sentLog[morningKey] = new Date().toISOString();
@@ -153,7 +154,7 @@ export async function GET(request: Request) {
 
           const shiftKey = `${currentYYYYMMDD}_${item.id}_shift_start`;
           if (diffMinutes >= 0 && diffMinutes <= shiftLeadMins && !sentLog[shiftKey]) {
-            const msg = formatNotificationMessage(template, item);
+            const msg = formatNotificationMessage(template, item, username);
             await sendTelegramMessage(msg, settings.telegramBotToken, targetChatIds);
             sentLog[shiftKey] = new Date().toISOString();
             logUpdated = true;
@@ -178,7 +179,7 @@ export async function GET(request: Request) {
 
           const checkInKey = `${currentYYYYMMDD}_${item.id}_check_in`;
           if (diffMinutes >= 0 && diffMinutes <= checkInLeadMins && !sentLog[checkInKey]) {
-            const msg = formatNotificationMessage(template, item);
+            const msg = formatNotificationMessage(template, item, username);
             await sendTelegramMessage(msg, settings.telegramBotToken, targetChatIds);
             sentLog[checkInKey] = new Date().toISOString();
             logUpdated = true;
@@ -203,7 +204,7 @@ export async function GET(request: Request) {
 
           const checkOutKey = `${currentYYYYMMDD}_${item.id}_check_out`;
           if (lagMinutes >= 0 && lagMinutes <= checkOutLagMins + 30 && !sentLog[checkOutKey]) {
-            const msg = formatNotificationMessage(template, item);
+            const msg = formatNotificationMessage(template, item, username);
             await sendTelegramMessage(msg, settings.telegramBotToken, targetChatIds);
             sentLog[checkOutKey] = new Date().toISOString();
             logUpdated = true;
@@ -251,7 +252,7 @@ export async function GET(request: Request) {
 
               if (noteTexts.length > 0) {
                 const ghiChuFormatted = noteTexts.map((n) => `• ${n}`).join('\n');
-                const msg = formatNotificationMessage(template, item, ghiChuFormatted);
+                const msg = formatNotificationMessage(template, item, username, ghiChuFormatted);
                 await sendTelegramMessage(msg, settings.telegramBotToken, targetChatIds);
                 sentLog[notesKey] = new Date().toISOString();
                 logUpdated = true;
@@ -298,7 +299,7 @@ export async function GET(request: Request) {
                 note: '',
               } as ScheduleItem);
 
-              const msg = formatNotificationMessage(template, firstShift, ghiChuFormatted);
+              const msg = formatNotificationMessage(template, firstShift, username, ghiChuFormatted);
               await sendTelegramMessage(msg, settings.telegramBotToken, targetChatIds);
               sentLog[fixedNotesKey] = new Date().toISOString();
               logUpdated = true;
@@ -324,7 +325,7 @@ export async function GET(request: Request) {
 
               const customKey = `${currentYYYYMMDD}_${item.id}_custom_${customItem.id}`;
               if (diffMinutes >= 0 && diffMinutes <= customLeadMins && !sentLog[customKey]) {
-                const msg = formatNotificationMessage(customItem.template, item);
+                const msg = formatNotificationMessage(customItem.template, item, username);
                 await sendTelegramMessage(msg, settings.telegramBotToken, targetChatIds);
                 sentLog[customKey] = new Date().toISOString();
                 logUpdated = true;
@@ -340,7 +341,7 @@ export async function GET(request: Request) {
 
               const customKey = `${currentYYYYMMDD}_${item.id}_custom_${customItem.id}`;
               if (diffMinutes >= 0 && diffMinutes <= customLagMins + 30 && !sentLog[customKey]) {
-                const msg = formatNotificationMessage(customItem.template, item);
+                const msg = formatNotificationMessage(customItem.template, item, username);
                 await sendTelegramMessage(msg, settings.telegramBotToken, targetChatIds);
                 sentLog[customKey] = new Date().toISOString();
                 logUpdated = true;
@@ -352,7 +353,7 @@ export async function GET(request: Request) {
             const customKey = `${currentYYYYMMDD}_fixed_custom_${customItem.id}`;
             if (currentTimeStr >= targetTime && !sentLog[customKey]) {
               const firstShift = todayItems[0] || ({ startTime: '18:00', endTime: '22:00', subject: 'Highlands Coffee', location: 'Highlands Coffee', note: 'B18' } as ScheduleItem);
-              const msg = formatNotificationMessage(customItem.template, firstShift);
+              const msg = formatNotificationMessage(customItem.template, firstShift, username);
               await sendTelegramMessage(msg, settings.telegramBotToken, targetChatIds);
               sentLog[customKey] = new Date().toISOString();
               logUpdated = true;
