@@ -72,24 +72,18 @@ export const RegisterTab: React.FC<RegisterTabProps> = ({
 
   // Auto scan on mount
   useEffect(() => {
-    // Perform initial check
-    setSheetMonthStatus({
-      7: true,
-      8: true,
-      9: false,
-      10: false,
-      11: false,
-      12: false,
-    });
+    handleScanSheetMonths(true);
   }, []);
 
-  const handleScanSheetMonths = async () => {
+  const handleScanSheetMonths = async (silent = false) => {
     setIsScanningSheet(true);
-    showToast({
-      type: 'info',
-      title: 'Đang quét Google Sheet',
-      message: 'Đang kiểm tra các tab tháng có sẵn trên file của Quản lý...',
-    });
+    if (!silent) {
+      showToast({
+        type: 'info',
+        title: 'Đang quét Google Sheet',
+        message: 'Đang kiểm tra các tab tháng có sẵn trên file của Quản lý...',
+      });
+    }
 
     setTimeout(() => {
       setSheetMonthStatus({
@@ -101,12 +95,14 @@ export const RegisterTab: React.FC<RegisterTabProps> = ({
         12: false,
       });
       setIsScanningSheet(false);
-      showToast({
-        type: 'success',
-        title: 'Hoàn tất quét Google Sheet! 🔍',
-        message: 'Đã cập nhật trạng thái: Tháng 7 & Tháng 8 sẵn sàng. Các tháng tới chưa có tab.',
-      });
-    }, 1000);
+      if (!silent) {
+        showToast({
+          type: 'success',
+          title: 'Hoàn tất quét Google Sheet! 🔍',
+          message: 'Đã cập nhật trạng thái: Tháng 7 & Tháng 8 sẵn sàng. Các tháng tới chưa có tab.',
+        });
+      }
+    }, 600);
   };
 
   const handleConnectGoogle = () => {
@@ -334,48 +330,36 @@ export const RegisterTab: React.FC<RegisterTabProps> = ({
         </div>
       </Card>
 
-      {/* 2. Đăng ký lịch làm mới Card (Redesigned Custom Sleek Dropdown & Auto Sheet Scanner) */}
+      {/* 2. Đăng ký lịch làm mới Card (Auto Silent Sheet Scanner & Clean Single Line Dropdown) */}
       <Card className="p-3.5 space-y-3 border-brand-100/80 shadow-xs">
-        <div className="flex items-center justify-between gap-2 flex-wrap">
+        <div className="flex items-center justify-between gap-2">
           <span className="text-xs font-black text-slate-800 flex items-center gap-1.5">
             <Calendar className="w-4 h-4 text-emerald-600" />
             Đăng ký lịch làm mới
           </span>
 
-          {/* Scan Sheet Months Button */}
-          <button
-            type="button"
-            onClick={handleScanSheetMonths}
-            disabled={isScanningSheet}
-            className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 text-[10px] font-bold rounded-xl flex items-center gap-1 transition-all cursor-pointer disabled:opacity-50"
-            title="Quét ngầm trạng thái các tab trên Google Sheet"
-          >
-            <SearchCheck className={`w-3 h-3 text-slate-500 ${isScanningSheet ? 'animate-spin' : ''}`} />
-            <span>Quét Sheet</span>
-          </button>
+          {/* Status Badge outside card row to prevent line wrapping */}
+          {isCurrentMonthAvailable ? (
+            <span className="px-2.5 py-0.5 bg-emerald-100 text-emerald-800 font-extrabold text-[10px] rounded-full flex items-center gap-1 shrink-0">
+              <CheckCircle2 className="w-3 h-3 text-emerald-600" /> Đã có tab trên Sheet
+            </span>
+          ) : (
+            <span className="px-2.5 py-0.5 bg-rose-100 text-rose-800 font-extrabold text-[10px] rounded-full flex items-center gap-1 shrink-0">
+              <Lock className="w-3 h-3 text-rose-600" /> Quản lý chưa tạo tab
+            </span>
+          )}
         </div>
 
-        {/* Sleek Custom Month Selector Pill */}
-        <div className="flex items-center justify-between gap-2 p-2 bg-slate-50 border border-slate-200/80 rounded-2xl">
-          <div className="flex items-center gap-1.5">
-            <span className="text-xs font-bold text-slate-700">Kỳ lương:</span>
-            {isCurrentMonthAvailable ? (
-              <span className="px-2 py-0.5 bg-emerald-100 text-emerald-800 font-extrabold text-[10px] rounded-full flex items-center gap-1">
-                <CheckCircle2 className="w-3 h-3 text-emerald-600" /> Đã có tab trên Sheet
-              </span>
-            ) : (
-              <span className="px-2 py-0.5 bg-rose-100 text-rose-800 font-extrabold text-[10px] rounded-full flex items-center gap-1">
-                <Lock className="w-3 h-3 text-rose-600" /> Quản lý chưa tạo tab
-              </span>
-            )}
-          </div>
+        {/* Sleek Custom Month Selector Row - Single clean line */}
+        <div className="flex items-center justify-between gap-2 p-2 px-3 bg-slate-50 border border-slate-200/80 rounded-2xl">
+          <span className="text-xs font-bold text-slate-700 shrink-0">Kỳ lương:</span>
 
           {/* Premium Custom Redesigned Month Select */}
-          <div className="relative inline-flex items-center">
+          <div className="relative inline-flex items-center flex-1 max-w-[200px]">
             <select
               value={targetMonth}
               onChange={(e) => setTargetMonth(Number(e.target.value))}
-              className="bg-white border border-brand-300 text-brand-900 font-black text-xs px-3 py-1.5 pr-7 rounded-xl shadow-2xs focus:outline-none focus:ring-2 focus:ring-brand-500/20 cursor-pointer appearance-none"
+              className="w-full bg-white border border-brand-300 text-brand-900 font-black text-xs px-3 py-1.5 pr-7 rounded-xl shadow-2xs focus:outline-none focus:ring-2 focus:ring-brand-500/20 cursor-pointer appearance-none truncate"
             >
               {[7, 8, 9, 10, 11, 12].map((m) => {
                 const isAvail = sheetMonthStatus[m] ?? false;
@@ -395,17 +379,13 @@ export const RegisterTab: React.FC<RegisterTabProps> = ({
         </div>
 
         {/* Warning if Month is not yet created by manager */}
-        {!isCurrentMonthAvailable ? (
+        {!isCurrentMonthAvailable && (
           <div className="p-2.5 bg-rose-50 border border-rose-200/80 rounded-2xl flex items-center gap-2 text-rose-900 text-[11px] font-semibold leading-tight">
             <Lock className="w-4 h-4 text-rose-600 shrink-0" />
             <span>
               Quản lý chưa tạo tab <strong>Tháng {targetMonth}</strong> trên Google Sheet. Bạn có thể xem trước hoặc chờ Quản lý mở tab để đăng ký!
             </span>
           </div>
-        ) : (
-          <p className="text-[11px] text-slate-500 font-medium leading-relaxed">
-            Đăng ký nhanh ca Sáng / Chiều / Full cho Tháng {targetMonth}/{targetYear} bằng bộ chọn lịch dropdown siêu tốc.
-          </p>
         )}
 
         {/* Big Prominent Open Popup Calendar Button */}
