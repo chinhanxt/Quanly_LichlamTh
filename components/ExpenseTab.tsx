@@ -99,26 +99,6 @@ export const ExpenseTab: React.FC<ExpenseTabProps> = ({ settings, onSaveSettings
     }
   };
 
-  const handleSyncToSheet = async () => {
-    try {
-      setIsSavingSettings(true);
-      const res = await fetch('/api/expense/sync-sheet', {
-        method: 'POST',
-        headers: { 'x-username': 'chinhan' },
-      });
-      const json = await res.json();
-      if (json.success) {
-        showToast({ message: json.message, type: 'success' });
-      } else {
-        showToast({ message: json.error, type: 'error' });
-      }
-    } catch (e: any) {
-      showToast({ message: 'Không thể đồng bộ: ' + e.message, type: 'error' });
-    } finally {
-      setIsSavingSettings(false);
-    }
-  };
-
   const handleDeleteItem = async (id: string) => {
     try {
       const res = await fetch(`/api/expense?id=${id}`, {
@@ -200,28 +180,20 @@ export const ExpenseTab: React.FC<ExpenseTabProps> = ({ settings, onSaveSettings
   ];
 
   return (
-    <div className="space-y-5 pb-24 max-w-md mx-auto">
-      {/* Top Header & Settings Toggle */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-xl font-extrabold text-surface-text flex items-center gap-2">
-            <Receipt className="w-6 h-6 text-brand-600" />
-            Quản Lý Chi Tiêu AI
-          </h2>
-          <p className="text-xs text-surface-textSecondary mt-0.5">
-            Bóc tách thu/chi thông minh bằng Groq Llama 3.3
-          </p>
-        </div>
+    <div className="space-y-4 pb-24 max-w-md mx-auto">
+      {/* Settings Toggle Button (Compact) */}
+      <div className="flex items-center justify-end">
         <button
           onClick={() => setShowSettings(!showSettings)}
-          className={`p-2.5 rounded-xl border transition-all ${
+          className={`px-2.5 py-1 rounded-xl border text-[11px] font-semibold flex items-center gap-1 transition-all ${
             showSettings 
               ? 'bg-brand-50 border-brand-200 text-brand-600' 
-              : 'bg-white border-surface-border text-surface-textSecondary hover:text-brand-600'
+              : 'bg-white border-surface-border text-surface-textSecondary hover:text-brand-600 shadow-xs'
           }`}
           title="Cài đặt Groq Key & Google Sheet"
         >
-          <Sliders className="w-5 h-5" />
+          <Sliders className="w-3.5 h-3.5" />
+          <span>Cài đặt Sheet</span>
         </button>
       </div>
 
@@ -272,7 +244,7 @@ export const ExpenseTab: React.FC<ExpenseTabProps> = ({ settings, onSaveSettings
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-gray-700 mb-1">Apps Script Webhook URL (Nút đẩy dữ liệu tùy chọn)</label>
+            <label className="block text-xs font-semibold text-gray-700 mb-1">Apps Script Webhook URL (Liên kết Google Sheet)</label>
             <input
               type="text"
               value={appsScriptUrl}
@@ -297,17 +269,6 @@ export const ExpenseTab: React.FC<ExpenseTabProps> = ({ settings, onSaveSettings
               className="flex-1 py-2 px-3 bg-brand-600 hover:bg-brand-700 text-white text-xs font-semibold rounded-xl flex items-center justify-center gap-1.5 transition-all shadow-md"
             >
               {isSavingSettings ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : 'Lưu Cài Đặt'}
-            </button>
-          </div>
-
-          <div className="pt-1">
-            <button
-              onClick={handleSyncToSheet}
-              disabled={isSavingSettings}
-              className="w-full py-2 px-3 bg-emerald-50 border border-emerald-200 text-emerald-700 hover:bg-emerald-100 text-xs font-bold rounded-xl flex items-center justify-center gap-1.5 transition-all"
-            >
-              <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
-              🔗 Đẩy toàn bộ dữ liệu sang Google Sheet
             </button>
           </div>
         </div>
