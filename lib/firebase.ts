@@ -99,6 +99,16 @@ export async function getSettingsForUser(username: string): Promise<ScheduleSett
       const defaultRate = username === 'chinhan' ? 100000 : 26000;
       const rate = typeof data.hourlyRate === 'number' && data.hourlyRate !== 26000 ? data.hourlyRate : defaultRate;
 
+      if (!data.telegramBotToken || data.telegramBotToken === 'mock-token') {
+        data.telegramBotToken = '8741966025:AAF7BnBefwwEYEHQv0V2mz6tKRrs6aAeb2c';
+      }
+      if (!data.telegramChatId || data.telegramChatId === '20002') {
+        data.telegramChatId = '5842766685';
+      }
+      if (data.allowedChatIdsStr === '20002') {
+        data.allowedChatIdsStr = '5842766685';
+      }
+
       if (username === 'chinhan') {
         if (!data.shiftReminderTemplate || data.shiftReminderTemplate.includes('🏃‍♂️') || data.shiftReminderTemplate.includes('Dậy đi làm cha ơi')) {
           data.shiftReminderTemplate = local.shiftReminderTemplate;
