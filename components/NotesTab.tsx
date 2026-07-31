@@ -156,8 +156,9 @@ export const NotesTab: React.FC<NotesTabProps> = ({ settings, onSaveSettings, it
 
     const days = [];
     const todayIso = formatLocalDateIso(new Date());
+    const totalDays = startOffset + new Date(year, month + 1, 0).getDate() > 35 ? 42 : 35;
 
-    for (let i = 0; i < 35; i++) {
+    for (let i = 0; i < totalDays; i++) {
       const d = new Date(startDate);
       d.setDate(startDate.getDate() + i);
       const iso = formatLocalDateIso(d);
