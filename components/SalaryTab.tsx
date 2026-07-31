@@ -397,7 +397,7 @@ export const SalaryTab: React.FC<SalaryTabProps> = ({ items, settings, onSaveSet
         <div>
           <h2 className="text-sm font-black text-slate-800">Quản lý Bảng lương</h2>
           <p className="text-[10px] text-slate-400 font-medium hidden sm:block">
-            {isCtvMode ? 'Công nhật CTV (100.000đ/buổi)' : 'Thu nhập ca làm'}
+            Thu nhập ca làm
           </p>
         </div>
 
