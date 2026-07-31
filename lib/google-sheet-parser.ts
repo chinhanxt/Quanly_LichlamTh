@@ -115,8 +115,8 @@ export async function parseGoogleSheetSchedule(
       items.push({
         dayOfWeek,
         date: dateIso,
-        startTime: '08:00',
-        endTime: '12:00',
+        startTime: '07:30',
+        endTime: '11:30',
         subject: 'Ca Sáng (Viện AI)',
         location: 'Viện Trí tuệ nhân tạo và Chuyển đổi số',
         note: 'CTV Công nhật (100.000đ)',
@@ -128,8 +128,8 @@ export async function parseGoogleSheetSchedule(
       items.push({
         dayOfWeek,
         date: dateIso,
-        startTime: '13:00',
-        endTime: '17:00',
+        startTime: '13:30',
+        endTime: '16:30',
         subject: 'Ca Chiều (Viện AI)',
         location: 'Viện Trí tuệ nhân tạo và Chuyển đổi số',
         note: 'CTV Công nhật (100.000đ)',
