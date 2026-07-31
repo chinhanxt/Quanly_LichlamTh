@@ -53,10 +53,7 @@ export default function Home() {
   useEffect(() => {
     fetchItems();
     fetchSettings();
-    if (isChinhan) {
-      handleSyncGoogleSheet();
-    }
-  }, [user?.username, isChinhan]);
+  }, [user?.username]);
 
   const fetchItems = async () => {
     try {
