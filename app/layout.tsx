@@ -5,8 +5,13 @@ import { AuthProvider } from "@/components/AuthProvider";
 import { LoginModal } from "@/components/LoginModal";
 
 export const metadata: Metadata = {
-  title: "Thời Khóa Biểu Cá Nhân",
+  title: "Quản lý Lịch học & Lịch làm việc",
   description: "Quản lý lịch học và nhắc nhở qua Telegram Bot",
+  icons: {
+    icon: "/avatar.png",
+    shortcut: "/avatar.png",
+    apple: "/avatar.png",
+  },
 };
 
 export default function RootLayout({
@@ -25,4 +30,3 @@ export default function RootLayout({
     </html>
   );
 }
-
