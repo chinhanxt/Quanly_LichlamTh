@@ -20,6 +20,8 @@ import {
   Sun,
   Sunset,
   Zap,
+  Copy,
+  Wand2,
 } from 'lucide-react';
 import { useToast } from './ui/Toast';
 
@@ -46,7 +48,6 @@ export const RegisterTab: React.FC<RegisterTabProps> = ({
 
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
-  const [activePaintMode, setActivePaintMode] = useState<QuickShiftType>('FULL');
   const [isSavingSheet, setIsSavingSheet] = useState<boolean>(false);
 
   // Local draft shifts map: "YYYY-MM-DD" -> "FULL" | "SANG" | "CHIEU" | "OFF"
@@ -86,6 +87,7 @@ export const RegisterTab: React.FC<RegisterTabProps> = ({
       dateIso: string;
       dayNumber: number;
       isCurrentMonth: boolean;
+      dayOfWeekNum: number; // 0=Mon, 1=Tue, ..., 5=Sat, 6=Sun
     }> = [];
 
     // Prev month padding
@@ -97,6 +99,7 @@ export const RegisterTab: React.FC<RegisterTabProps> = ({
         dateIso: prevDate.toISOString().split('T')[0],
         dayNumber: d,
         isCurrentMonth: false,
+        dayOfWeekNum: (prevDate.getDay() + 6) % 7,
       });
     }
 
@@ -105,10 +108,12 @@ export const RegisterTab: React.FC<RegisterTabProps> = ({
       const monthStr = String(targetMonth).padStart(2, '0');
       const dayStr = String(d).padStart(2, '0');
       const dateIso = `${year}-${monthStr}-${dayStr}`;
+      const curDate = new Date(year, month, d);
       daysArr.push({
         dateIso,
         dayNumber: d,
         isCurrentMonth: true,
+        dayOfWeekNum: (curDate.getDay() + 6) % 7,
       });
     }
 
@@ -120,6 +125,7 @@ export const RegisterTab: React.FC<RegisterTabProps> = ({
         dateIso: nextDate.toISOString().split('T')[0],
         dayNumber: d,
         isCurrentMonth: false,
+        dayOfWeekNum: (nextDate.getDay() + 6) % 7,
       });
     }
 
@@ -140,19 +146,74 @@ export const RegisterTab: React.FC<RegisterTabProps> = ({
     return 'FULL';
   };
 
-  const handleCellClick = (dateIso: string) => {
-    const current = getShiftForDate(dateIso);
-    let next: QuickShiftType = activePaintMode;
-
-    // If cell already has activePaintMode, toggle to OFF
-    if (current === activePaintMode) {
-      next = 'OFF';
-    }
-
+  const handleDropdownChange = (dateIso: string, val: QuickShiftType) => {
     setLocalDraftShifts((prev) => ({
       ...prev,
-      [dateIso]: next,
+      [dateIso]: val,
     }));
+  };
+
+  // 1-Click Preset Script 1: Full T2-T6, T7 Sáng, CN OFF
+  const applyPresetFullWeekdays = () => {
+    const newDrafts: Record<string, QuickShiftType> = { ...localDraftShifts };
+    calendarDays.forEach((cell) => {
+      if (cell.isCurrentMonth) {
+        if (cell.dayOfWeekNum >= 0 && cell.dayOfWeekNum <= 4) {
+          // Mon-Fri -> FULL
+          newDrafts[cell.dateIso] = 'FULL';
+        } else if (cell.dayOfWeekNum === 5) {
+          // Saturday -> SÁNG
+          newDrafts[cell.dateIso] = 'SANG';
+        } else {
+          // Sunday -> OFF
+          newDrafts[cell.dateIso] = 'OFF';
+        }
+      }
+    });
+    setLocalDraftShifts(newDrafts);
+    showToast({
+      type: 'success',
+      title: 'Đã điền Kịch bản T2-T6 (Full), T7 (Sáng), CN (OFF)',
+      message: `Đã áp dụng mẫu kịch bản làm việc cho Tháng ${targetMonth}/${targetYear}!`,
+    });
+  };
+
+  // 1-Click Preset Script 2: Copy from Previous Month
+  const applyCopyPreviousMonth = () => {
+    const prevMonth = targetMonth === 1 ? 12 : targetMonth - 1;
+    const prevYear = targetMonth === 1 ? targetYear - 1 : targetYear;
+
+    const newDrafts: Record<string, QuickShiftType> = { ...localDraftShifts };
+    calendarDays.forEach((cell) => {
+      if (cell.isCurrentMonth) {
+        const prevDateIso = `${prevYear}-${String(prevMonth).padStart(2, '0')}-${String(cell.dayNumber).padStart(2, '0')}`;
+        const prevShift = getShiftForDate(prevDateIso);
+        newDrafts[cell.dateIso] = prevShift;
+      }
+    });
+
+    setLocalDraftShifts(newDrafts);
+    showToast({
+      type: 'info',
+      title: `Đã sao chép từ Tháng ${prevMonth}/${prevYear}`,
+      message: `Đã điền ca tương ứng từ Tháng ${prevMonth} sang Tháng ${targetMonth}.`,
+    });
+  };
+
+  // 1-Click Preset Script 3: Clear All (OFF)
+  const applyClearAll = () => {
+    const newDrafts: Record<string, QuickShiftType> = { ...localDraftShifts };
+    calendarDays.forEach((cell) => {
+      if (cell.isCurrentMonth) {
+        newDrafts[cell.dateIso] = 'OFF';
+      }
+    });
+    setLocalDraftShifts(newDrafts);
+    showToast({
+      type: 'info',
+      title: 'Đã đặt lại tất cả ngày thành OFF',
+      message: `Tất cả các ngày trong Tháng ${targetMonth} đã chuyển về OFF.`,
+    });
   };
 
   const handleSaveRealtimeSheet = async () => {
@@ -233,7 +294,7 @@ export const RegisterTab: React.FC<RegisterTabProps> = ({
         </div>
 
         <p className="text-[11px] text-slate-500 font-medium leading-relaxed">
-          Đăng ký nhanh ca Sáng / Chiều / Full cho Tháng {targetMonth}/{targetYear} bằng bộ chọn lịch siêu tốc.
+          Đăng ký nhanh ca Sáng / Chiều / Full cho Tháng {targetMonth}/{targetYear} bằng bộ chọn lịch dropdown siêu tốc.
         </p>
 
         {/* Big Prominent Open Popup Calendar Button */}
@@ -282,7 +343,7 @@ export const RegisterTab: React.FC<RegisterTabProps> = ({
       </Card>
 
       {/* ======================================================== */}
-      {/* 4. POPUP LỊCH TO RÕ - ULTRA-FAST ONE-TAP SHIFT REGISTER MODAL */}
+      {/* 4. POPUP LỊCH TO RÕ - DROPDOWN PER DAY & PRESET SCRIPTS */}
       {/* ======================================================== */}
       {isModalOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/60 backdrop-blur-sm p-3 sm:p-4 animate-in fade-in duration-200">
@@ -298,7 +359,7 @@ export const RegisterTab: React.FC<RegisterTabProps> = ({
                     Đăng Ký Ca Làm Tháng {targetMonth}/{targetYear}
                   </h3>
                   <p className="text-[10px] font-medium text-slate-500">
-                    Chạm ngày để áp dụng ca đang chọn (1-tap siêu tốc)
+                    Chọn kịch bản nhanh hoặc chọn dropdown từng ngày
                   </p>
                 </div>
               </div>
@@ -312,71 +373,38 @@ export const RegisterTab: React.FC<RegisterTabProps> = ({
               </button>
             </div>
 
-            {/* Quick Paint Mode Selector Buttons */}
-            <div className="p-3 bg-white border-b border-slate-100 space-y-1.5">
-              <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block">
-                Chọn Ca Mẫu Để Điền Nhanh:
+            {/* 1-Click Preset Script Fast Fill Bar */}
+            <div className="p-3 bg-slate-50/90 border-b border-slate-100 space-y-2">
+              <span className="text-[10px] font-extrabold text-slate-500 uppercase tracking-wider flex items-center gap-1">
+                <Wand2 className="w-3 h-3 text-emerald-600" />
+                Điền Siêu Tốc 1-Click (Kịch Bản Mẫu):
               </span>
-              <div className="grid grid-cols-4 gap-1.5">
-                {/* Full (2 ca) */}
+
+              <div className="grid grid-cols-2 gap-1.5">
+                {/* Preset 1: Full T2-T6, T7 Sáng, CN OFF */}
                 <button
                   type="button"
-                  onClick={() => setActivePaintMode('FULL')}
-                  className={`py-2 px-1 rounded-xl text-xs font-black flex flex-col items-center gap-0.5 border transition-all cursor-pointer ${
-                    activePaintMode === 'FULL'
-                      ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs scale-105'
-                      : 'bg-emerald-50 text-emerald-800 border-emerald-200 hover:bg-emerald-100'
-                  }`}
+                  onClick={applyPresetFullWeekdays}
+                  className="py-2 px-2.5 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white rounded-xl text-[11px] font-black flex items-center justify-center gap-1.5 shadow-2xs transition-all cursor-pointer"
+                  title="Full T2-T6, thứ 7 ca sáng, Chủ nhật nghỉ"
                 >
-                  <Zap className="w-3.5 h-3.5" />
-                  <span>Full (2 ca)</span>
+                  <Zap className="w-3.5 h-3.5 text-emerald-200" />
+                  <span className="truncate">Full T2-T6 (T7 Sáng, CN OFF)</span>
                 </button>
 
-                {/* Sáng */}
+                {/* Preset 2: Copy from Previous Month */}
                 <button
                   type="button"
-                  onClick={() => setActivePaintMode('SANG')}
-                  className={`py-2 px-1 rounded-xl text-xs font-black flex flex-col items-center gap-0.5 border transition-all cursor-pointer ${
-                    activePaintMode === 'SANG'
-                      ? 'bg-sky-600 text-white border-sky-600 shadow-xs scale-105'
-                      : 'bg-sky-50 text-sky-800 border-sky-200 hover:bg-sky-100'
-                  }`}
+                  onClick={applyCopyPreviousMonth}
+                  className="py-2 px-2.5 bg-brand-50 hover:bg-brand-100 active:scale-95 text-brand-700 border border-brand-200 rounded-xl text-[11px] font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer"
                 >
-                  <Sun className="w-3.5 h-3.5" />
-                  <span>Sáng</span>
-                </button>
-
-                {/* Chiều */}
-                <button
-                  type="button"
-                  onClick={() => setActivePaintMode('CHIEU')}
-                  className={`py-2 px-1 rounded-xl text-xs font-black flex flex-col items-center gap-0.5 border transition-all cursor-pointer ${
-                    activePaintMode === 'CHIEU'
-                      ? 'bg-amber-600 text-white border-amber-600 shadow-xs scale-105'
-                      : 'bg-amber-50 text-amber-800 border-amber-200 hover:bg-amber-100'
-                  }`}
-                >
-                  <Sunset className="w-3.5 h-3.5" />
-                  <span>Chiều</span>
-                </button>
-
-                {/* OFF */}
-                <button
-                  type="button"
-                  onClick={() => setActivePaintMode('OFF')}
-                  className={`py-2 px-1 rounded-xl text-xs font-black flex flex-col items-center gap-0.5 border transition-all cursor-pointer ${
-                    activePaintMode === 'OFF'
-                      ? 'bg-slate-700 text-white border-slate-700 shadow-xs scale-105'
-                      : 'bg-slate-100 text-slate-600 border-slate-200 hover:bg-slate-200'
-                  }`}
-                >
-                  <X className="w-3.5 h-3.5" />
-                  <span>OFF (Xóa)</span>
+                  <Copy className="w-3.5 h-3.5 text-brand-600" />
+                  <span className="truncate">Copy Tháng Trước</span>
                 </button>
               </div>
             </div>
 
-            {/* Calendar Grid Container (42 Days Grid) */}
+            {/* Calendar Grid Container (42 Days Grid with Dropdowns) */}
             <div className="p-3 overflow-y-auto flex-1 space-y-2">
               {/* Days of Week Header */}
               <div className="grid grid-cols-7 gap-1 text-center">
@@ -387,42 +415,61 @@ export const RegisterTab: React.FC<RegisterTabProps> = ({
                 ))}
               </div>
 
-              {/* 42-Cell Date Grid */}
+              {/* 42-Cell Date Grid with Dropdown in Each Cell */}
               <div className="grid grid-cols-7 gap-1">
                 {calendarDays.map((cell, idx) => {
                   const shift = getShiftForDate(cell.dateIso);
 
                   return (
-                    <button
+                    <div
                       key={`${cell.dateIso}-${idx}`}
-                      type="button"
-                      onClick={() => cell.isCurrentMonth && handleCellClick(cell.dateIso)}
-                      disabled={!cell.isCurrentMonth}
-                      className={`min-h-[46px] p-1 rounded-xl border flex flex-col items-center justify-between transition-all cursor-pointer select-none active:scale-95 ${
+                      className={`min-h-[50px] p-1 rounded-xl border flex flex-col justify-between transition-all select-none relative ${
                         !cell.isCurrentMonth
-                          ? 'opacity-30 bg-slate-50 border-slate-100 cursor-not-allowed'
+                          ? 'opacity-25 bg-slate-50 border-slate-100'
                           : shift === 'FULL'
                           ? 'bg-emerald-500 text-white border-emerald-600 shadow-2xs font-extrabold'
                           : shift === 'SANG'
                           ? 'bg-sky-500 text-white border-sky-600 shadow-2xs font-extrabold'
                           : shift === 'CHIEU'
                           ? 'bg-amber-500 text-white border-amber-600 shadow-2xs font-extrabold'
-                          : 'bg-slate-50 text-slate-700 border-slate-200 hover:border-slate-300'
+                          : 'bg-slate-50 text-slate-700 border-slate-200'
                       }`}
                     >
-                      <span className="text-[10px] font-bold leading-none">{cell.dayNumber}</span>
+                      <div className="flex items-center justify-between w-full">
+                        <span className="text-[10px] font-black leading-none">{cell.dayNumber}</span>
+                      </div>
+
                       {cell.isCurrentMonth && (
-                        <span className="text-[9px] font-black tracking-tighter truncate leading-tight">
-                          {shift === 'FULL'
-                            ? 'Full'
-                            : shift === 'SANG'
-                            ? 'Sáng'
-                            : shift === 'CHIEU'
-                            ? 'Chiều'
-                            : 'OFF'}
-                        </span>
+                        <select
+                          value={shift}
+                          onChange={(e) =>
+                            handleDropdownChange(cell.dateIso, e.target.value as QuickShiftType)
+                          }
+                          className={`w-full text-[10px] font-black rounded-lg px-0.5 py-0.5 focus:outline-none cursor-pointer text-center appearance-none ${
+                            shift === 'FULL'
+                              ? 'bg-emerald-600 text-white'
+                              : shift === 'SANG'
+                              ? 'bg-sky-600 text-white'
+                              : shift === 'CHIEU'
+                              ? 'bg-amber-600 text-white'
+                              : 'bg-white text-slate-700 border border-slate-300'
+                          }`}
+                        >
+                          <option value="OFF" className="bg-white text-slate-800 font-bold">
+                            OFF
+                          </option>
+                          <option value="SANG" className="bg-sky-50 text-sky-900 font-bold">
+                            Sáng
+                          </option>
+                          <option value="CHIEU" className="bg-amber-50 text-amber-900 font-bold">
+                            Chiều
+                          </option>
+                          <option value="FULL" className="bg-emerald-50 text-emerald-900 font-bold">
+                            Full
+                          </option>
+                        </select>
                       )}
-                    </button>
+                    </div>
                   );
                 })}
               </div>
@@ -432,10 +479,10 @@ export const RegisterTab: React.FC<RegisterTabProps> = ({
             <div className="p-3 bg-slate-50 border-t border-slate-100 flex items-center justify-between gap-2">
               <button
                 type="button"
-                onClick={() => setLocalDraftShifts({})}
+                onClick={applyClearAll}
                 className="px-3 py-2 text-xs font-bold text-slate-500 hover:text-slate-800 transition-colors cursor-pointer"
               >
-                Đặt lại
+                OFF Hết
               </button>
 
               <button
