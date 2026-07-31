@@ -595,20 +595,20 @@ export const ExpenseTab: React.FC<ExpenseTabProps> = ({ settings, onSaveSettings
                           const formatted = dayExpense >= 1000000 
                             ? `${(dayExpense / 1000000).toFixed(1).replace('.0', '')}M` 
                             : `${Math.round(dayExpense / 1000)}k`;
-                          badgeText = `-${formatted}đ`;
+                          badgeText = `-${formatted}`;
                           badgeStyle = 'bg-rose-500 text-white font-bold';
                         } else if (dayIncome > 0 && dayExpense === 0) {
                           const formatted = dayIncome >= 1000000 
                             ? `${(dayIncome / 1000000).toFixed(1).replace('.0', '')}M` 
                             : `${Math.round(dayIncome / 1000)}k`;
-                          badgeText = `+${formatted}đ`;
+                          badgeText = `+${formatted}`;
                           badgeStyle = 'bg-emerald-500 text-white font-bold';
                         } else {
                           const absVal = Math.abs(dayNet);
                           const formatted = absVal >= 1000000 
                             ? `${(absVal / 1000000).toFixed(1).replace('.0', '')}M` 
                             : `${Math.round(absVal / 1000)}k`;
-                          badgeText = dayNet >= 0 ? `+${formatted}đ` : `-${formatted}đ`;
+                          badgeText = dayNet >= 0 ? `+${formatted}` : `-${formatted}`;
                           badgeStyle = dayNet >= 0 ? 'bg-emerald-500 text-white font-bold' : 'bg-rose-500 text-white font-bold';
                         }
                       }
