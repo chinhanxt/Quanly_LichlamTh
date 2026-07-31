@@ -60,7 +60,7 @@ export function formatDateDisplayLong(dateStr?: string): string {
   return dateStr;
 }
 
-export function getShiftBadgeForDate(iso: string, items: ScheduleItem[], isChinhan: boolean): { code: string; hours: string } {
+export function getShiftBadgeForDate(iso: string, items: ScheduleItem[]): { code: string; hours: string } {
   const dayShifts = items.filter((it) => it.date === iso);
 
   if (dayShifts.length >= 2) {
@@ -78,27 +78,7 @@ export function getShiftBadgeForDate(iso: string, items: ScheduleItem[], isChinh
     return { code, hours: '1 ca' };
   }
 
-  // Fallback if no explicit items found for this date
-  const dObj = new Date(iso);
-  const dayIndex = dObj.getDay();
-
-  if (isChinhan) {
-    if (dayIndex >= 1 && dayIndex <= 5) {
-      return { code: 'Full', hours: '2 ca' };
-    }
-    return { code: 'OFF', hours: '0 ca' };
-  } else {
-    const defaultShiftsThanhHuong: Record<number, { code: string; hours: string }> = {
-      1: { code: 'B18', hours: '4h' },
-      2: { code: 'B16', hours: '6h' },
-      3: { code: 'B18', hours: '4h' },
-      4: { code: 'B18', hours: '4h' },
-      5: { code: 'B18', hours: '4h' },
-      6: { code: 'B', hours: '7h' },
-      0: { code: 'OFF', hours: '0h' },
-    };
-    return defaultShiftsThanhHuong[dayIndex] || { code: 'OFF', hours: '0h' };
-  }
+  return { code: 'OFF', hours: '0 ca' };
 }
 
 export const NotesTab: React.FC<NotesTabProps> = ({ settings, onSaveSettings, items = [] }) => {
@@ -144,7 +124,7 @@ export const NotesTab: React.FC<NotesTabProps> = ({ settings, onSaveSettings, it
       const monthNum = String(d.getMonth() + 1).padStart(2, '0');
       const dayIndex = d.getDay();
 
-      const shiftInfo = getShiftBadgeForDate(iso, items, isChinhan);
+      const shiftInfo = getShiftBadgeForDate(iso, items);
       const todayIso = formatLocalDateIso(now);
 
       days.push({
@@ -695,7 +675,7 @@ export const NotesTab: React.FC<NotesTabProps> = ({ settings, onSaveSettings, it
             <div className="grid grid-cols-7 gap-1 text-center">
               {calendarGridDays.map((day) => {
                 const isSelected = targetDate === day.iso;
-                const shiftBadge = getShiftBadgeForDate(day.iso, items, isChinhan);
+                const shiftBadge = getShiftBadgeForDate(day.iso, items);
                 const isOff = shiftBadge.code === 'OFF';
 
                 let badgeStyle = 'bg-slate-200 text-slate-600';
