@@ -17,8 +17,10 @@ import { ScheduleItem, ScheduleSettings } from '@/types/schedule';
 import { parseScheduleImage, ParsedShiftResult } from '@/lib/ocr-parser';
 import { useToast } from '@/components/ui/Toast';
 import { ConfirmModal } from '@/components/ui/ConfirmModal';
+import { useAuth } from '@/components/AuthProvider';
 
 export default function Home() {
+  const { user } = useAuth();
   const { showToast } = useToast();
   const [activeTab, setActiveTab] = useState<'schedule' | 'salary' | 'notes' | 'notifications' | 'settings'>('schedule');
   const [selectedDay, setSelectedDay] = useState<string>(() => getTodayInfo().dayKey);
@@ -48,7 +50,7 @@ export default function Home() {
   useEffect(() => {
     fetchItems();
     fetchSettings();
-  }, []);
+  }, [user?.username]);
 
   const fetchItems = async () => {
     try {
