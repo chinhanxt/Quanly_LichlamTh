@@ -81,6 +81,7 @@ export interface ScheduleSettings extends NotificationSettings {
   employeeName?: string;     // Tên nhân viên trên lịch
   geminiApiKey?: string;     // Google Gemini API Key cho AI OCR
   hourlyRate?: number;       // Lương theo giờ (default 26000 VND)
+  googleSheetUrl?: string;   // Link Google Sheet đồng bộ lịch (cho CTV/Chí Nhân)
   customWebhookUrl?: string; // Webhook URL công khai tùy chỉnh
   allowedChatIds?: string[]; // Danh sách Chat ID được phép tương tác
   allowedChatIdsStr?: string; // Chuỗi Chat ID phân cách bằng dấu phẩy

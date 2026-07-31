@@ -435,6 +435,22 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({ settings, onSaveSettin
                 Dán URL này vào trang hẹn giờ <a href="https://console.cron-job.org/jobs" target="_blank" rel="noreferrer" className="text-brand-600 underline font-semibold">console.cron-job.org</a> (tần suất 1 - 5 phút/lần) để tự động kích hoạt thông báo Telegram.
               </p>
             </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 mb-1">
+                7. Google Sheet Link Đồng Bộ Lịch (cho Chí Nhân / CTV Viện AI)
+              </label>
+              <input
+                type="text"
+                value={form.googleSheetUrl || ''}
+                onChange={(e) => updateForm({ ...form, googleSheetUrl: e.target.value })}
+                placeholder="https://docs.google.com/spreadsheets/d/1UnBM5lf3RNOtY7ACJ5soHDgOTz2rPZqr/edit?gid=229272214#gid=229272214"
+                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono text-slate-800 focus:outline-none focus:border-brand-600"
+              />
+              <p className="text-[10px] text-slate-400 mt-1">
+                Đường dẫn Google Sheet bảng phân công lịch trực công nhật CTV Viện AI.
+              </p>
+            </div>
           </div>
 
           <div className="pt-1 border-t border-slate-100">

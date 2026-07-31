@@ -1,6 +1,6 @@
 'use client';
 import React, { useState, useEffect, useRef } from 'react';
-import { Plus, Camera } from 'lucide-react';
+import { Plus, Camera, FileSpreadsheet } from 'lucide-react';
 import { Header } from '@/components/Header';
 import { DaySelector, getTodayInfo } from '@/components/DaySelector';
 import { ScheduleCard } from '@/components/ScheduleCard';
@@ -216,6 +216,50 @@ export default function Home() {
     }
   };
 
+  const [isSheetSyncing, setIsSheetSyncing] = useState(false);
+
+  const handleSyncGoogleSheet = async () => {
+    setIsSheetSyncing(true);
+    showToast({
+      type: 'info',
+      title: 'Đang kết nối Google Sheet...',
+      message: 'Đang bóc tách lịch làm từ Google Sheets...',
+    });
+
+    try {
+      const res = await fetch('/api/sync-google-sheet', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          employeeName: settings.employeeName || (user?.username === 'chinhan' ? 'Nguyễn Chí Nhân' : 'Thanh Hương'),
+        }),
+      });
+      const json = await res.json();
+      if (json.success) {
+        showToast({
+          type: 'success',
+          title: 'Đồng bộ Google Sheet thành công',
+          message: json.message,
+        });
+        fetchItems();
+      } else {
+        showToast({
+          type: 'error',
+          title: 'Lỗi đồng bộ',
+          message: json.error || 'Không thể đồng bộ từ Google Sheet',
+        });
+      }
+    } catch (err: any) {
+      showToast({
+        type: 'error',
+        title: 'Lỗi kết nối',
+        message: err.message || 'Lỗi kết nối Google Sheet',
+      });
+    } finally {
+      setIsSheetSyncing(false);
+    }
+  };
+
   const filteredItems = items.filter((item) => {
     if (selectedDate) {
       if (item.date) {
@@ -280,8 +324,8 @@ export default function Home() {
               )}
             </div>
 
-            {/* Floating Action Buttons: Import Ảnh & (+) Thêm Lịch */}
-            <div className="fixed bottom-20 right-6 flex items-center gap-3 z-30">
+            {/* Floating Action Buttons: Đồng bộ GG Sheet, Import Ảnh & (+) Thêm Lịch */}
+            <div className="fixed bottom-20 right-4 sm:right-6 flex items-center gap-2 sm:gap-3 z-30 flex-wrap justify-end">
               <input
                 type="file"
                 ref={fileInputRef}
@@ -289,6 +333,16 @@ export default function Home() {
                 accept="image/*"
                 className="hidden"
               />
+
+              <button
+                onClick={handleSyncGoogleSheet}
+                disabled={isSheetSyncing}
+                className="px-3.5 py-3 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-extrabold text-xs rounded-full shadow-lg flex items-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
+                title="Đồng bộ từ Google Sheet"
+              >
+                <FileSpreadsheet className="w-4 h-4 text-emerald-100" />
+                <span>{isSheetSyncing ? 'Đang tải...' : 'GG Sheet'}</span>
+              </button>
 
               <button
                 onClick={() => fileInputRef.current?.click()}
