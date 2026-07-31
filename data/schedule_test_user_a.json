@@ -1,0 +1,12 @@
+[
+  {
+    "id": "1",
+    "subject": "Test User A Shift",
+    "dayOfWeek": "Thu2",
+    "startTime": "08:00",
+    "endTime": "12:00",
+    "location": "",
+    "note": "",
+    "reminderEnabled": true
+  }
+]
