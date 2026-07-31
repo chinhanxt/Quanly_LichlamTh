@@ -104,6 +104,13 @@ export default function Home() {
       });
     }
     fetchItems();
+    if (isChinhan) {
+      showToast({
+        type: 'success',
+        title: 'Cập nhật Realtime Google Sheet ⚡',
+        message: 'Đã tự động cập nhật ca làm lên Google Sheet (chinhan15102005@gmail.com).',
+      });
+    }
   };
 
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -123,8 +130,8 @@ export default function Home() {
       if (json.success) {
         showToast({
           type: 'info',
-          title: 'Đã xóa ca làm việc',
-          message: 'Ca làm việc đã được xóa khỏi thời khóa biểu.',
+          title: 'Đã xóa & Cập nhật Realtime ⚡',
+          message: 'Đã xóa ca làm và cập nhật Realtime lên Google Sheet (chinhan15102005@gmail.com).',
         });
       }
     } catch (e) {
@@ -412,6 +419,7 @@ export default function Home() {
         initialData={editingItem}
         currentDay={selectedDay}
         currentDate={selectedDate}
+        isChinhan={isChinhan}
       />
 
       <OcrPreviewModal
