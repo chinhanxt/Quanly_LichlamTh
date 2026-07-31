@@ -314,8 +314,17 @@ export function getSettingsForUserLocal(username: string): ScheduleSettings {
       const defaultRate = username === 'chinhan' ? 100000 : 26000;
       const rate = typeof parsed.hourlyRate === 'number' && parsed.hourlyRate !== 26000 ? parsed.hourlyRate : defaultRate;
 
+      const chinhanDefaults = username === 'chinhan' ? {
+        shiftReminderTemplate: "Nhắc nhở ca làm: Bạn có ca {Ca} ({ThờiGian}) tại {ĐịaĐiểm}. Hãy chuẩn bị kỹ lưỡng và xuất phát đúng giờ để hoàn thành tốt nhiệm vụ.",
+        checkInTemplate: "Đã đến giờ vào ca: Hãy thực hiện check-in cho ca {Ca}. Tập trung cao độ, làm việc chuyên nghiệp và giữ vững phong độ.",
+        checkOutTemplate: "Hoàn thành ca làm: Ca {Ca} đã kết thúc. Hãy kiểm tra lại công việc và thực hiện check-out. Cảm ơn bạn đã nỗ lực hết mình trong ca làm việc hôm nay.",
+        notesTemplate: "Ghi chú ca {Ca}: {GhiChú}. Hãy lưu ý thực hiện đầy đủ để đảm bảo chất lượng công việc.",
+        morningSummaryTemplate: "Chào buổi sáng: Lịch làm việc hôm nay của bạn gồm ca {Ca} ({ThờiGian}) tại {ĐịaĐiểm}. Chúc bạn một ngày làm việc hiệu quả, kỷ luật và gặt hái nhiều kết quả tốt.",
+      } : {};
+
       return {
         ...DEFAULT_SETTINGS,
+        ...chinhanDefaults,
         ...parsed,
         employeeName: empName,
         hourlyRate: rate,
@@ -331,8 +340,17 @@ export function getSettingsForUserLocal(username: string): ScheduleSettings {
     const user = getUserLocal(username);
     const empName = user ? user.displayName : (username === 'chinhan' ? 'Nguyễn Chí Nhân' : username);
     const defaultRate = username === 'chinhan' ? 100000 : 26000;
+    const chinhanDefaults = username === 'chinhan' ? {
+      shiftReminderTemplate: "Nhắc nhở ca làm: Bạn có ca {Ca} ({ThờiGian}) tại {ĐịaĐiểm}. Hãy chuẩn bị kỹ lưỡng và xuất phát đúng giờ để hoàn thành tốt nhiệm vụ.",
+      checkInTemplate: "Đã đến giờ vào ca: Hãy thực hiện check-in cho ca {Ca}. Tập trung cao độ, làm việc chuyên nghiệp và giữ vững phong độ.",
+      checkOutTemplate: "Hoàn thành ca làm: Ca {Ca} đã kết thúc. Hãy kiểm tra lại công việc và thực hiện check-out. Cảm ơn bạn đã nỗ lực hết mình trong ca làm việc hôm nay.",
+      notesTemplate: "Ghi chú ca {Ca}: {GhiChú}. Hãy lưu ý thực hiện đầy đủ để đảm bảo chất lượng công việc.",
+      morningSummaryTemplate: "Chào buổi sáng: Lịch làm việc hôm nay của bạn gồm ca {Ca} ({ThờiGian}) tại {ĐịaĐiểm}. Chúc bạn một ngày làm việc hiệu quả, kỷ luật và gặt hái nhiều kết quả tốt.",
+    } : {};
+
     return {
       ...DEFAULT_SETTINGS,
+      ...chinhanDefaults,
       employeeName: empName,
       hourlyRate: defaultRate,
       username,

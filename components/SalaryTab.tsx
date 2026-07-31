@@ -302,19 +302,19 @@ export const SalaryTab: React.FC<SalaryTabProps> = ({ items, settings, onSaveSet
 
       {/* Date Range Selector with Month Arrows Pill & Custom Toggle */}
       <Card className="space-y-3">
-        <div className="flex items-center justify-between gap-2 flex-wrap">
-          <span className="text-xs font-bold text-slate-700 flex items-center gap-1.5 shrink-0">
+        <div className="flex items-center justify-between gap-1.5 sm:gap-2 flex-nowrap">
+          <span className="text-xs font-bold text-slate-700 flex items-center gap-1 sm:gap-1.5 shrink-0">
             <CalendarIcon className="w-4 h-4 text-brand-600" />
             Kỳ lương
           </span>
 
-          <div className="flex items-center gap-1.5 flex-wrap">
+          <div className="flex items-center gap-1 sm:gap-1.5 shrink-0 flex-nowrap">
             {/* Reset to current month icon button if monthOffset !== 0 */}
             {monthOffset !== 0 && (
               <button
                 type="button"
                 onClick={handleResetCurrentMonth}
-                className="p-1.5 bg-brand-50 text-brand-600 hover:bg-brand-100 rounded-xl transition-all cursor-pointer border border-brand-200/60"
+                className="p-1 sm:p-1.5 bg-brand-50 text-brand-600 hover:bg-brand-100 rounded-xl transition-all cursor-pointer border border-brand-200/60 shrink-0"
                 title="Về tháng hiện tại"
               >
                 <RotateCcw className="w-3.5 h-3.5" />
@@ -322,29 +322,29 @@ export const SalaryTab: React.FC<SalaryTabProps> = ({ items, settings, onSaveSet
             )}
 
             {/* Symmetrical Month Navigation Pill with Left/Right Arrows */}
-            <div className="flex items-center gap-1 bg-slate-50 border border-slate-200/80 p-1 rounded-2xl shadow-xs">
+            <div className="flex items-center gap-0.5 sm:gap-1 bg-slate-50 border border-slate-200/80 p-0.5 sm:p-1 rounded-2xl shadow-xs shrink-0">
               <button
                 type="button"
                 onClick={() => handleMonthStep(-1)}
-                className="p-1.5 hover:bg-white text-slate-600 hover:text-brand-600 rounded-xl transition-all active:scale-95 cursor-pointer"
+                className="p-1 sm:p-1.5 hover:bg-white text-slate-600 hover:text-brand-600 rounded-xl transition-all active:scale-95 cursor-pointer"
                 title="Tháng trước"
                 aria-label="Tháng trước"
               >
-                <ChevronLeft className="w-4 h-4" />
+                <ChevronLeft className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
               </button>
 
-              <span className="text-xs font-extrabold text-brand-700 px-2 min-w-[95px] text-center select-none whitespace-nowrap">
+              <span className="text-[11px] sm:text-xs font-extrabold text-brand-700 px-1 sm:px-2 min-w-[76px] sm:min-w-[95px] text-center select-none whitespace-nowrap">
                 Tháng {currentMonthData.label}
               </span>
 
               <button
                 type="button"
                 onClick={() => handleMonthStep(1)}
-                className="p-1.5 hover:bg-white text-slate-600 hover:text-brand-600 rounded-xl transition-all active:scale-95 cursor-pointer"
+                className="p-1 sm:p-1.5 hover:bg-white text-slate-600 hover:text-brand-600 rounded-xl transition-all active:scale-95 cursor-pointer"
                 title="Tháng sau"
                 aria-label="Tháng sau"
               >
-                <ChevronRight className="w-4 h-4" />
+                <ChevronRight className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
               </button>
             </div>
 
@@ -352,7 +352,7 @@ export const SalaryTab: React.FC<SalaryTabProps> = ({ items, settings, onSaveSet
             <button
               type="button"
               onClick={() => setIsCustomMode(!isCustomMode)}
-              className={`px-3 py-1.5 text-xs font-bold rounded-2xl border transition-all cursor-pointer ${
+              className={`px-2 sm:px-3 py-1.5 text-[11px] sm:text-xs font-bold rounded-2xl border transition-all cursor-pointer shrink-0 ${
                 isCustomMode
                   ? 'bg-brand-600 text-white border-brand-600 shadow-xs'
                   : 'bg-white text-slate-600 hover:bg-slate-50 border-slate-200'
@@ -519,7 +519,7 @@ export const SalaryTab: React.FC<SalaryTabProps> = ({ items, settings, onSaveSet
 
                     let badgeText = 'Làm';
                     if (isDualShift) {
-                      badgeText = 'Cả ngày';
+                      badgeText = 'Full';
                     } else if (isSang) {
                       badgeText = 'Ca Sáng';
                     } else if (isChieu) {

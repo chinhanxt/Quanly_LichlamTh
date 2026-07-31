@@ -279,6 +279,10 @@ export default function Home() {
       return item.dayOfWeek === selectedDay;
     }
     return item.dayOfWeek === selectedDay;
+  }).sort((a, b) => {
+    const timeA = a.startTime || '00:00';
+    const timeB = b.startTime || '00:00';
+    return timeA.localeCompare(timeB);
   });
 
   return (
