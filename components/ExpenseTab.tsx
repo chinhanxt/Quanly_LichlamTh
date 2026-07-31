@@ -84,7 +84,11 @@ export const ExpenseTab: React.FC<ExpenseTabProps> = ({ settings, onSaveSettings
       if (json.success) {
         showToast({ message: json.message || 'Ghi sổ thành công!', type: 'success' });
         setRawInput('');
-        fetchExpenses();
+        if (json.data && Array.isArray(json.data)) {
+          setItems(prev => [...json.data, ...prev]);
+        } else {
+          fetchExpenses();
+        }
       } else {
         showToast({ message: json.error || 'Không thể bóc tách thu/chi', type: 'error' });
       }
@@ -92,6 +96,26 @@ export const ExpenseTab: React.FC<ExpenseTabProps> = ({ settings, onSaveSettings
       showToast({ message: 'Lỗi gửi dữ liệu: ' + err.message, type: 'error' });
     } finally {
       setIsParsing(false);
+    }
+  };
+
+  const handleSyncToSheet = async () => {
+    try {
+      setIsSavingSettings(true);
+      const res = await fetch('/api/expense/sync-sheet', {
+        method: 'POST',
+        headers: { 'x-username': 'chinhan' },
+      });
+      const json = await res.json();
+      if (json.success) {
+        showToast({ message: json.message, type: 'success' });
+      } else {
+        showToast({ message: json.error, type: 'error' });
+      }
+    } catch (e: any) {
+      showToast({ message: 'Không thể đồng bộ: ' + e.message, type: 'error' });
+    } finally {
+      setIsSavingSettings(false);
     }
   };
 
@@ -273,6 +297,17 @@ export const ExpenseTab: React.FC<ExpenseTabProps> = ({ settings, onSaveSettings
               className="flex-1 py-2 px-3 bg-brand-600 hover:bg-brand-700 text-white text-xs font-semibold rounded-xl flex items-center justify-center gap-1.5 transition-all shadow-md"
             >
               {isSavingSettings ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : 'Lưu Cài Đặt'}
+            </button>
+          </div>
+
+          <div className="pt-1">
+            <button
+              onClick={handleSyncToSheet}
+              disabled={isSavingSettings}
+              className="w-full py-2 px-3 bg-emerald-50 border border-emerald-200 text-emerald-700 hover:bg-emerald-100 text-xs font-bold rounded-xl flex items-center justify-center gap-1.5 transition-all"
+            >
+              <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
+              🔗 Đẩy toàn bộ dữ liệu sang Google Sheet
             </button>
           </div>
         </div>
