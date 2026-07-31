@@ -49,7 +49,7 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    const { rawText, autoAddK = true } = body;
+    const { rawText, autoAddK = true, clientDate } = body;
 
     if (!rawText || typeof rawText !== 'string' || !rawText.trim()) {
       return NextResponse.json({ success: false, error: 'Vui lòng nhập nội dung thu/chi!' }, { status: 400 });
@@ -68,8 +68,22 @@ export async function POST(request: Request) {
     const groqKey = userSettings.groqApiKey || process.env.GROQ_API_KEY || '';
     const groqModel = userSettings.groqModel || 'llama-3.3-70b-versatile';
 
+    // Calculate exact Vietnam Date (UTC+7)
     const now = new Date();
-    const todayStr = now.toISOString().split('T')[0];
+    const vnFormatter = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Asia/Ho_Chi_Minh',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    });
+    const vnDateParts = vnFormatter.formatToParts(now);
+    const vnYear = vnDateParts.find(p => p.type === 'year')?.value;
+    const vnMonth = vnDateParts.find(p => p.type === 'month')?.value;
+    const vnDay = vnDateParts.find(p => p.type === 'day')?.value;
+    const serverVnTodayStr = `${vnYear}-${vnMonth}-${vnDay}`;
+
+    const todayStr = (clientDate && /^\d{4}-\d{2}-\d{2}$/.test(clientDate)) ? clientDate : serverVnTodayStr;
+
     const dayNames = ['Chủ Nhật', 'Thứ Hai', 'Thứ Ba', 'Thứ Tư', 'Thứ Năm', 'Thứ Sáu', 'Thứ Bảy'];
     const dayOfWeek = dayNames[now.getDay()];
 
@@ -89,18 +103,18 @@ DANH MỤC:
 - Chi: "Ăn uống", "Di chuyển", "Mua sắm", "Hóa đơn", "Giải trí", "Khác"
 - Thu: "Lương/Thưởng", "Đầu tư", "Khác"
 
-NGÀY HÔM NAY LÀ: ${todayStr} (${dayOfWeek}).
+NGÀY HÔM NAY TẠI VIỆT NAM BẮT BUỘC LÀ: ${todayStr} (${dayOfWeek}).
 
-QUY TẮC XÁC ĐỊNH NGÀY:
-- BẮT BUỘC: Nếu người dùng KHÔNG đề cập tới mốc thời gian cụ thể (như "hôm qua", "hôm kia", "ngày 25/7"), giá trị date BẮT BUỘC phải lấy ngày hiện tại: ${todayStr}.
-- "hôm nay", "sáng nay", "bữa nay": Lấy ngày ${todayStr}
+QUY TẮC XÁC ĐỊNH NGÀY BẮT BUỘC:
+- Nếu người dùng KHÔNG ghi rõ từ chỉ thời gian (như "hôm qua", "hôm kia", "ngày 25/7"), BẮT BUỘC date phải là ngày hôm nay: "${todayStr}". Tuyệt đối KHÔNG tự sáng tạo ngày khác!
+- "hôm nay", "sáng nay", "bữa nay": Lấy đúng ngày ${todayStr}
 - "hôm qua": Lấy ngày hôm qua (tính lùi 1 ngày từ ${todayStr})
 - "hôm kia": Lấy ngày hôm kia (tính lùi 2 ngày từ ${todayStr})
 - "ngày 25", "25/7", "ngày 25 tháng 7": Tự quy đổi ra dạng YYYY-MM-DD
 - "thứ 2 vừa rồi", "thứ 3 tuần trước": Tự tính lùi về ngày tương ứng gần nhất
 
 QUY TẮC TỪ CHỐI TƯƠNG LAI (BẮT BUỘC):
-- Nếu người dùng nhắc tới thu/chi trong TƯƠNG LAI so với ngày hôm nay (${todayStr}) như: "ngày mai", "tối mai", "ngày kia", "tuần sau", "tháng sau", hoặc bất kỳ ngày nào sau ngày ${todayStr}:
+- Nếu người dùng nhắc tới thu/chi trong TƯƠNG LAI so với ngày hôm nay (${todayStr}) như: "ngày mai", "tối mai", "ngày kia", "tuần sau", "tháng sau", hoặc bất kỳ ngày nào lớn hơn ngày ${todayStr}:
   -> TRẢ VỀ JSON: { "isFuture": true, "futureError": "Không thể ghi nhận thu/chi trong tương lai! Vui lòng chỉ nhập thu/chi đã diễn ra." }
 
 CẤU TRÚC JSON CHUẨN NẾU HỢP LỆ:
@@ -153,9 +167,14 @@ CẤU TRÚC JSON CHUẨN NẾU HỢP LỆ:
       return NextResponse.json({ success: false, error: 'AI không tìm thấy thông tin thu/chi nào trong đoạn văn trên.' }, { status: 400 });
     }
 
-    // Check if any parsed item has future date
+    // Check if rawText mentions explicit past date keywords
+    const hasRelativeDateKeyword = /hôm qua|hôm kia|ngày \d|\d{1,2}\/\d{1,2}|thứ \d/i.test(rawText);
+
+    // If no past date keyword was explicitly typed, force date to todayStr
     for (const item of parsedObj.items) {
-      if (item.date && item.date > todayStr) {
+      if (!hasRelativeDateKeyword) {
+        item.date = todayStr;
+      } else if (item.date && item.date > todayStr) {
         return NextResponse.json({
           success: false,
           error: `Không thể ghi nhận giao dịch cho ngày tương lai (${item.date})!`,
