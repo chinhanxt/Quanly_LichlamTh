@@ -250,14 +250,6 @@ export default function Home() {
           title: 'Đồng bộ Google Sheet thành công',
           message: json.message,
         });
-        const syncedItems = json.data?.items;
-        if (syncedItems && syncedItems.length > 0 && syncedItems[0].date) {
-          const firstDateIso = syncedItems[0].date;
-          const dObj = new Date(firstDateIso + 'T00:00:00');
-          const dayKeys: Array<ScheduleItem['dayOfWeek']> = ['CN', 'Thu2', 'Thu3', 'Thu4', 'Thu5', 'Thu6', 'Thu7'];
-          setSelectedDate(firstDateIso);
-          setSelectedDay(dayKeys[dObj.getDay()]);
-        }
         fetchItems();
       } else {
         showToast({

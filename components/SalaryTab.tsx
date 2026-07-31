@@ -494,7 +494,10 @@ export const SalaryTab: React.FC<SalaryTabProps> = ({ items, settings, onSaveSet
                     {group.weekTitle}
                   </span>
                   <div className="text-xs font-extrabold text-brand-700">
-                    {group.totalHours}h công • +{group.totalEarnings.toLocaleString('vi-VN')}đ
+                    {isCtvMode
+                      ? `${group.days.reduce((acc, d) => acc + d.shifts.length, 0)} buổi`
+                      : `${group.totalHours}h công`}{' '}
+                    • +{group.totalEarnings.toLocaleString('vi-VN')}đ
                   </div>
                 </div>
 
@@ -508,55 +511,72 @@ export const SalaryTab: React.FC<SalaryTabProps> = ({ items, settings, onSaveSet
                   ))}
 
                   {/* Row 2 & 3: Calendar Cells */}
-                  {group.days.map((day, dIdx) => (
-                    <div
-                      key={dIdx}
-                      className={`flex flex-col items-center justify-between p-1.5 rounded-xl min-h-[72px] border transition-all ${
-                        day.isOutsideMonth
-                          ? 'bg-slate-100/60 border-slate-200/40 text-slate-400 opacity-45 cursor-not-allowed'
-                          : day.isOff
-                          ? 'bg-slate-50 border-slate-100 text-slate-400'
-                          : 'bg-brand-50/70 border-brand-200/80 text-slate-800 shadow-2xs'
-                      }`}
-                    >
-                      {/* Date */}
-                      <span className={`text-[10px] font-extrabold ${day.isOutsideMonth ? 'text-slate-400' : 'text-slate-700'}`}>
-                        {day.dateFormatted}
-                      </span>
+                  {group.days.map((day, dIdx) => {
+                    const isDualShift = day.shifts.length >= 2;
+                    const singleShift = day.shifts[0];
+                    const isSang = singleShift && (singleShift.startTime.startsWith('07') || singleShift.startTime.startsWith('08') || singleShift.subject.includes('Sáng'));
+                    const isChieu = singleShift && (singleShift.startTime.startsWith('13') || singleShift.startTime.startsWith('12') || singleShift.subject.includes('Chiều'));
 
-                      {/* Shift Code / Status */}
-                      {day.isOff ? (
-                        <span className={`text-[10px] font-semibold my-1 ${day.isOutsideMonth ? 'text-slate-300' : 'text-slate-400'}`}>
-                          OFF
+                    let badgeText = 'Làm';
+                    if (isDualShift) {
+                      badgeText = 'Cả ngày';
+                    } else if (isSang) {
+                      badgeText = 'Ca Sáng';
+                    } else if (isChieu) {
+                      badgeText = 'Ca Chiều';
+                    } else if (singleShift) {
+                      badgeText = singleShift.shiftCode.length > 8 ? singleShift.shiftCode.substring(0, 7) : singleShift.shiftCode;
+                    }
+
+                    return (
+                      <div
+                        key={dIdx}
+                        className={`flex flex-col items-center justify-between p-1 rounded-xl min-h-[72px] border transition-all ${
+                          day.isOutsideMonth
+                            ? 'bg-slate-100/60 border-slate-200/40 text-slate-400 opacity-45 cursor-not-allowed'
+                            : day.isOff
+                            ? 'bg-slate-50 border-slate-100 text-slate-400'
+                            : 'bg-brand-50/70 border-brand-200/80 text-slate-800 shadow-2xs'
+                        }`}
+                      >
+                        {/* Date */}
+                        <span className={`text-[10px] font-extrabold ${day.isOutsideMonth ? 'text-slate-400' : 'text-slate-700'}`}>
+                          {day.dateFormatted}
                         </span>
-                      ) : (
-                        <div className="my-0.5 space-y-0.5 w-full flex flex-col items-center">
-                          {day.shifts.map((s, sIdx) => (
+
+                        {/* Shift Code / Badge */}
+                        {day.isOff ? (
+                          <span className={`text-[10px] font-semibold my-1 ${day.isOutsideMonth ? 'text-slate-300' : 'text-slate-400'}`}>
+                            OFF
+                          </span>
+                        ) : (
+                          <div className="my-0.5 w-full flex flex-col items-center px-0.5">
                             <span
-                              key={sIdx}
-                              className={`text-[9px] font-black px-1 py-0.2 rounded-md leading-tight block w-full truncate ${
+                              className={`text-[9px] font-extrabold px-1 py-0.5 rounded-md leading-tight block w-full whitespace-nowrap overflow-hidden text-ellipsis text-center ${
                                 day.isOutsideMonth
                                   ? 'bg-slate-200 text-slate-500'
+                                  : isDualShift
+                                  ? 'bg-brand-700 text-white shadow-2xs'
                                   : 'bg-brand-600 text-white shadow-2xs'
                               }`}
-                              title={`${s.shiftCode} (${s.startTime}-${s.endTime})`}
+                              title={day.shifts.map((s) => `${s.subject} (${s.startTime}-${s.endTime})`).join('\n')}
                             >
-                              {s.shiftCode}
+                              {badgeText}
                             </span>
-                          ))}
-                        </div>
-                      )}
+                          </div>
+                        )}
 
-                      {/* Hours & Earnings */}
-                      {!day.isOff ? (
-                        <span className={`text-[9px] font-black ${day.isOutsideMonth ? 'text-slate-400' : 'text-emerald-700'}`}>
-                          {day.totalHours}h
-                        </span>
-                      ) : (
-                        <span className="text-[9px] text-slate-300">0h</span>
-                      )}
-                    </div>
-                  ))}
+                        {/* Hours & Earnings */}
+                        {!day.isOff ? (
+                          <span className={`text-[9px] font-black ${day.isOutsideMonth ? 'text-slate-400' : 'text-emerald-700'}`}>
+                            {isCtvMode ? `${day.shifts.length} ca` : `${day.totalHours}h`}
+                          </span>
+                        ) : (
+                          <span className="text-[9px] text-slate-300">{isCtvMode ? '0 ca' : '0h'}</span>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               </Card>
             ))}
