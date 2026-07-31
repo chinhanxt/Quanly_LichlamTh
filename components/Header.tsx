@@ -13,11 +13,18 @@ export const Header: React.FC<HeaderProps> = ({ onOpenNotifications, onOpenSetti
 
   return (
     <header className="flex flex-row items-center justify-between py-4 px-1 mb-2 gap-2">
-      <div className="min-w-0">
-        <h1 className="text-xl sm:text-2xl font-bold text-slate-900 leading-tight">
-          Xin chào, <span className="text-purple-600 font-black">{user?.displayName || 'Thanh Hương'}</span>
-        </h1>
-        <p className="text-xs sm:text-sm text-slate-500 font-medium mt-0.5">Quản lý lịch học & lịch làm việc</p>
+      <div className="flex items-center gap-3 min-w-0">
+        <img
+          src="/avatar.jpg"
+          alt="Avatar"
+          className="w-11 h-11 rounded-full object-cover border-2 border-purple-200 shadow-sm shrink-0"
+        />
+        <div className="min-w-0">
+          <h1 className="text-xl sm:text-2xl font-bold text-slate-900 leading-tight truncate">
+            Xin chào, <span className="text-purple-600 font-black">{user?.displayName || 'Thanh Hương'}</span>
+          </h1>
+          <p className="text-xs sm:text-sm text-slate-500 font-medium mt-0.5 truncate">Quản lý lịch học & lịch làm việc</p>
+        </div>
       </div>
 
       {/* 3 Icon Action Bar (Icon-only, clean, no text wrapping) */}
