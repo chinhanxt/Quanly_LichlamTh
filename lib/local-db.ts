@@ -302,7 +302,6 @@ export function saveLocalSettings(settings: ScheduleSettings): ScheduleSettings 
 export function getSettingsForUserLocal(username: string): ScheduleSettings {
   try {
     ensureDataDir();
-    const baseSettings = getLocalSettings();
     const userSettingsFile = path.join(DATA_DIR, `settings_${username}.json`);
     if (fs.existsSync(userSettingsFile)) {
       const raw = fs.readFileSync(userSettingsFile, 'utf-8');
@@ -314,9 +313,6 @@ export function getSettingsForUserLocal(username: string): ScheduleSettings {
         : (parsed.employeeName || defaultEmpName);
       return {
         ...DEFAULT_SETTINGS,
-        geminiApiKey: baseSettings.geminiApiKey || '',
-        telegramBotToken: baseSettings.telegramBotToken || DEFAULT_SETTINGS.telegramBotToken,
-        allowedChatIdsStr: baseSettings.allowedChatIdsStr || '',
         ...parsed,
         employeeName: empName,
         username,
@@ -327,14 +323,11 @@ export function getSettingsForUserLocal(username: string): ScheduleSettings {
       const settings = getLocalSettings();
       return { ...settings, username: 'thanhhuong' };
     }
-    // Other users get default settings with employeeName set to user's displayName & inherited API keys
+    // Other users get clean default settings with employeeName set to user's displayName
     const user = getUserLocal(username);
     const empName = user ? user.displayName : username;
     return {
       ...DEFAULT_SETTINGS,
-      geminiApiKey: baseSettings.geminiApiKey || '',
-      telegramBotToken: baseSettings.telegramBotToken || DEFAULT_SETTINGS.telegramBotToken,
-      allowedChatIdsStr: baseSettings.allowedChatIdsStr || '',
       employeeName: empName,
       username,
     };
