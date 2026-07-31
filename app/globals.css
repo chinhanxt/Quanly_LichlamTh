@@ -17,3 +17,14 @@ body {
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
+
+@keyframes progress-indeterminate {
+  0% { transform: translateX(-100%); }
+  50% { transform: translateX(0%); }
+  100% { transform: translateX(100%); }
+}
+
+.animate-indeterminate {
+  animation: progress-indeterminate 1.5s infinite ease-in-out;
+}
+
