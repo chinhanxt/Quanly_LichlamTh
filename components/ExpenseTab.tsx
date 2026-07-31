@@ -144,13 +144,16 @@ export const ExpenseTab: React.FC<ExpenseTabProps> = ({ settings, onSaveSettings
 
     try {
       setIsParsing(true);
+      const d = new Date();
+      const clientDateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
       const res = await fetch('/api/expense', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'x-username': 'chinhan'
         },
-        body: JSON.stringify({ rawText: rawInput, autoAddK }),
+        body: JSON.stringify({ rawText: rawInput, autoAddK, clientDate: clientDateStr }),
       });
 
       const json = await res.json();
