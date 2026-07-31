@@ -11,6 +11,7 @@ import { SettingsTab } from '@/components/SettingsTab';
 import { SalaryTab } from '@/components/SalaryTab';
 import { NotesTab } from '@/components/NotesTab';
 import { NotificationsTab } from '@/components/NotificationsTab';
+import { RegisterTab } from '@/components/RegisterTab';
 import { OcrPreviewModal } from '@/components/OcrPreviewModal';
 import { OcrLoadingModal } from '@/components/OcrLoadingModal';
 import { GoogleSheetSyncModal } from '@/components/GoogleSheetSyncModal';
@@ -24,7 +25,7 @@ import { useAuth } from '@/components/AuthProvider';
 export default function Home() {
   const { user } = useAuth();
   const { showToast } = useToast();
-  const [activeTab, setActiveTab] = useState<'schedule' | 'salary' | 'notes' | 'notifications' | 'settings'>('schedule');
+  const [activeTab, setActiveTab] = useState<'schedule' | 'salary' | 'notes' | 'register' | 'notifications' | 'settings'>('schedule');
   const [selectedDay, setSelectedDay] = useState<string>(() => getTodayInfo().dayKey);
   const [selectedDate, setSelectedDate] = useState<string>(() => getTodayInfo().dateIso);
   const [activeWeekDays, setActiveWeekDays] = useState<Array<{ key: string; fullDateIso: string }>>([]);
@@ -387,6 +388,12 @@ export default function Home() {
           <SalaryTab items={items} settings={settings} onSaveSettings={handleSaveSettings} />
         ) : activeTab === 'notes' ? (
           <NotesTab settings={settings} onSaveSettings={handleSaveSettings} items={items} />
+        ) : activeTab === 'register' ? (
+          <RegisterTab
+            settings={settings}
+            onSaveSettings={handleSaveSettings}
+            onSyncSheet={(m, y) => handleSyncGoogleSheet(m, y)}
+          />
         ) : activeTab === 'notifications' ? (
           <NotificationsTab settings={settings} onSaveSettings={handleSaveSettings} />
         ) : (
@@ -395,7 +402,7 @@ export default function Home() {
       </div>
 
       {/* Bottom Navigation */}
-      <BottomNav activeTab={activeTab as any} onChangeTab={setActiveTab as any} />
+      <BottomNav activeTab={activeTab as any} onChangeTab={setActiveTab as any} isChinhan={isChinhan} />
 
       <ScheduleFormModal
         isOpen={isModalOpen}

@@ -12,7 +12,7 @@ const USER_OPTIONS = [
 export const LoginModal: React.FC = () => {
   const { user, loading, login } = useAuth();
   const [username, setUsername] = useState('thanhhuong');
-  const [password, setPassword] = useState('1515');
+  const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [focusField, setFocusField] = useState<'username' | 'password' | null>(null);
