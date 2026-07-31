@@ -10,9 +10,10 @@ interface ScheduleCardProps {
   item: ScheduleItem;
   onEdit: (item: ScheduleItem) => void;
   onDelete: (id: string) => void;
+  isChinhan?: boolean;
 }
 
-export const ScheduleCard: React.FC<ScheduleCardProps> = ({ item, onEdit, onDelete }) => {
+export const ScheduleCard: React.FC<ScheduleCardProps> = ({ item, onEdit, onDelete, isChinhan = false }) => {
   const rawNote = item.note ? item.note.replace(/^Ca\s+/i, '') : '';
   const displayNote = item.note ? getCleanShiftCodeName(rawNote, item.startTime, item.endTime) : '';
 
@@ -61,23 +62,25 @@ export const ScheduleCard: React.FC<ScheduleCardProps> = ({ item, onEdit, onDele
           )}
         </div>
 
-        {/* Action Buttons: Edit & Delete */}
-        <div className="flex items-center gap-0.5 shrink-0 -mr-1 -mt-0.5">
-          <button
-            onClick={() => onEdit(item)}
-            className="p-1.5 text-slate-400 hover:text-brand-600 hover:bg-brand-50 rounded-lg transition-colors cursor-pointer"
-            aria-label="Sửa ca làm"
-          >
-            <Edit3 className="w-3.5 h-3.5" />
-          </button>
-          <button
-            onClick={() => onDelete(item.id)}
-            className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
-            aria-label="Xóa ca làm"
-          >
-            <Trash2 className="w-3.5 h-3.5" />
-          </button>
-        </div>
+        {/* Action Buttons: Edit & Delete (Hidden for chinhan view) */}
+        {!isChinhan && (
+          <div className="flex items-center gap-0.5 shrink-0 -mr-1 -mt-0.5">
+            <button
+              onClick={() => onEdit(item)}
+              className="p-1.5 text-slate-400 hover:text-brand-600 hover:bg-brand-50 rounded-lg transition-colors cursor-pointer"
+              aria-label="Sửa ca làm"
+            >
+              <Edit3 className="w-3.5 h-3.5" />
+            </button>
+            <button
+              onClick={() => onDelete(item.id)}
+              className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
+              aria-label="Xóa ca làm"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        )}
       </div>
     </Card>
   );

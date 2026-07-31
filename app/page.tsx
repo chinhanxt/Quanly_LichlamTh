@@ -23,6 +23,7 @@ import { useAuth } from '@/components/AuthProvider';
 
 export default function Home() {
   const { user } = useAuth();
+  const isChinhan = user?.username === 'chinhan';
   const { showToast } = useToast();
   const [activeTab, setActiveTab] = useState<'schedule' | 'salary' | 'notes' | 'notifications' | 'settings'>('schedule');
   const [selectedDay, setSelectedDay] = useState<string>(() => getTodayInfo().dayKey);
@@ -52,7 +53,10 @@ export default function Home() {
   useEffect(() => {
     fetchItems();
     fetchSettings();
-  }, [user?.username]);
+    if (isChinhan) {
+      handleSyncGoogleSheet();
+    }
+  }, [user?.username, isChinhan]);
 
   const fetchItems = async () => {
     try {
@@ -289,10 +293,12 @@ export default function Home() {
   const [syncTargetYear, setSyncTargetYear] = useState<number>(new Date().getFullYear());
 
   const handleSyncGoogleSheet = async (
-    targetMonth: number,
-    targetYear: number,
+    tMonth?: number,
+    tYear?: number,
     sheetUrl?: string
   ) => {
+    const targetMonth = tMonth || new Date().getMonth() + 1;
+    const targetYear = tYear || new Date().getFullYear();
     setSyncTargetMonth(targetMonth);
     setSyncTargetYear(targetYear);
     setIsSheetSyncing(true);
@@ -333,8 +339,6 @@ export default function Home() {
       setIsSheetSyncing(false);
     }
   };
-
-  const isChinhan = user?.username === 'chinhan';
 
   const filteredItems = items.filter((item) => {
     if (selectedDate) {
@@ -379,15 +383,17 @@ export default function Home() {
                   </div>
                   <h4 className="text-base font-extrabold text-slate-700">Nghỉ (OFF)</h4>
                   <p className="text-xs text-slate-400">Không có ca làm việc trong ngày này</p>
-                  <button
-                    onClick={() => {
-                      setEditingItem(null);
-                      setIsModalOpen(true);
-                    }}
-                    className="mt-2 text-brand-600 text-xs font-semibold hover:underline"
-                  >
-                    + Thêm lịch thủ công
-                  </button>
+                  {!isChinhan && (
+                    <button
+                      onClick={() => {
+                        setEditingItem(null);
+                        setIsModalOpen(true);
+                      }}
+                      className="mt-2 text-brand-600 text-xs font-semibold hover:underline"
+                    >
+                      + Thêm lịch thủ công
+                    </button>
+                  )}
                 </div>
               ) : (
                 filteredItems.map((item) => (
@@ -399,6 +405,7 @@ export default function Home() {
                       setIsModalOpen(true);
                     }}
                     onDelete={handleDeleteItem}
+                    isChinhan={isChinhan}
                   />
                 ))
               )}
@@ -427,25 +434,27 @@ export default function Home() {
                 </button>
               ) : (
                 /* Show Import Ảnh button ONLY for non-chinhan users (thanhhuong) */
-                <button
-                  onClick={() => fileInputRef.current?.click()}
-                  disabled={isOcrLoading}
-                  className="px-4 py-3 bg-white hover:bg-slate-50 text-brand-700 font-extrabold text-xs rounded-full shadow-lg border border-slate-200/80 flex items-center gap-2 transition-all active:scale-95 cursor-pointer disabled:opacity-50"
-                >
-                  <Camera className="w-4 h-4 text-brand-600" />
-                  <span>{isOcrLoading ? 'Đang đọc...' : 'Import Ảnh'}</span>
-                </button>
-              )}
+                <>
+                  <button
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={isOcrLoading}
+                    className="px-4 py-3 bg-white hover:bg-slate-50 text-brand-700 font-extrabold text-xs rounded-full shadow-lg border border-slate-200/80 flex items-center gap-2 transition-all active:scale-95 cursor-pointer disabled:opacity-50"
+                  >
+                    <Camera className="w-4 h-4 text-brand-600" />
+                    <span>{isOcrLoading ? 'Đang đọc...' : 'Import Ảnh'}</span>
+                  </button>
 
-              <button
-                onClick={() => {
-                  setEditingItem(null);
-                  setIsModalOpen(true);
-                }}
-                className="w-14 h-14 bg-brand-600 text-white rounded-full flex items-center justify-center shadow-pill hover:bg-brand-700 active:scale-95 transition-all cursor-pointer shrink-0"
-              >
-                <Plus className="w-7 h-7 text-white" />
-              </button>
+                  <button
+                    onClick={() => {
+                      setEditingItem(null);
+                      setIsModalOpen(true);
+                    }}
+                    className="w-14 h-14 bg-brand-600 text-white rounded-full flex items-center justify-center shadow-pill hover:bg-brand-700 active:scale-95 transition-all cursor-pointer shrink-0"
+                  >
+                    <Plus className="w-7 h-7 text-white" />
+                  </button>
+                </>
+              )}
             </div>
           </>
         ) : activeTab === 'salary' ? (
