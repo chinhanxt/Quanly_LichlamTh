@@ -587,8 +587,8 @@ export const ExpenseTab: React.FC<ExpenseTabProps> = ({ settings, onSaveSettings
 
                       const isSelected = selectedDayIso === day.dateIso;
 
-                      let badgeText = 'OFF';
-                      let badgeStyle = 'text-gray-300 bg-gray-50';
+                      let badgeText = '';
+                      let badgeStyle = '';
 
                       if (dayItems.length > 0) {
                         if (dayExpense > 0 && dayIncome === 0) {
@@ -621,7 +621,7 @@ export const ExpenseTab: React.FC<ExpenseTabProps> = ({ settings, onSaveSettings
                               setSelectedDayIso(isSelected ? null : day.dateIso);
                             }
                           }}
-                          className={`flex flex-col items-center py-2 px-0.5 rounded-2xl border text-center transition-all cursor-pointer select-none ${
+                          className={`flex flex-col items-center justify-between py-2 px-0.5 rounded-2xl border text-center min-h-[58px] transition-all cursor-pointer select-none ${
                             isSelected
                               ? 'border-brand-500 bg-brand-50/50 shadow-sm ring-2 ring-brand-400/30'
                               : day.isCurrentMonth
@@ -633,19 +633,19 @@ export const ExpenseTab: React.FC<ExpenseTabProps> = ({ settings, onSaveSettings
                             {day.dayOfWeek}
                           </span>
 
-                          <span className="text-[11px] font-extrabold text-gray-700 my-0.5">
+                          <span className="text-[11px] font-extrabold text-gray-700">
                             {day.dayLabel}
                           </span>
 
-                          <span
-                            className={`text-[9px] px-0.5 py-0.5 rounded-lg w-full truncate whitespace-nowrap overflow-hidden my-0.5 leading-tight block ${badgeStyle}`}
-                          >
-                            {badgeText}
-                          </span>
-
-                          <span className="text-[9px] text-gray-400">
-                            {dayItems.length > 0 ? `${dayItems.length} mục` : '0 ca'}
-                          </span>
+                          {dayItems.length > 0 ? (
+                            <span
+                              className={`text-[9px] px-0.5 py-0.5 rounded-lg w-full truncate whitespace-nowrap overflow-hidden leading-tight block mt-0.5 ${badgeStyle}`}
+                            >
+                              {badgeText}
+                            </span>
+                          ) : (
+                            <span className="h-4"></span>
+                          )}
                         </div>
                       );
                     })}
