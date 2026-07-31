@@ -388,21 +388,69 @@ export async function saveScheduleItemsForWeek(newItems: ScheduleItem[]): Promis
   }
 }
 
-// Expense storage functions
+// Expense storage functions with Firestore + local fallback
+import { ExpenseItem } from '@/types/schedule';
 import {
   getExpenseItemsForUserLocal,
   addExpenseItemForUserLocal,
   deleteExpenseItemForUserLocal
 } from './local-db';
 
-export async function getExpenseItemsForUser(username: string) {
+export async function getExpenseItemsForUser(username: string): Promise<ExpenseItem[]> {
+  try {
+    const colRef = collection(db, `expenses_${username}`);
+    const querySnapshot = await getDocs(colRef);
+    const items: ExpenseItem[] = [];
+    querySnapshot.forEach((docSnap) => {
+      const data = docSnap.data();
+      items.push({
+        id: docSnap.id,
+        date: data.date || '',
+        type: data.type || 'Chi',
+        category: data.category || 'Khác',
+        amount: Number(data.amount) || 0,
+        description: data.description || '',
+        rawText: data.rawText || '',
+        createdAt: data.createdAt || new Date().toISOString(),
+        username,
+      });
+    });
+
+    items.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+    if (items.length > 0) return items;
+  } catch (error) {
+    console.warn(`Firebase getExpenseItemsForUser failed for ${username}, falling back to local:`, error);
+  }
   return getExpenseItemsForUserLocal(username);
 }
 
-export async function addExpenseItemForUser(username: string, item: any) {
-  return addExpenseItemForUserLocal(username, item);
+export async function addExpenseItemForUser(username: string, item: Omit<ExpenseItem, 'id'> & { id?: string }): Promise<ExpenseItem> {
+  const localItem = addExpenseItemForUserLocal(username, item);
+  try {
+    const colRef = collection(db, `expenses_${username}`);
+    const docData = {
+      date: item.date || new Date().toISOString().split('T')[0],
+      type: item.type || 'Chi',
+      category: item.category || 'Khác',
+      amount: Number(item.amount) || 0,
+      description: item.description || '',
+      rawText: item.rawText || '',
+      createdAt: localItem.createdAt || new Date().toISOString(),
+      username,
+    };
+    const docRef = await addDoc(colRef, docData);
+    return { ...localItem, id: docRef.id };
+  } catch (error) {
+    console.warn(`Firebase addExpenseItemForUser failed for ${username}, saved locally:`, error);
+  }
+  return localItem;
 }
 
-export async function deleteExpenseItemForUser(username: string, id: string) {
+export async function deleteExpenseItemForUser(username: string, id: string): Promise<boolean> {
+  try {
+    await deleteDoc(doc(db, `expenses_${username}`, id));
+  } catch (error) {
+    console.warn(`Firebase deleteExpenseItemForUser failed for ${username}, deleting local:`, error);
+  }
   return deleteExpenseItemForUserLocal(username, id);
 }
