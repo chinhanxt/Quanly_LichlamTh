@@ -219,18 +219,25 @@ export const SalaryTab: React.FC<SalaryTabProps> = ({ items, settings, onSaveSet
     return groups;
   }, [fromDate, toDate, items, hourlyRate, rawPayroll]);
 
+  const isCtvMode = settings.username === 'chinhan' || hourlyRate >= 100000;
+  const totalShiftsCount = useMemo(() => {
+    return rawPayroll.dailyBreakdown.reduce((acc, curr) => acc + curr.shifts.length, 0);
+  }, [rawPayroll]);
+
   return (
     <div className="space-y-4 pb-12">
       {/* Header & Hourly Rate Section */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-4 rounded-3xl border border-slate-100 shadow-xs">
         <div>
           <h2 className="text-xl font-bold text-slate-800">Quản lý Bảng lương</h2>
-          <p className="text-xs text-slate-500">Tính toán thu nhập và theo dõi ca làm việc</p>
+          <p className="text-xs text-slate-500">
+            {isCtvMode ? 'Tính toán công nhật CTV (100.000đ/buổi trực)' : 'Tính toán thu nhập và theo dõi ca làm việc'}
+          </p>
         </div>
 
         {/* Inline Editable Hourly Rate - Large Touch Target for Mobile */}
         <div className="flex items-center justify-between sm:justify-start gap-2 bg-slate-50 px-3.5 py-2.5 rounded-2xl border border-slate-200">
-          <span className="text-xs font-bold text-slate-700">Lương/giờ:</span>
+          <span className="text-xs font-bold text-slate-700">{isCtvMode ? 'Đơn giá/buổi:' : 'Lương/giờ:'}</span>
           {isEditingRate ? (
             <div className="flex items-center gap-2">
               <input
@@ -261,7 +268,7 @@ export const SalaryTab: React.FC<SalaryTabProps> = ({ items, settings, onSaveSet
               className="flex items-center gap-2 px-3 py-1.5 bg-white hover:bg-brand-50 border border-slate-200 hover:border-brand-300 rounded-xl text-xs font-extrabold text-brand-700 transition-all active:scale-95 cursor-pointer shadow-2xs group"
             >
               <span className="text-sm font-black text-brand-700">{hourlyRate.toLocaleString('vi-VN')}</span>
-              <span className="text-xs font-bold text-slate-500">VNĐ/h</span>
+              <span className="text-xs font-bold text-slate-500">{isCtvMode ? 'VNĐ/buổi' : 'VNĐ/h'}</span>
               <div className="p-1 bg-brand-50 rounded-lg text-brand-600 group-hover:bg-brand-600 group-hover:text-white transition-colors">
                 <Edit2 className="w-4 h-4 stroke-[2.2]" />
               </div>
@@ -372,22 +379,22 @@ export const SalaryTab: React.FC<SalaryTabProps> = ({ items, settings, onSaveSet
             {rawPayroll.totalSalary.toLocaleString('vi-VN')} <span className="text-xs font-normal">đ</span>
           </div>
           <p className="text-[10px] text-emerald-100/80">
-            {hourlyRate.toLocaleString('vi-VN')} đ/giờ
+            {isCtvMode ? `${hourlyRate.toLocaleString('vi-VN')} đ/buổi trực` : `${hourlyRate.toLocaleString('vi-VN')} đ/giờ`}
           </p>
         </div>
 
-        {/* Card 2: Total Hours */}
+        {/* Card 2: Total Hours / Shifts */}
         <div className="bg-white rounded-3xl p-4 shadow-xs border border-slate-100 space-y-1">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-semibold text-slate-500">Tổng giờ làm</span>
+            <span className="text-[11px] font-semibold text-slate-500">{isCtvMode ? 'Tổng buổi trực' : 'Tổng giờ làm'}</span>
             <div className="p-1.5 bg-sky-50 rounded-xl text-sky-600">
               <Clock className="w-4 h-4" />
             </div>
           </div>
           <div className="text-lg font-extrabold text-slate-800 tracking-tight">
-            {rawPayroll.totalHours} <span className="text-xs font-normal text-slate-500">giờ</span>
+            {isCtvMode ? totalShiftsCount : rawPayroll.totalHours} <span className="text-xs font-normal text-slate-500">{isCtvMode ? 'buổi' : 'giờ'}</span>
           </div>
-          <p className="text-[10px] text-slate-400">Tích lũy theo lịch làm</p>
+          <p className="text-[10px] text-slate-400">{isCtvMode ? 'Tính theo dấu (X) trực' : 'Tích lũy theo lịch làm'}</p>
         </div>
 
         {/* Card 3: Worked Days */}

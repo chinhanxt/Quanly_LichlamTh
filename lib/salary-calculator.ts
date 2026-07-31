@@ -105,7 +105,14 @@ export function calculatePayrollBreakdown(
 
       const shiftsDetails = dayShifts.map((s) => {
         const h = calculateShiftHours(s.startTime, s.endTime);
-        const e = Math.round(h * hourlyRate);
+        const isPerShift =
+          s.note?.includes('100.000') ||
+          s.note?.includes('CTV') ||
+          s.subject?.includes('Viện AI') ||
+          s.subject?.includes('CTV') ||
+          hourlyRate >= 100000;
+        const shiftRate = hourlyRate >= 100000 ? hourlyRate : 100000;
+        const e = isPerShift ? shiftRate : Math.round(h * hourlyRate);
         dayHours += h;
         dayEarnings += e;
         const rawCode = s.note || 'Làm';
@@ -116,7 +123,7 @@ export function calculatePayrollBreakdown(
           endTime: s.endTime,
           hours: h,
           earnings: e,
-          subject: s.subject || 'Highlands Coffee',
+          subject: s.subject || 'Công việc',
         };
       });
 
