@@ -32,6 +32,23 @@ export const ExpenseTab: React.FC<ExpenseTabProps> = ({ settings, onSaveSettings
   const [rawInput, setRawInput] = useState('');
   const [isParsing, setIsParsing] = useState(false);
   const [filterType, setFilterType] = useState<'all' | 'Thu' | 'Chi'>('all');
+  const textareaRef = React.useRef<HTMLTextAreaElement>(null);
+
+  const handleQuickAdd = (keyword: string) => {
+    setRawInput((prev) => {
+      const trimmed = prev.trim();
+      if (!trimmed) return keyword + ' ';
+      if (trimmed.endsWith(',')) return trimmed + ' ' + keyword + ' ';
+      return trimmed + ', ' + keyword + ' ';
+    });
+    setTimeout(() => {
+      if (textareaRef.current) {
+        textareaRef.current.focus();
+        textareaRef.current.selectionStart = textareaRef.current.value.length;
+        textareaRef.current.selectionEnd = textareaRef.current.value.length;
+      }
+    }, 50);
+  };
 
   // Settings State
   const [showSettings, setShowSettings] = useState(false);
@@ -306,44 +323,69 @@ export const ExpenseTab: React.FC<ExpenseTabProps> = ({ settings, onSaveSettings
         </div>
       </div>
 
-      {/* Input Form Card */}
-      <div className="bg-white rounded-3xl p-4 shadow-sm border border-surface-border space-y-3">
+        {/* Input Form Card */}
+      <div className="bg-gradient-to-b from-white to-gray-50/50 rounded-3xl p-4 shadow-sm border border-brand-100/60 space-y-3.5">
         <div className="flex items-center justify-between">
           <label className="text-xs font-bold text-gray-800 flex items-center gap-1.5">
-            <Sparkles className="w-4 h-4 text-amber-500" /> Nhập Văn Bản Thu/Chi
+            <Sparkles className="w-4 h-4 text-amber-500 animate-pulse" /> Nhập Văn Bản Thu/Chi
           </label>
-          <span className="text-[10px] text-gray-400">Tự bóc tách bằng Groq AI</span>
+          <span className="text-[10px] text-gray-400 font-medium">Bóc tách tự động bằng AI</span>
         </div>
 
         <textarea
+          ref={textareaRef}
           value={rawInput}
           onChange={(e) => setRawInput(e.target.value)}
-          placeholder="Ví dụ: sáng ăn hủ tiếu 45k, mua ly cafe 30k, chiều sếp thưởng 500k..."
-          className="w-full h-24 p-3 border border-gray-200 rounded-2xl text-xs text-gray-800 placeholder-gray-400 focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none transition-all resize-none"
+          placeholder="Ví dụ: Ăn 45k, Uống 30k, Đổ xăng 50k..."
+          className="w-full h-24 p-3 border border-gray-200/80 rounded-2xl text-xs text-gray-800 placeholder-gray-400 focus:ring-2 focus:ring-brand-500 focus:border-brand-500 bg-white outline-none transition-all resize-none shadow-xs"
         />
 
-        {/* Quick Example Tags */}
-        <div className="flex flex-wrap gap-1.5 pt-1">
-          {examples.map((ex, idx) => (
+        {/* Quick Shortcut Buttons */}
+        <div>
+          <div className="text-[10px] font-semibold text-gray-400 mb-1.5 flex items-center gap-1">
+            <span>⚡ Nút bấm nhanh (Bấm rồi tự điền số tiền):</span>
+          </div>
+          <div className="grid grid-cols-4 gap-1.5">
             <button
-              key={idx}
-              onClick={() => setRawInput(ex)}
-              className="text-[10px] bg-gray-50 hover:bg-gray-100 text-gray-600 border border-gray-200 px-2 py-1 rounded-full transition-all"
+              onClick={() => handleQuickAdd('Ăn')}
+              className="py-1.5 px-2 bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200/60 rounded-xl text-xs font-bold flex items-center justify-center gap-1 transition-all cursor-pointer shadow-2xs active:scale-95"
             >
-              + {ex}
+              <span>🍲</span>
+              <span>Ăn</span>
             </button>
-          ))}
+            <button
+              onClick={() => handleQuickAdd('Uống')}
+              className="py-1.5 px-2 bg-orange-50 hover:bg-orange-100 text-orange-800 border border-orange-200/60 rounded-xl text-xs font-bold flex items-center justify-center gap-1 transition-all cursor-pointer shadow-2xs active:scale-95"
+            >
+              <span>☕</span>
+              <span>Uống</span>
+            </button>
+            <button
+              onClick={() => handleQuickAdd('Đổ xăng')}
+              className="py-1.5 px-2 bg-sky-50 hover:bg-sky-100 text-sky-800 border border-sky-200/60 rounded-xl text-xs font-bold flex items-center justify-center gap-1 transition-all cursor-pointer shadow-2xs active:scale-95"
+            >
+              <span>⛽</span>
+              <span>Đổ xăng</span>
+            </button>
+            <button
+              onClick={() => handleQuickAdd('Đi chợ')}
+              className="py-1.5 px-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200/60 rounded-xl text-xs font-bold flex items-center justify-center gap-1 transition-all cursor-pointer shadow-2xs active:scale-95"
+            >
+              <span>🛒</span>
+              <span>Đi chợ</span>
+            </button>
+          </div>
         </div>
 
         <button
           onClick={handleParseAndSave}
           disabled={isParsing || !rawInput.trim()}
-          className="w-full py-3 bg-gradient-to-r from-brand-600 to-indigo-600 hover:from-brand-700 hover:to-indigo-700 text-white font-bold text-xs rounded-2xl flex items-center justify-center gap-2 shadow-lg shadow-brand-500/20 disabled:opacity-50 transition-all cursor-pointer"
+          className="w-full py-3 bg-gradient-to-r from-brand-600 via-indigo-600 to-purple-600 hover:from-brand-700 hover:to-purple-700 text-white font-bold text-xs rounded-2xl flex items-center justify-center gap-2 shadow-md shadow-brand-500/25 disabled:opacity-50 transition-all cursor-pointer active:scale-[0.99]"
         >
           {isParsing ? (
             <>
               <RefreshCw className="w-4 h-4 animate-spin" />
-              <span>AI Groq đang phân tích...</span>
+              <span>AI đang bóc tách...</span>
             </>
           ) : (
             <>
