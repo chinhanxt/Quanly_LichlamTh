@@ -20,6 +20,13 @@ import {
 import { ExpenseItem, ScheduleSettings } from '@/types/schedule';
 import { useToast } from '@/components/ui/Toast';
 
+function formatYmd(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
 function getWeeksForMonth(year: number, month: number) {
   const weeks = [];
   const firstDayOfMonth = new Date(year, month - 1, 1);
@@ -41,7 +48,7 @@ function getWeeksForMonth(year: number, month: number) {
     for (let i = 0; i < 7; i++) {
       const d = new Date(weekStart);
       d.setDate(d.getDate() + i);
-      const iso = d.toISOString().split('T')[0];
+      const iso = formatYmd(d);
       const dd = String(d.getDate()).padStart(2, '0');
       const mm = String(d.getMonth() + 1).padStart(2, '0');
       days.push({
@@ -60,8 +67,8 @@ function getWeeksForMonth(year: number, month: number) {
 
     weeks.push({
       label: `Tuần từ ${startDd}/${startMm} đến ${endDd}/${endMm}`,
-      startDateIso: weekStart.toISOString().split('T')[0],
-      endDateIso: weekEnd.toISOString().split('T')[0],
+      startDateIso: formatYmd(weekStart),
+      endDateIso: formatYmd(weekEnd),
       days,
     });
 
