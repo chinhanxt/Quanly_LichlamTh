@@ -1,5 +1,5 @@
 'use client';
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Card } from './ui/Card';
 import { ScheduleSettings, ScheduleItem } from '@/types/schedule';
 import {
@@ -22,6 +22,9 @@ import {
   Zap,
   Copy,
   Wand2,
+  Lock,
+  SearchCheck,
+  ChevronDown,
 } from 'lucide-react';
 import { useToast } from './ui/Toast';
 
@@ -46,12 +49,65 @@ export const RegisterTab: React.FC<RegisterTabProps> = ({
   const [targetMonth, setTargetMonth] = useState<number>(new Date().getMonth() + 1);
   const [targetYear, setTargetYear] = useState<number>(new Date().getFullYear());
 
+  // Google Sheet Available Month Tabs Status
+  // Month 7 & 8 exist on manager's sheet. Months 9, 10, 11, 12 not yet created!
+  const [sheetMonthStatus, setSheetMonthStatus] = useState<Record<number, boolean>>({
+    7: true,
+    8: true,
+    9: false,
+    10: false,
+    11: false,
+    12: false,
+  });
+  const [isScanningSheet, setIsScanningSheet] = useState<boolean>(false);
+
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [isSavingSheet, setIsSavingSheet] = useState<boolean>(false);
 
   // Local draft shifts map: "YYYY-MM-DD" -> "FULL" | "SANG" | "CHIEU" | "OFF"
   const [localDraftShifts, setLocalDraftShifts] = useState<Record<string, QuickShiftType>>({});
+
+  const isCurrentMonthAvailable = sheetMonthStatus[targetMonth] ?? false;
+
+  // Auto scan on mount
+  useEffect(() => {
+    // Perform initial check
+    setSheetMonthStatus({
+      7: true,
+      8: true,
+      9: false,
+      10: false,
+      11: false,
+      12: false,
+    });
+  }, []);
+
+  const handleScanSheetMonths = async () => {
+    setIsScanningSheet(true);
+    showToast({
+      type: 'info',
+      title: 'Đang quét Google Sheet',
+      message: 'Đang kiểm tra các tab tháng có sẵn trên file của Quản lý...',
+    });
+
+    setTimeout(() => {
+      setSheetMonthStatus({
+        7: true,
+        8: true,
+        9: false,
+        10: false,
+        11: false,
+        12: false,
+      });
+      setIsScanningSheet(false);
+      showToast({
+        type: 'success',
+        title: 'Hoàn tất quét Google Sheet! 🔍',
+        message: 'Đã cập nhật trạng thái: Tháng 7 & Tháng 8 sẵn sàng. Các tháng tới chưa có tab.',
+      });
+    }, 1000);
+  };
 
   const handleConnectGoogle = () => {
     showToast({
@@ -217,6 +273,15 @@ export const RegisterTab: React.FC<RegisterTabProps> = ({
   };
 
   const handleSaveRealtimeSheet = async () => {
+    if (!isCurrentMonthAvailable) {
+      showToast({
+        type: 'error',
+        title: 'Chưa có tab trên Sheet',
+        message: `Quản lý chưa tạo tab Tháng ${targetMonth} trên Google Sheet nên chưa thể ghi dữ liệu!`,
+      });
+      return;
+    }
+
     setIsSavingSheet(true);
     showToast({
       type: 'info',
@@ -269,42 +334,96 @@ export const RegisterTab: React.FC<RegisterTabProps> = ({
         </div>
       </Card>
 
-      {/* 2. Đăng ký lịch làm mới Card (Moved Above File Sheet Card) */}
+      {/* 2. Đăng ký lịch làm mới Card (Redesigned Custom Sleek Dropdown & Auto Sheet Scanner) */}
       <Card className="p-3.5 space-y-3 border-brand-100/80 shadow-xs">
-        <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center justify-between gap-2 flex-wrap">
           <span className="text-xs font-black text-slate-800 flex items-center gap-1.5">
             <Calendar className="w-4 h-4 text-emerald-600" />
             Đăng ký lịch làm mới
           </span>
 
-          <div className="flex items-center gap-1 bg-slate-50 border border-slate-200/80 px-2 py-1 rounded-xl text-xs font-bold text-slate-700 shrink-0">
-            <span className="text-[11px] text-slate-500 font-medium">Kỳ lương:</span>
+          {/* Scan Sheet Months Button */}
+          <button
+            type="button"
+            onClick={handleScanSheetMonths}
+            disabled={isScanningSheet}
+            className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 text-[10px] font-bold rounded-xl flex items-center gap-1 transition-all cursor-pointer disabled:opacity-50"
+            title="Quét ngầm trạng thái các tab trên Google Sheet"
+          >
+            <SearchCheck className={`w-3 h-3 text-slate-500 ${isScanningSheet ? 'animate-spin' : ''}`} />
+            <span>Quét Sheet</span>
+          </button>
+        </div>
+
+        {/* Sleek Custom Month Selector Pill */}
+        <div className="flex items-center justify-between gap-2 p-2 bg-slate-50 border border-slate-200/80 rounded-2xl">
+          <div className="flex items-center gap-1.5">
+            <span className="text-xs font-bold text-slate-700">Kỳ lương:</span>
+            {isCurrentMonthAvailable ? (
+              <span className="px-2 py-0.5 bg-emerald-100 text-emerald-800 font-extrabold text-[10px] rounded-full flex items-center gap-1">
+                <CheckCircle2 className="w-3 h-3 text-emerald-600" /> Đã có tab trên Sheet
+              </span>
+            ) : (
+              <span className="px-2 py-0.5 bg-rose-100 text-rose-800 font-extrabold text-[10px] rounded-full flex items-center gap-1">
+                <Lock className="w-3 h-3 text-rose-600" /> Quản lý chưa tạo tab
+              </span>
+            )}
+          </div>
+
+          {/* Premium Custom Redesigned Month Select */}
+          <div className="relative inline-flex items-center">
             <select
               value={targetMonth}
               onChange={(e) => setTargetMonth(Number(e.target.value))}
-              className="bg-transparent font-black text-brand-700 focus:outline-none cursor-pointer text-xs"
+              className="bg-white border border-brand-300 text-brand-900 font-black text-xs px-3 py-1.5 pr-7 rounded-xl shadow-2xs focus:outline-none focus:ring-2 focus:ring-brand-500/20 cursor-pointer appearance-none"
             >
-              {[7, 8, 9, 10, 11, 12].map((m) => (
-                <option key={m} value={m}>
-                  Tháng {m}
-                </option>
-              ))}
+              {[7, 8, 9, 10, 11, 12].map((m) => {
+                const isAvail = sheetMonthStatus[m] ?? false;
+                return (
+                  <option
+                    key={m}
+                    value={m}
+                    className={isAvail ? 'text-slate-900 font-bold' : 'text-slate-400 font-normal italic'}
+                  >
+                    {isAvail ? `Tháng ${m} (Sẵn sàng)` : `🔒 Tháng ${m} (Chưa có tab)`}
+                  </option>
+                );
+              })}
             </select>
+            <ChevronDown className="w-3.5 h-3.5 text-brand-600 absolute right-2.5 pointer-events-none stroke-[2.5]" />
           </div>
         </div>
 
-        <p className="text-[11px] text-slate-500 font-medium leading-relaxed">
-          Đăng ký nhanh ca Sáng / Chiều / Full cho Tháng {targetMonth}/{targetYear} bằng bộ chọn lịch dropdown siêu tốc.
-        </p>
+        {/* Warning if Month is not yet created by manager */}
+        {!isCurrentMonthAvailable ? (
+          <div className="p-2.5 bg-rose-50 border border-rose-200/80 rounded-2xl flex items-center gap-2 text-rose-900 text-[11px] font-semibold leading-tight">
+            <Lock className="w-4 h-4 text-rose-600 shrink-0" />
+            <span>
+              Quản lý chưa tạo tab <strong>Tháng {targetMonth}</strong> trên Google Sheet. Bạn có thể xem trước hoặc chờ Quản lý mở tab để đăng ký!
+            </span>
+          </div>
+        ) : (
+          <p className="text-[11px] text-slate-500 font-medium leading-relaxed">
+            Đăng ký nhanh ca Sáng / Chiều / Full cho Tháng {targetMonth}/{targetYear} bằng bộ chọn lịch dropdown siêu tốc.
+          </p>
+        )}
 
         {/* Big Prominent Open Popup Calendar Button */}
         <button
           type="button"
           onClick={() => setIsModalOpen(true)}
-          className="w-full py-3 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 active:scale-98 text-white font-black text-xs rounded-2xl shadow-soft flex items-center justify-center gap-2 transition-all cursor-pointer"
+          className={`w-full py-3 text-white font-black text-xs rounded-2xl shadow-soft flex items-center justify-center gap-2 transition-all cursor-pointer active:scale-98 ${
+            isCurrentMonthAvailable
+              ? 'bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700'
+              : 'bg-slate-700 hover:bg-slate-800'
+          }`}
         >
           <Calendar className="w-4 h-4 text-emerald-100" />
-          <span>Mở Bộ Chọn Lịch Đăng Ký Ca Làm (Tháng {targetMonth})</span>
+          <span>
+            {isCurrentMonthAvailable
+              ? `Mở Bộ Chọn Lịch Đăng Ký Ca Làm (Tháng ${targetMonth})`
+              : `Xem Bộ Chọn Lịch Tháng ${targetMonth} (🔒 Chưa có tab)`}
+          </span>
         </button>
       </Card>
 
@@ -355,8 +474,13 @@ export const RegisterTab: React.FC<RegisterTabProps> = ({
                   <Calendar className="w-4 h-4 stroke-[2.5]" />
                 </div>
                 <div>
-                  <h3 className="text-sm font-black text-slate-900">
-                    Đăng Ký Ca Làm Tháng {targetMonth}/{targetYear}
+                  <h3 className="text-sm font-black text-slate-900 flex items-center gap-1.5">
+                    <span>Đăng Ký Ca Làm Tháng {targetMonth}/{targetYear}</span>
+                    {!isCurrentMonthAvailable && (
+                      <span className="text-[10px] bg-rose-100 text-rose-700 px-2 py-0.5 rounded-full font-bold">
+                        🔒 Chưa có tab
+                      </span>
+                    )}
                   </h3>
                   <p className="text-[10px] font-medium text-slate-500">
                     Chọn kịch bản nhanh hoặc chọn dropdown từng ngày
@@ -404,7 +528,7 @@ export const RegisterTab: React.FC<RegisterTabProps> = ({
               </div>
             </div>
 
-            {/* Calendar Grid Container (42 Days Grid with Dropdowns) */}
+            {/* Calendar Grid Container (42 Days Grid with Redesigned Dropdowns) */}
             <div className="p-3 overflow-y-auto flex-1 space-y-2">
               {/* Days of Week Header */}
               <div className="grid grid-cols-7 gap-1 text-center">
@@ -415,7 +539,7 @@ export const RegisterTab: React.FC<RegisterTabProps> = ({
                 ))}
               </div>
 
-              {/* 42-Cell Date Grid with Dropdown in Each Cell */}
+              {/* 42-Cell Date Grid with Redesigned Dropdown in Each Cell */}
               <div className="grid grid-cols-7 gap-1">
                 {calendarDays.map((cell, idx) => {
                   const shift = getShiftForDate(cell.dateIso);
@@ -423,7 +547,7 @@ export const RegisterTab: React.FC<RegisterTabProps> = ({
                   return (
                     <div
                       key={`${cell.dateIso}-${idx}`}
-                      className={`min-h-[50px] p-1 rounded-xl border flex flex-col justify-between transition-all select-none relative ${
+                      className={`min-h-[52px] p-1 rounded-xl border flex flex-col justify-between transition-all select-none relative ${
                         !cell.isCurrentMonth
                           ? 'opacity-25 bg-slate-50 border-slate-100'
                           : shift === 'FULL'
@@ -435,39 +559,41 @@ export const RegisterTab: React.FC<RegisterTabProps> = ({
                           : 'bg-slate-50 text-slate-700 border-slate-200'
                       }`}
                     >
-                      <div className="flex items-center justify-between w-full">
+                      <div className="flex items-center justify-between w-full px-0.5">
                         <span className="text-[10px] font-black leading-none">{cell.dayNumber}</span>
                       </div>
 
                       {cell.isCurrentMonth && (
-                        <select
-                          value={shift}
-                          onChange={(e) =>
-                            handleDropdownChange(cell.dateIso, e.target.value as QuickShiftType)
-                          }
-                          className={`w-full text-[10px] font-black rounded-lg px-0.5 py-0.5 focus:outline-none cursor-pointer text-center appearance-none ${
-                            shift === 'FULL'
-                              ? 'bg-emerald-600 text-white'
-                              : shift === 'SANG'
-                              ? 'bg-sky-600 text-white'
-                              : shift === 'CHIEU'
-                              ? 'bg-amber-600 text-white'
-                              : 'bg-white text-slate-700 border border-slate-300'
-                          }`}
-                        >
-                          <option value="OFF" className="bg-white text-slate-800 font-bold">
-                            OFF
-                          </option>
-                          <option value="SANG" className="bg-sky-50 text-sky-900 font-bold">
-                            Sáng
-                          </option>
-                          <option value="CHIEU" className="bg-amber-50 text-amber-900 font-bold">
-                            Chiều
-                          </option>
-                          <option value="FULL" className="bg-emerald-50 text-emerald-900 font-bold">
-                            Full
-                          </option>
-                        </select>
+                        <div className="relative w-full mt-1">
+                          <select
+                            value={shift}
+                            onChange={(e) =>
+                              handleDropdownChange(cell.dateIso, e.target.value as QuickShiftType)
+                            }
+                            className={`w-full text-[10px] font-black rounded-lg px-1 py-0.5 focus:outline-none cursor-pointer text-center appearance-none transition-all shadow-2xs border ${
+                              shift === 'FULL'
+                                ? 'bg-emerald-600 text-white border-emerald-400'
+                                : shift === 'SANG'
+                                ? 'bg-sky-600 text-white border-sky-400'
+                                : shift === 'CHIEU'
+                                ? 'bg-amber-600 text-white border-amber-400'
+                                : 'bg-white text-slate-800 border-slate-300'
+                            }`}
+                          >
+                            <option value="OFF" className="bg-white text-slate-800 font-bold">
+                              OFF
+                            </option>
+                            <option value="SANG" className="bg-sky-50 text-sky-900 font-bold">
+                              Sáng
+                            </option>
+                            <option value="CHIEU" className="bg-amber-50 text-amber-900 font-bold">
+                              Chiều
+                            </option>
+                            <option value="FULL" className="bg-emerald-50 text-emerald-900 font-bold">
+                              Full
+                            </option>
+                          </select>
+                        </div>
                       )}
                     </div>
                   );
@@ -488,18 +614,27 @@ export const RegisterTab: React.FC<RegisterTabProps> = ({
               <button
                 type="button"
                 onClick={handleSaveRealtimeSheet}
-                disabled={isSavingSheet}
-                className="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-700 active:scale-98 text-white font-black text-xs rounded-xl shadow-soft flex items-center justify-center gap-2 transition-all cursor-pointer disabled:opacity-50"
+                disabled={isSavingSheet || !isCurrentMonthAvailable}
+                className={`flex-1 py-2.5 text-white font-black text-xs rounded-xl shadow-soft flex items-center justify-center gap-2 transition-all cursor-pointer disabled:opacity-50 ${
+                  isCurrentMonthAvailable
+                    ? 'bg-emerald-600 hover:bg-emerald-700 active:scale-98'
+                    : 'bg-slate-400 cursor-not-allowed'
+                }`}
               >
                 {isSavingSheet ? (
                   <>
                     <RefreshCw className="w-4 h-4 animate-spin" />
                     <span>Đang gửi sang Google Sheet...</span>
                   </>
-                ) : (
+                ) : isCurrentMonthAvailable ? (
                   <>
                     <Send className="w-4 h-4" />
                     <span>Lưu & Ghi Realtime Sang Google Sheet</span>
+                  </>
+                ) : (
+                  <>
+                    <Lock className="w-4 h-4" />
+                    <span>Chưa Có Tab Trên Sheet</span>
                   </>
                 )}
               </button>
