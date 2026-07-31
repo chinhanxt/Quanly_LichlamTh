@@ -115,10 +115,30 @@ export default function Home() {
     }
     fetchItems();
     if (isChinhan) {
+      // Trigger Realtime Google Sheet Cell Push
+      try {
+        await fetch('/api/sync-google-sheet/push', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-username': user?.username || 'chinhan',
+          },
+          body: JSON.stringify({
+            date: data.date || selectedDate,
+            dayOfWeek: data.dayOfWeek || selectedDay,
+            action: 'upsert',
+            shiftType: data.note || (data.startTime?.startsWith('07') ? 'SANG' : 'CHIEU'),
+            subject: data.subject,
+          }),
+        });
+      } catch (e) {
+        console.error('Sheet push error:', e);
+      }
+
       showToast({
         type: 'success',
-        title: 'Cập nhật Realtime Google Sheet ⚡',
-        message: 'Đã tự động cập nhật ca làm lên Google Sheet (chinhan15102005@gmail.com).',
+        title: 'Đã Cập Nhật Realtime Sang Google Sheet ⚡',
+        message: `Đã tự động điền 'x' vào ca ${data.subject || 'làm'} trên Google Sheet của Quản lý.`,
       });
     }
   };
@@ -132,6 +152,7 @@ export default function Home() {
   const confirmDelete = async () => {
     if (!deletingId) return;
     const targetId = deletingId;
+    const targetItem = items.find((i) => i.id === targetId);
     setDeletingId(null);
     setItems((prev) => prev.filter((i) => i.id !== targetId));
     try {
@@ -143,10 +164,32 @@ export default function Home() {
       });
       const json = await res.json();
       if (json.success) {
+        if (isChinhan && targetItem) {
+          // Trigger Realtime Google Sheet Cell Push (Remove 'x')
+          try {
+            await fetch('/api/sync-google-sheet/push', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'x-username': user?.username || 'chinhan',
+              },
+              body: JSON.stringify({
+                date: targetItem.date,
+                dayOfWeek: targetItem.dayOfWeek,
+                action: 'delete',
+              }),
+            });
+          } catch (e) {
+            console.error('Sheet push delete error:', e);
+          }
+        }
+
         showToast({
           type: 'info',
-          title: 'Đã xóa & Cập nhật Realtime ⚡',
-          message: 'Đã xóa ca làm và cập nhật Realtime lên Google Sheet (chinhan15102005@gmail.com).',
+          title: 'Đã Xóa & Bỏ \'x\' Trên Google Sheet ⚡',
+          message: targetItem?.date
+            ? `Đã xóa ca làm và tự động bỏ dấu 'x' ngày ${targetItem.date} trên Google Sheet!`
+            : 'Đã xóa ca làm và tự động đồng bộ bỏ dấu \'x\' trên Google Sheet của Quản lý.',
         });
       }
     } catch (e) {
