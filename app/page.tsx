@@ -386,7 +386,7 @@ export default function Home() {
         ) : activeTab === 'salary' ? (
           <SalaryTab items={items} settings={settings} onSaveSettings={handleSaveSettings} />
         ) : activeTab === 'notes' ? (
-          <NotesTab settings={settings} onSaveSettings={handleSaveSettings} />
+          <NotesTab settings={settings} onSaveSettings={handleSaveSettings} items={items} />
         ) : activeTab === 'notifications' ? (
           <NotificationsTab settings={settings} onSaveSettings={handleSaveSettings} />
         ) : (

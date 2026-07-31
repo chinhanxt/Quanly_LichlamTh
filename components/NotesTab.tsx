@@ -13,7 +13,7 @@ import {
   ChevronLeft,
   ChevronRight,
 } from 'lucide-react';
-import { ScheduleSettings, UserNote } from '@/types/schedule';
+import { ScheduleItem, ScheduleSettings, UserNote } from '@/types/schedule';
 import { formatLocalDateIso } from '@/lib/salary-calculator';
 import { Card } from './ui/Card';
 import { useToast } from './ui/Toast';
@@ -21,6 +21,7 @@ import { useToast } from './ui/Toast';
 interface NotesTabProps {
   settings: ScheduleSettings;
   onSaveSettings: (s: ScheduleSettings) => Promise<void>;
+  items?: ScheduleItem[];
 }
 
 export function formatTimestamp(d: Date = new Date()): string {
@@ -59,7 +60,48 @@ export function formatDateDisplayLong(dateStr?: string): string {
   return dateStr;
 }
 
-export const NotesTab: React.FC<NotesTabProps> = ({ settings, onSaveSettings }) => {
+export function getShiftBadgeForDate(iso: string, items: ScheduleItem[], isChinhan: boolean): { code: string; hours: string } {
+  const dayShifts = items.filter((it) => it.date === iso);
+
+  if (dayShifts.length >= 2) {
+    return { code: 'Full', hours: '2 ca' };
+  }
+
+  if (dayShifts.length === 1) {
+    const s = dayShifts[0];
+    const isSang = s.startTime.startsWith('07') || s.startTime.startsWith('08') || s.subject.includes('Sáng');
+    const isChieu = s.startTime.startsWith('13') || s.startTime.startsWith('12') || s.subject.includes('Chiều');
+    if (isSang) return { code: 'Sáng', hours: '1 ca' };
+    if (isChieu) return { code: 'Chiều', hours: '1 ca' };
+    const shiftName = s.note || s.subject || 'Làm';
+    const code = shiftName.length > 6 ? shiftName.substring(0, 5) : shiftName;
+    return { code, hours: '1 ca' };
+  }
+
+  // Fallback if no explicit items found for this date
+  const dObj = new Date(iso);
+  const dayIndex = dObj.getDay();
+
+  if (isChinhan) {
+    if (dayIndex >= 1 && dayIndex <= 5) {
+      return { code: 'Full', hours: '2 ca' };
+    }
+    return { code: 'OFF', hours: '0 ca' };
+  } else {
+    const defaultShiftsThanhHuong: Record<number, { code: string; hours: string }> = {
+      1: { code: 'B18', hours: '4h' },
+      2: { code: 'B16', hours: '6h' },
+      3: { code: 'B18', hours: '4h' },
+      4: { code: 'B18', hours: '4h' },
+      5: { code: 'B18', hours: '4h' },
+      6: { code: 'B', hours: '7h' },
+      0: { code: 'OFF', hours: '0h' },
+    };
+    return defaultShiftsThanhHuong[dayIndex] || { code: 'OFF', hours: '0h' };
+  }
+}
+
+export const NotesTab: React.FC<NotesTabProps> = ({ settings, onSaveSettings, items = [] }) => {
   const [notes, setNotes] = useState<UserNote[]>(settings.userNotes || []);
   const [savingStatus, setSavingStatus] = useState<'saved' | 'saving' | 'idle'>('idle');
 
@@ -94,28 +136,6 @@ export const NotesTab: React.FC<NotesTabProps> = ({ settings, onSaveSettings }) 
     const dayNamesVi = ['Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7', 'Chủ Nhật'];
     const shortNames = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
 
-    const defaultShiftsThanhHuong: Record<number, { code: string; hours: string }> = {
-      1: { code: 'B18', hours: '4h' },
-      2: { code: 'B16', hours: '6h' },
-      3: { code: 'B18', hours: '4h' },
-      4: { code: 'B18', hours: '4h' },
-      5: { code: 'B18', hours: '4h' },
-      6: { code: 'B', hours: '7h' },
-      0: { code: 'OFF', hours: '0h' },
-    };
-
-    const defaultShiftsChinhan: Record<number, { code: string; hours: string }> = {
-      1: { code: 'Full', hours: '2 ca' },
-      2: { code: 'Full', hours: '2 ca' },
-      3: { code: 'Full', hours: '2 ca' },
-      4: { code: 'Full', hours: '2 ca' },
-      5: { code: 'Full', hours: '2 ca' },
-      6: { code: 'OFF', hours: '0 ca' },
-      0: { code: 'OFF', hours: '0 ca' },
-    };
-
-    const defaultShifts = isChinhan ? defaultShiftsChinhan : defaultShiftsThanhHuong;
-
     for (let i = 0; i < 7; i++) {
       const d = new Date(monday);
       d.setDate(monday.getDate() + i);
@@ -124,8 +144,7 @@ export const NotesTab: React.FC<NotesTabProps> = ({ settings, onSaveSettings }) 
       const monthNum = String(d.getMonth() + 1).padStart(2, '0');
       const dayIndex = d.getDay();
 
-      const shiftInfo = defaultShifts[dayIndex] || (isChinhan ? { code: 'Full', hours: '2 ca' } : { code: 'B18', hours: '4h' });
-
+      const shiftInfo = getShiftBadgeForDate(iso, items, isChinhan);
       const todayIso = formatLocalDateIso(now);
 
       days.push({
@@ -141,7 +160,7 @@ export const NotesTab: React.FC<NotesTabProps> = ({ settings, onSaveSettings }) 
     }
 
     return days;
-  }, [isChinhan]);
+  }, [isChinhan, items]);
 
   // Generate 35-42 days for custom in-app calendar grid modal
   const calendarGridDays = useMemo(() => {
@@ -676,6 +695,20 @@ export const NotesTab: React.FC<NotesTabProps> = ({ settings, onSaveSettings }) 
             <div className="grid grid-cols-7 gap-1 text-center">
               {calendarGridDays.map((day) => {
                 const isSelected = targetDate === day.iso;
+                const shiftBadge = getShiftBadgeForDate(day.iso, items, isChinhan);
+                const isOff = shiftBadge.code === 'OFF';
+
+                let badgeStyle = 'bg-slate-200 text-slate-600';
+                if (shiftBadge.code === 'Full') {
+                  badgeStyle = isSelected ? 'bg-white text-purple-700 font-black' : 'bg-purple-600 text-white';
+                } else if (shiftBadge.code === 'Sáng') {
+                  badgeStyle = isSelected ? 'bg-white text-amber-700 font-black' : 'bg-amber-500 text-white';
+                } else if (shiftBadge.code === 'Chiều') {
+                  badgeStyle = isSelected ? 'bg-white text-sky-700 font-black' : 'bg-sky-500 text-white';
+                } else if (!isOff) {
+                  badgeStyle = isSelected ? 'bg-white text-brand-700 font-black' : 'bg-brand-600 text-white';
+                }
+
                 return (
                   <button
                     key={day.iso}
@@ -684,22 +717,32 @@ export const NotesTab: React.FC<NotesTabProps> = ({ settings, onSaveSettings }) 
                     onClick={() => {
                       if (day.isPast) return;
                       setTargetDate(day.iso);
-                      setTargetShiftCode('');
+                      setTargetShiftCode(isOff ? '' : shiftBadge.code);
                       setShowCalendarModal(false);
                     }}
-                    className={`h-9 w-9 mx-auto rounded-xl text-xs font-bold transition-all flex items-center justify-center ${
+                    className={`min-h-[48px] w-full p-1 rounded-2xl transition-all flex flex-col items-center justify-between border ${
                       day.isPast
-                        ? 'text-slate-300/50 opacity-30 cursor-not-allowed pointer-events-none bg-slate-50'
+                        ? 'text-slate-300/50 opacity-30 cursor-not-allowed pointer-events-none bg-slate-50 border-transparent'
                         : isSelected
-                        ? 'bg-brand-600 text-white shadow-md font-black scale-110 ring-2 ring-brand-300 cursor-pointer'
+                        ? 'bg-brand-600 text-white shadow-md font-black scale-105 border-brand-600 ring-2 ring-brand-300 cursor-pointer'
                         : day.isToday
-                        ? 'bg-brand-100 text-brand-800 font-extrabold border border-brand-300 cursor-pointer'
+                        ? 'bg-brand-50 text-brand-900 font-extrabold border-brand-300 shadow-2xs hover:bg-brand-100 cursor-pointer'
                         : day.isCurrentMonth
-                        ? 'text-slate-800 hover:bg-slate-100 cursor-pointer'
-                        : 'text-slate-300 hover:bg-slate-50 cursor-pointer'
+                        ? 'bg-slate-50/90 border-slate-200/80 text-slate-800 hover:bg-slate-100 cursor-pointer'
+                        : 'bg-transparent border-transparent text-slate-300 hover:bg-slate-50 cursor-pointer'
                     }`}
                   >
-                    {day.dayNum}
+                    <span className={`text-[11px] leading-none font-black ${isSelected ? 'text-white' : 'text-slate-800'}`}>
+                      {day.dayNum}
+                    </span>
+
+                    {!isOff ? (
+                      <span className={`text-[9px] leading-tight font-extrabold px-1 py-0.5 rounded-md transition-colors ${badgeStyle}`}>
+                        {shiftBadge.code}
+                      </span>
+                    ) : (
+                      <span className="text-[9px] leading-tight text-slate-300 font-medium">OFF</span>
+                    )}
                   </button>
                 );
               })}
