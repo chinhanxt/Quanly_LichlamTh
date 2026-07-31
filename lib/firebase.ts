@@ -96,9 +96,12 @@ export async function getSettingsForUser(username: string): Promise<ScheduleSett
     const docSnap = await getDoc(docRef);
     if (docSnap.exists()) {
       const data = docSnap.data();
+      const defaultRate = username === 'chinhan' ? 100000 : 26000;
+      const rate = typeof data.hourlyRate === 'number' && data.hourlyRate !== 26000 ? data.hourlyRate : defaultRate;
       return {
         ...local,
         ...data,
+        hourlyRate: rate,
         username,
       } as ScheduleSettings;
     } else if (username === 'thanhhuong') {

@@ -307,14 +307,18 @@ export function getSettingsForUserLocal(username: string): ScheduleSettings {
       const raw = fs.readFileSync(userSettingsFile, 'utf-8');
       const parsed = JSON.parse(raw);
       const user = getUserLocal(username);
-      const defaultEmpName = user ? user.displayName : username;
+      const defaultEmpName = user ? user.displayName : (username === 'chinhan' ? 'Nguyễn Chí Nhân' : username);
       const empName = (username !== 'thanhhuong' && (!parsed.employeeName || parsed.employeeName === 'Thanh Hương'))
         ? defaultEmpName
         : (parsed.employeeName || defaultEmpName);
+      const defaultRate = username === 'chinhan' ? 100000 : 26000;
+      const rate = typeof parsed.hourlyRate === 'number' && parsed.hourlyRate !== 26000 ? parsed.hourlyRate : defaultRate;
+
       return {
         ...DEFAULT_SETTINGS,
         ...parsed,
         employeeName: empName,
+        hourlyRate: rate,
         username,
       };
     }
@@ -325,10 +329,12 @@ export function getSettingsForUserLocal(username: string): ScheduleSettings {
     }
     // Other users get clean default settings with employeeName set to user's displayName
     const user = getUserLocal(username);
-    const empName = user ? user.displayName : username;
+    const empName = user ? user.displayName : (username === 'chinhan' ? 'Nguyễn Chí Nhân' : username);
+    const defaultRate = username === 'chinhan' ? 100000 : 26000;
     return {
       ...DEFAULT_SETTINGS,
       employeeName: empName,
+      hourlyRate: defaultRate,
       username,
     };
   } catch (err) {
