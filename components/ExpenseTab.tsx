@@ -83,6 +83,7 @@ export const ExpenseTab: React.FC<ExpenseTabProps> = ({ settings, onSaveSettings
   const [rawInput, setRawInput] = useState('');
   const [isParsing, setIsParsing] = useState(false);
   const [filterType, setFilterType] = useState<'all' | 'Thu' | 'Chi'>('all');
+  const [autoAddK, setAutoAddK] = useState<boolean>(true);
   const now = new Date();
   const [selectedMonth, setSelectedMonth] = useState<number>(now.getMonth() + 1);
   const [selectedYear, setSelectedYear] = useState<number>(now.getFullYear());
@@ -149,7 +150,7 @@ export const ExpenseTab: React.FC<ExpenseTabProps> = ({ settings, onSaveSettings
           'Content-Type': 'application/json',
           'x-username': 'chinhan'
         },
-        body: JSON.stringify({ rawText: rawInput }),
+        body: JSON.stringify({ rawText: rawInput, autoAddK }),
       });
 
       const json = await res.json();
@@ -384,13 +385,26 @@ export const ExpenseTab: React.FC<ExpenseTabProps> = ({ settings, onSaveSettings
           <label className="text-xs font-bold text-gray-800 flex items-center gap-1.5">
             <Sparkles className="w-4 h-4 text-amber-500 animate-pulse" /> Nhập Văn Bản Thu/Chi
           </label>
+          <button
+            type="button"
+            onClick={() => setAutoAddK(!autoAddK)}
+            className={`px-2.5 py-1 rounded-xl text-[11px] font-bold border transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs select-none ${
+              autoAddK 
+                ? 'bg-emerald-50 border-emerald-200 text-emerald-700' 
+                : 'bg-gray-50 border-gray-200 text-gray-400'
+            }`}
+            title="Bật/Tắt tự động thêm 'k' sau số tiền (Ví dụ: Nhập 45 -> 45k)"
+          >
+            <span className={`w-2 h-2 rounded-full ${autoAddK ? 'bg-emerald-500 animate-pulse' : 'bg-gray-300'}`}></span>
+            <span>Tự thêm "k" (45 ➔ 45k)</span>
+          </button>
         </div>
 
         <textarea
           ref={textareaRef}
           value={rawInput}
           onChange={(e) => setRawInput(e.target.value)}
-          placeholder="Ví dụ: Ăn 45k, Uống 30k, Đổ xăng 50k..."
+          placeholder={autoAddK ? "Ví dụ: Ăn 45, Uống 30, Đổ xăng 50..." : "Ví dụ: Ăn 45k, Uống 30k, Đổ xăng 50k..."}
           className="w-full h-24 p-3 border border-gray-200/80 rounded-2xl text-xs text-gray-800 placeholder-gray-400 focus:ring-2 focus:ring-brand-500 focus:border-brand-500 bg-white outline-none transition-all resize-none shadow-xs"
         />
 
