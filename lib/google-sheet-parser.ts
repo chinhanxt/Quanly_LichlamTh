@@ -24,6 +24,62 @@ export async function parseGoogleSheetSchedule(
   const matchGid = sheetUrl.match(/gid=([0-9]+)/);
   if (matchGid && matchGid[1]) gid = matchGid[1];
 
+  // Try auto-resolving sheet GID from htmlview if targetMonth is provided
+  if (targetMonth) {
+    try {
+      const htmlRes = await fetch(`https://docs.google.com/spreadsheets/d/${spreadsheetId}/htmlview`, {
+        cache: 'no-store',
+      });
+      if (htmlRes.ok) {
+        const html = await htmlRes.text();
+        const matches = [...html.matchAll(/name:\s*"([^"]+)"[^}]*?gid:\s*"([^"]+)"/g)];
+        const sheets = matches.map((m) => ({ name: m[1], gid: m[2] }));
+
+        const m = String(targetMonth);
+        const mm = m.padStart(2, '0');
+        const y = targetYear ? String(targetYear) : '';
+
+        let matchedSheet: { name: string; gid: string } | undefined;
+
+        if (y) {
+          matchedSheet = sheets.find((s) => {
+            const name = s.name.trim().toLowerCase();
+            return (
+              name === `${m}.${y}` ||
+              name === `${mm}.${y}` ||
+              name === `${m}/${y}` ||
+              name === `${mm}/${y}` ||
+              name === `${m}-${y}` ||
+              name === `${mm}-${y}` ||
+              name === `tháng ${m}.${y}` ||
+              name === `tháng ${mm}.${y}` ||
+              name === `tháng ${m}/${y}` ||
+              name === `tháng ${mm}/${y}` ||
+              name === `t${m}.${y}` ||
+              name === `t${mm}.${y}`
+            );
+          });
+
+          if (!matchedSheet) {
+            const myRegex = new RegExp(`(?:^|\\D)0?${m}[\\/\\.\\-]${y}(?:$|\\D)`, 'i');
+            matchedSheet = sheets.find((s) => myRegex.test(s.name));
+          }
+        }
+
+        if (!matchedSheet) {
+          const mRegex = new RegExp(`(?:tháng|t)?\\s*0?${m}(?:$|\\D)`, 'i');
+          matchedSheet = sheets.find((s) => mRegex.test(s.name));
+        }
+
+        if (matchedSheet) {
+          gid = matchedSheet.gid;
+        }
+      }
+    } catch (e) {
+      console.warn('Could not auto-detect sheet GID via htmlview:', e);
+    }
+  }
+
   const csvUrl = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/export?format=csv&gid=${gid}`;
   const res = await fetch(csvUrl, { cache: 'no-store' });
   if (!res.ok) {
@@ -33,18 +89,21 @@ export async function parseGoogleSheetSchedule(
   const text = await res.text();
   const lines = text.split('\n').map((l) => l.split(','));
 
-  // 1. Detect Month & Year
-  let month = new Date().getMonth() + 1;
-  let year = new Date().getFullYear();
+  // 1. Detect Month & Year from sheet title
+  let detectedMonth: number | null = null;
+  let detectedYear: number | null = null;
   for (const line of lines) {
     const joined = line.join(' ');
-    const m = joined.match(/THÁNG\s+(\d+)\/(\d+)/i);
+    const m = joined.match(/THÁNG\s*(\d+)(?:[\/\.](\d{4}))?/i);
     if (m) {
-      month = parseInt(m[1], 10);
-      year = parseInt(m[2], 10);
+      detectedMonth = parseInt(m[1], 10);
+      if (m[2]) detectedYear = parseInt(m[2], 10);
       break;
     }
   }
+
+  let month = detectedMonth || targetMonth || new Date().getMonth() + 1;
+  let year = detectedYear || targetYear || new Date().getFullYear();
 
   // Validate target Month & Year if requested by user
   if (targetMonth && targetYear) {
@@ -82,15 +141,27 @@ export async function parseGoogleSheetSchedule(
   let sangRow: string[] | null = null;
   let chieuRow: string[] | null = null;
 
+  // Try strict match first (all tokens present)
   for (let r = 0; r < lines.length; r++) {
     const row = lines[r];
-    const namePart = ((row[1] || '') + ' ' + (row[2] || '')).toLowerCase().trim();
-    const isMatch = targetTokens.some((token) => namePart.includes(token));
-
-    if (isMatch) {
+    const namePart = row.slice(0, 5).join(' ').toLowerCase().trim();
+    if (targetTokens.every((token) => namePart.includes(token))) {
       sangRow = row;
       chieuRow = lines[r + 1] || null;
       break;
+    }
+  }
+
+  // Fallback to partial match if strict match not found
+  if (!sangRow) {
+    for (let r = 0; r < lines.length; r++) {
+      const row = lines[r];
+      const namePart = row.slice(0, 5).join(' ').toLowerCase().trim();
+      if (targetTokens.some((token) => namePart.includes(token))) {
+        sangRow = row;
+        chieuRow = lines[r + 1] || null;
+        break;
+      }
     }
   }
 
