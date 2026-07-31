@@ -6,7 +6,7 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
   try {
     const { id } = await params;
     const sessionUser = getAuthSessionUser(request);
-    const username = sessionUser?.username || 'thanhhuong';
+    const username = sessionUser?.username || request.headers.get('x-username') || 'chinhan';
     const body = await request.json();
     const success = await updateScheduleItemForUser(username, id, { ...body, username });
     if (!success) return NextResponse.json({ success: false, error: 'Item not found' }, { status: 404 });
@@ -20,7 +20,7 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
   try {
     const { id } = await params;
     const sessionUser = getAuthSessionUser(request);
-    const username = sessionUser?.username || 'thanhhuong';
+    const username = sessionUser?.username || request.headers.get('x-username') || 'chinhan';
     await deleteScheduleItemForUser(username, id);
     return NextResponse.json({ success: true, message: 'Đã xóa ca làm thành công' });
   } catch (error: any) {

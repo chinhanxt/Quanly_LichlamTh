@@ -58,7 +58,9 @@ export default function Home() {
   const fetchItems = async () => {
     try {
       setLoading(true);
-      const res = await fetch('/api/schedule');
+      const res = await fetch('/api/schedule', {
+        headers: { 'x-username': user?.username || 'chinhan' },
+      });
       const json = await res.json();
       if (json.success) setItems(json.data);
     } catch (e) {
@@ -70,7 +72,9 @@ export default function Home() {
 
   const fetchSettings = async () => {
     try {
-      const res = await fetch('/api/settings');
+      const res = await fetch('/api/settings', {
+        headers: { 'x-username': user?.username || 'chinhan' },
+      });
       const json = await res.json();
       if (json.success && json.data) {
         setSettings({
@@ -93,13 +97,19 @@ export default function Home() {
     if (editingItem) {
       await fetch(`/api/schedule/${editingItem.id}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'x-username': user?.username || 'chinhan',
+        },
         body: JSON.stringify(data),
       });
     } else {
       await fetch('/api/schedule', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'x-username': user?.username || 'chinhan',
+        },
         body: JSON.stringify(data),
       });
     }
@@ -125,7 +135,12 @@ export default function Home() {
     setDeletingId(null);
     setItems((prev) => prev.filter((i) => i.id !== targetId));
     try {
-      const res = await fetch(`/api/schedule/${targetId}`, { method: 'DELETE' });
+      const res = await fetch(`/api/schedule/${targetId}`, {
+        method: 'DELETE',
+        headers: {
+          'x-username': user?.username || 'chinhan',
+        },
+      });
       const json = await res.json();
       if (json.success) {
         showToast({

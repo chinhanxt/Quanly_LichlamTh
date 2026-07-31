@@ -8,7 +8,7 @@ export const revalidate = 0;
 export async function GET(request: Request) {
   try {
     const sessionUser = getAuthSessionUser(request);
-    const username = sessionUser?.username || 'thanhhuong';
+    const username = sessionUser?.username || request.headers.get('x-username') || 'chinhan';
     const items = await getScheduleItemsForUser(username);
     return NextResponse.json({ success: true, data: items });
   } catch (error: any) {
@@ -19,7 +19,7 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const sessionUser = getAuthSessionUser(request);
-    const username = sessionUser?.username || 'thanhhuong';
+    const username = sessionUser?.username || request.headers.get('x-username') || 'chinhan';
     const body = await request.json();
     if (Array.isArray(body)) {
       const merged = await saveScheduleItemsForUser(username, body);
