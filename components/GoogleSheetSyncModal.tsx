@@ -9,6 +9,7 @@ interface GoogleSheetSyncModalProps {
   onSync: (targetMonth: number, targetYear: number, sheetUrl?: string) => Promise<void>;
   initialSheetUrl?: string;
   employeeName?: string;
+  availableMonths?: number[];
 }
 
 export const GoogleSheetSyncModal: React.FC<GoogleSheetSyncModalProps> = ({
@@ -17,9 +18,14 @@ export const GoogleSheetSyncModal: React.FC<GoogleSheetSyncModalProps> = ({
   onSync,
   initialSheetUrl,
   employeeName = 'Nguyễn Chí Nhân',
+  availableMonths = [7, 8],
 }) => {
   const now = new Date();
-  const [selectedMonth, setSelectedMonth] = useState<number>(now.getMonth() + 1);
+  const defaultMonth = availableMonths.includes(now.getMonth() + 1)
+    ? now.getMonth() + 1
+    : availableMonths[availableMonths.length - 1] || 7;
+
+  const [selectedMonth, setSelectedMonth] = useState<number>(defaultMonth);
   const [selectedYear, setSelectedYear] = useState<number>(now.getFullYear());
   const [sheetUrl, setSheetUrl] = useState<string>(
     initialSheetUrl ||
@@ -33,6 +39,12 @@ export const GoogleSheetSyncModal: React.FC<GoogleSheetSyncModalProps> = ({
     }
   }, [initialSheetUrl]);
 
+  useEffect(() => {
+    if (availableMonths && availableMonths.length > 0 && !availableMonths.includes(selectedMonth)) {
+      setSelectedMonth(availableMonths[0]);
+    }
+  }, [availableMonths]);
+
   if (!isOpen) return null;
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -45,6 +57,10 @@ export const GoogleSheetSyncModal: React.FC<GoogleSheetSyncModalProps> = ({
       setSubmitting(false);
     }
   };
+
+  const monthOptions = availableMonths && availableMonths.length > 0
+    ? availableMonths
+    : [7, 8];
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm animate-in fade-in duration-200">
@@ -71,17 +87,17 @@ export const GoogleSheetSyncModal: React.FC<GoogleSheetSyncModalProps> = ({
           <div className="space-y-1.5">
             <label className="block text-xs font-bold text-slate-700 flex items-center gap-1.5">
               <Calendar className="w-3.5 h-3.5 text-emerald-600" />
-              Chọn Kỳ/Tháng Lịch Trực
+              Chọn Kỳ/Tháng Lịch Trực Trên Sheet
             </label>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <span className="block text-[11px] font-semibold text-slate-500 mb-1 ml-0.5">Tháng</span>
+                <span className="block text-[11px] font-semibold text-slate-500 mb-1 ml-0.5">Tháng (Đang có trên Sheet)</span>
                 <select
                   value={selectedMonth}
                   onChange={(e) => setSelectedMonth(Number(e.target.value))}
                   className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-extrabold text-slate-800 focus:outline-none focus:border-emerald-600"
                 >
-                  {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
+                  {monthOptions.map((m) => (
                     <option key={m} value={m}>
                       Tháng {m}
                     </option>
@@ -96,7 +112,7 @@ export const GoogleSheetSyncModal: React.FC<GoogleSheetSyncModalProps> = ({
                   onChange={(e) => setSelectedYear(Number(e.target.value))}
                   className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-extrabold text-slate-800 focus:outline-none focus:border-emerald-600"
                 >
-                  {[2025, 2026, 2027].map((y) => (
+                  {[2026].map((y) => (
                     <option key={y} value={y}>
                       Năm {y}
                     </option>
@@ -106,43 +122,17 @@ export const GoogleSheetSyncModal: React.FC<GoogleSheetSyncModalProps> = ({
             </div>
           </div>
 
-          {/* Google Sheet URL Input */}
-          <div className="space-y-1.5 pt-1">
-            <label className="block text-xs font-bold text-slate-700">Link Google Sheet (Tùy chọn)</label>
-            <input
-              type="text"
-              value={sheetUrl}
-              onChange={(e) => setSheetUrl(e.target.value)}
-              placeholder="https://docs.google.com/spreadsheets/d/.../edit?gid=..."
-              className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono text-slate-800 focus:outline-none focus:border-emerald-600"
-            />
-            <p className="text-[10px] text-slate-400">
-              Nếu bạn xem tháng khác, hãy dán liên kết Google Sheet có chứa GID tương ứng của tháng đó.
-            </p>
-          </div>
-
-          {/* Actions */}
-          <div className="flex gap-2.5 pt-2">
-            <Button variant="secondary" fullWidth onClick={onClose} disabled={submitting}>
-              Hủy
-            </Button>
-            <button
-              type="submit"
-              disabled={submitting}
-              className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-extrabold text-xs rounded-xl shadow-md transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-60"
-            >
+          <div className="pt-2">
+            <Button type="submit" fullWidth disabled={submitting} className="bg-emerald-600 hover:bg-emerald-700 py-3 text-xs font-black">
               {submitting ? (
                 <>
-                  <RefreshCw className="w-4 h-4 animate-spin text-white" />
-                  <span>Đang đồng bộ...</span>
+                  <RefreshCw className="w-4 h-4 animate-spin mr-2" />
+                  Đang tải từ Google Sheet...
                 </>
               ) : (
-                <>
-                  <FileSpreadsheet className="w-4 h-4 text-white" />
-                  <span>Đồng Bộ Ngay</span>
-                </>
+                `Bắt đầu tải lịch Tháng ${selectedMonth}/${selectedYear}`
               )}
-            </button>
+            </Button>
           </div>
         </form>
       </div>
