@@ -20,6 +20,57 @@ import {
 import { ExpenseItem, ScheduleSettings } from '@/types/schedule';
 import { useToast } from '@/components/ui/Toast';
 
+function getWeeksForMonth(year: number, month: number) {
+  const weeks = [];
+  const firstDayOfMonth = new Date(year, month - 1, 1);
+  const lastDayOfMonth = new Date(year, month, 0);
+
+  let curr = new Date(firstDayOfMonth);
+  const dayOfW = curr.getDay();
+  const distToMon = (dayOfW + 6) % 7;
+  curr.setDate(curr.getDate() - distToMon);
+
+  while (curr <= lastDayOfMonth) {
+    const weekStart = new Date(curr);
+    const weekEnd = new Date(curr);
+    weekEnd.setDate(weekEnd.getDate() + 6);
+
+    const days = [];
+    const dayLabels = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
+
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(weekStart);
+      d.setDate(d.getDate() + i);
+      const iso = d.toISOString().split('T')[0];
+      const dd = String(d.getDate()).padStart(2, '0');
+      const mm = String(d.getMonth() + 1).padStart(2, '0');
+      days.push({
+        dateIso: iso,
+        dayLabel: `${dd}/${mm}`,
+        dayOfWeek: dayLabels[i],
+        dayNum: d.getDate(),
+        isCurrentMonth: d.getMonth() + 1 === month,
+      });
+    }
+
+    const startDd = String(weekStart.getDate()).padStart(2, '0');
+    const startMm = String(weekStart.getMonth() + 1).padStart(2, '0');
+    const endDd = String(weekEnd.getDate()).padStart(2, '0');
+    const endMm = String(weekEnd.getMonth() + 1).padStart(2, '0');
+
+    weeks.push({
+      label: `Tuần từ ${startDd}/${startMm} đến ${endDd}/${endMm}`,
+      startDateIso: weekStart.toISOString().split('T')[0],
+      endDateIso: weekEnd.toISOString().split('T')[0],
+      days,
+    });
+
+    curr.setDate(curr.getDate() + 7);
+  }
+
+  return weeks;
+}
+
 interface ExpenseTabProps {
   settings: ScheduleSettings;
   onSaveSettings: (newSettings: Partial<ScheduleSettings>) => Promise<void>;
@@ -32,6 +83,10 @@ export const ExpenseTab: React.FC<ExpenseTabProps> = ({ settings, onSaveSettings
   const [rawInput, setRawInput] = useState('');
   const [isParsing, setIsParsing] = useState(false);
   const [filterType, setFilterType] = useState<'all' | 'Thu' | 'Chi'>('all');
+  const now = new Date();
+  const [selectedMonth, setSelectedMonth] = useState<number>(now.getMonth() + 1);
+  const [selectedYear, setSelectedYear] = useState<number>(now.getFullYear());
+  const [selectedDayIso, setSelectedDayIso] = useState<string | null>(null);
   const textareaRef = React.useRef<HTMLTextAreaElement>(null);
 
   const handleQuickAdd = (keyword: string) => {
@@ -396,12 +451,43 @@ export const ExpenseTab: React.FC<ExpenseTabProps> = ({ settings, onSaveSettings
         </button>
       </div>
 
-      {/* Transaction History */}
-      <div className="space-y-3">
-        <div className="flex items-center justify-between px-1">
-          <h3 className="text-sm font-bold text-gray-800">
-            Lịch Sử Thu/Chi ({filteredItems.length})
-          </h3>
+      {/* Month Navigation & Filter Header */}
+      <div className="bg-white rounded-3xl p-4 border border-surface-border shadow-xs space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => {
+                if (selectedMonth === 1) {
+                  setSelectedMonth(12);
+                  setSelectedYear(prev => prev - 1);
+                } else {
+                  setSelectedMonth(prev => prev - 1);
+                }
+                setSelectedDayIso(null);
+              }}
+              className="p-1.5 hover:bg-gray-100 rounded-xl transition-all text-gray-600 cursor-pointer"
+            >
+              ◀
+            </button>
+            <span className="font-extrabold text-sm text-gray-800">
+              Tháng {String(selectedMonth).padStart(2, '0')}/{selectedYear}
+            </span>
+            <button
+              onClick={() => {
+                if (selectedMonth === 12) {
+                  setSelectedMonth(1);
+                  setSelectedYear(prev => prev + 1);
+                } else {
+                  setSelectedMonth(prev => prev + 1);
+                }
+                setSelectedDayIso(null);
+              }}
+              className="p-1.5 hover:bg-gray-100 rounded-xl transition-all text-gray-600 cursor-pointer"
+            >
+              ▶
+            </button>
+          </div>
+
           <div className="flex gap-1 bg-gray-100 p-0.5 rounded-xl text-[11px]">
             <button
               onClick={() => setFilterType('all')}
@@ -429,63 +515,209 @@ export const ExpenseTab: React.FC<ExpenseTabProps> = ({ settings, onSaveSettings
             </button>
           </div>
         </div>
+      </div>
 
+      {/* Weekly Cards Grouped History */}
+      <div className="space-y-4">
         {loading ? (
           <div className="text-center py-8 text-xs text-gray-400 flex items-center justify-center gap-2">
-            <RefreshCw className="w-4 h-4 animate-spin text-brand-600" /> Đang tải danh sách...
-          </div>
-        ) : filteredItems.length === 0 ? (
-          <div className="bg-white rounded-3xl p-8 text-center border border-dashed border-gray-200">
-            <Receipt className="w-8 h-8 text-gray-300 mx-auto mb-2" />
-            <p className="text-xs text-gray-500">Chưa có giao dịch thu/chi nào.</p>
-            <p className="text-[11px] text-gray-400 mt-1">Hãy gõ văn bản ở trên để AI phân tích nhé!</p>
+            <RefreshCw className="w-4 h-4 animate-spin text-brand-600" /> Đang tải lịch sử chi tiêu...
           </div>
         ) : (
-          <div className="space-y-2">
-            {filteredItems.map((item) => (
-              <div
-                key={item.id}
-                className="bg-white rounded-2xl p-3.5 border border-surface-border flex items-center justify-between shadow-xs hover:border-brand-200 transition-all"
-              >
-                <div className="flex items-center gap-3">
-                  <div className={`w-9 h-9 rounded-xl flex items-center justify-center text-xs font-bold ${
-                    item.type === 'Thu' 
-                      ? 'bg-emerald-100 text-emerald-700' 
-                      : 'bg-rose-100 text-rose-700'
-                  }`}>
-                    {item.type === 'Thu' ? '+' : '-'}
-                  </div>
-                  <div>
-                    <div className="text-xs font-bold text-gray-800">
-                      {item.description}
+          (() => {
+            const weeks = getWeeksForMonth(selectedYear, selectedMonth);
+
+            return weeks.map((week, wIdx) => {
+              const weekItems = filteredItems.filter(
+                (i) => i.date >= week.startDateIso && i.date <= week.endDateIso
+              );
+
+              const weekIncome = weekItems
+                .filter((i) => i.type === 'Thu')
+                .reduce((s, i) => s + (i.amount || 0), 0);
+
+              const weekExpense = weekItems
+                .filter((i) => i.type === 'Chi')
+                .reduce((s, i) => s + (i.amount || 0), 0);
+
+              const weekNet = weekIncome - weekExpense;
+
+              return (
+                <div
+                  key={wIdx}
+                  className="bg-white rounded-3xl p-4 border border-surface-border shadow-xs space-y-3"
+                >
+                  {/* Week Header */}
+                  <div className="flex items-center justify-between pb-2 border-b border-gray-100">
+                    <div className="flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full bg-brand-600"></span>
+                      <span className="font-extrabold text-xs text-gray-800">
+                        {week.label}
+                      </span>
                     </div>
-                    <div className="flex items-center gap-2 text-[10px] text-gray-400 mt-0.5">
-                      <span>{item.date}</span>
-                      <span>•</span>
-                      <span className="bg-gray-100 text-gray-600 px-1.5 py-0.2 rounded-md">
-                        {item.category}
+
+                    <div className="text-xs font-bold">
+                      <span className="text-gray-500">{weekItems.length} mục</span>
+                      <span className="text-gray-300 mx-1">•</span>
+                      <span
+                        className={
+                          weekNet > 0
+                            ? 'text-emerald-600 font-extrabold'
+                            : weekNet < 0
+                            ? 'text-rose-600 font-extrabold'
+                            : 'text-gray-400'
+                        }
+                      >
+                        {weekNet > 0 ? '+' : ''}
+                        {weekNet.toLocaleString('vi-VN')}đ
                       </span>
                     </div>
                   </div>
-                </div>
 
-                <div className="flex items-center gap-2">
-                  <span className={`text-xs font-extrabold ${
-                    item.type === 'Thu' ? 'text-emerald-600' : 'text-rose-600'
-                  }`}>
-                    {item.type === 'Thu' ? '+' : '-'}{item.amount.toLocaleString('vi-VN')}đ
-                  </span>
-                  <button
-                    onClick={() => handleDeleteItem(item.id)}
-                    className="p-1 text-gray-300 hover:text-rose-500 rounded-lg transition-all"
-                    title="Xóa giao dịch"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
+                  {/* 7 Days Grid (T2 .. CN) */}
+                  <div className="grid grid-cols-7 gap-1">
+                    {week.days.map((day, dIdx) => {
+                      const dayItems = filteredItems.filter((i) => i.date === day.dateIso);
+                      const dayIncome = dayItems
+                        .filter((i) => i.type === 'Thu')
+                        .reduce((s, i) => s + (i.amount || 0), 0);
+                      const dayExpense = dayItems
+                        .filter((i) => i.type === 'Chi')
+                        .reduce((s, i) => s + (i.amount || 0), 0);
+                      const dayNet = dayIncome - dayExpense;
+
+                      const isSelected = selectedDayIso === day.dateIso;
+
+                      let badgeText = 'OFF';
+                      let badgeStyle = 'text-gray-300 bg-gray-50';
+
+                      if (dayItems.length > 0) {
+                        if (dayExpense > 0 && dayIncome === 0) {
+                          badgeText = dayExpense >= 1000000 
+                            ? `-${(dayExpense / 1000000).toFixed(1)}M` 
+                            : `-${Math.round(dayExpense / 1000)}k`;
+                          badgeStyle = 'bg-rose-500 text-white font-bold';
+                        } else if (dayIncome > 0 && dayExpense === 0) {
+                          badgeText = dayIncome >= 1000000 
+                            ? `+${(dayIncome / 1000000).toFixed(1)}M` 
+                            : `+${Math.round(dayIncome / 1000)}k`;
+                          badgeStyle = 'bg-emerald-500 text-white font-bold';
+                        } else {
+                          badgeText = dayNet >= 0 
+                            ? `+${Math.round(dayNet / 1000)}k` 
+                            : `-${Math.round(Math.abs(dayNet) / 1000)}k`;
+                          badgeStyle = dayNet >= 0 ? 'bg-emerald-600 text-white' : 'bg-rose-600 text-white';
+                        }
+                      }
+
+                      return (
+                        <div
+                          key={dIdx}
+                          onClick={() => {
+                            if (dayItems.length > 0) {
+                              setSelectedDayIso(isSelected ? null : day.dateIso);
+                            }
+                          }}
+                          className={`flex flex-col items-center py-2 px-0.5 rounded-2xl border text-center transition-all cursor-pointer ${
+                            isSelected
+                              ? 'border-brand-500 bg-brand-50/50 shadow-sm ring-2 ring-brand-400/30'
+                              : day.isCurrentMonth
+                              ? 'border-gray-100 hover:border-brand-200 bg-white'
+                              : 'border-transparent opacity-40 bg-gray-50/50'
+                          }`}
+                        >
+                          <span className="text-[10px] font-bold text-gray-400">
+                            {day.dayOfWeek}
+                          </span>
+
+                          <span className="text-[11px] font-extrabold text-gray-700 my-0.5">
+                            {day.dayLabel}
+                          </span>
+
+                          <span
+                            className={`text-[9px] px-1 py-0.5 rounded-lg w-full truncate my-0.5 ${badgeStyle}`}
+                          >
+                            {badgeText}
+                          </span>
+
+                          <span className="text-[9px] text-gray-400">
+                            {dayItems.length > 0 ? `${dayItems.length} mục` : '0 ca'}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* Selected Day Details Expansion */}
+                  {selectedDayIso &&
+                    week.days.some((d) => d.dateIso === selectedDayIso) && (
+                      <div className="pt-2 border-t border-gray-100 space-y-2 animate-in fade-in duration-200">
+                        <div className="text-xs font-bold text-gray-700 flex items-center justify-between">
+                          <span>
+                            Chi tiết ngày {selectedDayIso.split('-').reverse().join('/')}:
+                          </span>
+                          <button
+                            onClick={() => setSelectedDayIso(null)}
+                            className="text-[10px] text-gray-400 hover:text-gray-600"
+                          >
+                            ✕ Đóng
+                          </button>
+                        </div>
+
+                        {filteredItems
+                          .filter((i) => i.date === selectedDayIso)
+                          .map((item) => (
+                            <div
+                              key={item.id}
+                              className="bg-gray-50/80 rounded-2xl p-3 border border-gray-200/60 flex items-center justify-between"
+                            >
+                              <div className="flex items-center gap-2.5">
+                                <div
+                                  className={`w-7 h-7 rounded-xl flex items-center justify-center text-xs font-bold ${
+                                    item.type === 'Thu'
+                                      ? 'bg-emerald-100 text-emerald-700'
+                                      : 'bg-rose-100 text-rose-700'
+                                  }`}
+                                >
+                                  {item.type === 'Thu' ? '+' : '-'}
+                                </div>
+                                <div>
+                                  <div className="text-xs font-bold text-gray-800">
+                                    {item.description}
+                                  </div>
+                                  <div className="text-[10px] text-gray-400">
+                                    {item.category}
+                                  </div>
+                                </div>
+                              </div>
+
+                              <div className="flex items-center gap-2">
+                                <span
+                                  className={`text-xs font-extrabold ${
+                                    item.type === 'Thu'
+                                      ? 'text-emerald-600'
+                                      : 'text-rose-600'
+                                  }`}
+                                >
+                                  {item.type === 'Thu' ? '+' : '-'}
+                                  {item.amount.toLocaleString('vi-VN')}đ
+                                </span>
+                                <button
+                                  onClick={() => handleDeleteItem(item.id)}
+                                  className="p-1 text-gray-300 hover:text-rose-500 rounded-lg transition-all"
+                                  title="Xóa"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            </div>
+                          ))}
+                      </div>
+                    )}
                 </div>
-              </div>
-            ))}
-          </div>
+              );
+            });
+          })()
         )}
       </div>
     </div>

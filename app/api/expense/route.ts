@@ -68,7 +68,10 @@ export async function POST(request: Request) {
     const groqKey = userSettings.groqApiKey || process.env.GROQ_API_KEY || '';
     const groqModel = userSettings.groqModel || 'llama-3.3-70b-versatile';
 
-    const todayStr = new Date().toISOString().split('T')[0];
+    const now = new Date();
+    const todayStr = now.toISOString().split('T')[0];
+    const dayNames = ['Chủ Nhật', 'Thứ Hai', 'Thứ Ba', 'Thứ Tư', 'Thứ Năm', 'Thứ Sáu', 'Thứ Bảy'];
+    const dayOfWeek = dayNames[now.getDay()];
 
     const systemPrompt = `Bạn là trợ lý tài chính cá nhân bằng tiếng Việt siêu thông minh.
 Nhiệm vụ: Phân tích câu nhập liệu thu/chi chứa tiếng lóng, viết tắt, tiền tệ VNĐ thành mảng JSON chuẩn.
@@ -79,16 +82,27 @@ QUY TẮC TIỀN TỆ & TIẾNG LÓNG VN:
 - "loét", "xị", "lốp", "vé": 100.000 (Vd: 3 loét = 300000, 5 xị = 500000)
 - "chục": 10 (Vd: "5 chục" = 50000; "2 chục củ" = 20000000)
 - "tỷ", "tỉ": x 1.000.000.000
-- Chi: "ăn", "uống", "mua", "đổ xăng", "trả", "đóng tiền", "mất", "chuyển khoản cho", "tốn", "lượn"
+- Chi: "ăn", "uống", "mua", "đổ xăng", "trả", "đóng tiền", "mất", "chuyển khoản cho", "tốn", "lượn", "đi chợ"
 - Thu: "được thưởng", "lương", "sếp cho", "bán được", "khách trả", "nhận", "mừng tuổi"
 
 DANH MỤC:
 - Chi: "Ăn uống", "Di chuyển", "Mua sắm", "Hóa đơn", "Giải trí", "Khác"
 - Thu: "Lương/Thưởng", "Đầu tư", "Khác"
 
-HÔM NAY LÀ: ${todayStr}. Nếu dùng "hôm qua", "hôm kia", hãy tự tính ngày YYYY-MM-DD.
+NGÀY HÔM NAY LÀ: ${todayStr} (${dayOfWeek}).
 
-CẤU TRÚC JSON TRẢ VỀ BẮT BUỘC:
+QUY TẮC XÁC ĐỊNH NGÀY:
+- "hôm nay", "sáng nay", "bữa nay": Lấy ngày ${todayStr}
+- "hôm qua": Lấy ngày hôm qua (tính lùi 1 ngày từ ${todayStr})
+- "hôm kia": Lấy ngày hôm kia (tính lùi 2 ngày từ ${todayStr})
+- "ngày 25", "25/7", "ngày 25 tháng 7": Tự quy đổi ra dạng YYYY-MM-DD
+- "thứ 2 vừa rồi", "thứ 3 tuần trước": Tự tính lùi về ngày tương ứng gần nhất
+
+QUY TẮC TỪ CHỐI TƯƠNG LAI (BẮT BUỘC):
+- Nếu người dùng nhắc tới thu/chi trong TƯƠNG LAI so với ngày hôm nay (${todayStr}) như: "ngày mai", "tối mai", "ngày kia", "tuần sau", "tháng sau", hoặc bất kỳ ngày nào sau ngày ${todayStr}:
+  -> TRẢ VỀ JSON: { "isFuture": true, "futureError": "Không thể ghi nhận thu/chi trong tương lai! Vui lòng chỉ nhập thu/chi đã diễn ra." }
+
+CẤU TRÚC JSON CHUẨN NẾU HỢP LỆ:
 {
   "items": [
     {
@@ -127,8 +141,25 @@ CẤU TRÚC JSON TRẢ VỀ BẮT BUỘC:
     const parsedText = groqData.choices?.[0]?.message?.content || '{}';
     const parsedObj = JSON.parse(parsedText);
 
+    if (parsedObj.isFuture) {
+      return NextResponse.json({
+        success: false,
+        error: parsedObj.futureError || 'Không thể ghi nhận thu/chi trong tương lai! Vui lòng chỉ nhập thu/chi đã diễn ra.',
+      }, { status: 400 });
+    }
+
     if (!parsedObj.items || !Array.isArray(parsedObj.items) || parsedObj.items.length === 0) {
       return NextResponse.json({ success: false, error: 'AI không tìm thấy thông tin thu/chi nào trong đoạn văn trên.' }, { status: 400 });
+    }
+
+    // Check if any parsed item has future date
+    for (const item of parsedObj.items) {
+      if (item.date && item.date > todayStr) {
+        return NextResponse.json({
+          success: false,
+          error: `Không thể ghi nhận giao dịch cho ngày tương lai (${item.date})!`,
+        }, { status: 400 });
+      }
     }
 
     // Send parsed items directly to Google Sheet Web App
