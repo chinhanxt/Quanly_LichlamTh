@@ -92,6 +92,7 @@ DANH MỤC:
 NGÀY HÔM NAY LÀ: ${todayStr} (${dayOfWeek}).
 
 QUY TẮC XÁC ĐỊNH NGÀY:
+- BẮT BUỘC: Nếu người dùng KHÔNG đề cập tới mốc thời gian cụ thể (như "hôm qua", "hôm kia", "ngày 25/7"), giá trị date BẮT BUỘC phải lấy ngày hiện tại: ${todayStr}.
 - "hôm nay", "sáng nay", "bữa nay": Lấy ngày ${todayStr}
 - "hôm qua": Lấy ngày hôm qua (tính lùi 1 ngày từ ${todayStr})
 - "hôm kia": Lấy ngày hôm kia (tính lùi 2 ngày từ ${todayStr})
