@@ -24,7 +24,10 @@ export async function POST(request: Request) {
       userSettings.employeeName ||
       (username === 'chinhan' ? 'Nguyễn Chí Nhân' : 'Thanh Hương');
 
-    const result = await parseGoogleSheetSchedule(sheetUrl, employeeName);
+    const targetMonth = body.targetMonth ? Number(body.targetMonth) : undefined;
+    const targetYear = body.targetYear ? Number(body.targetYear) : undefined;
+
+    const result = await parseGoogleSheetSchedule(sheetUrl, employeeName, targetMonth, targetYear);
 
     // Save schedule items to database for this user
     await saveScheduleItemsForUser(username, result.items as any, true);

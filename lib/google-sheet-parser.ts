@@ -11,7 +11,9 @@ export interface ParsedGoogleSheetResult {
 
 export async function parseGoogleSheetSchedule(
   sheetUrl: string,
-  targetEmployeeName: string = 'Nguyễn Chí Nhân'
+  targetEmployeeName: string = 'Nguyễn Chí Nhân',
+  targetMonth?: number,
+  targetYear?: number
 ): Promise<ParsedGoogleSheetResult> {
   let spreadsheetId = '1UnBM5lf3RNOtY7ACJ5soHDgOTz2rPZqr';
   let gid = '229272214';
@@ -41,6 +43,15 @@ export async function parseGoogleSheetSchedule(
       month = parseInt(m[1], 10);
       year = parseInt(m[2], 10);
       break;
+    }
+  }
+
+  // Validate target Month & Year if requested by user
+  if (targetMonth && targetYear) {
+    if (month !== targetMonth || year !== targetYear) {
+      throw new Error(
+        `Không tìm thấy dữ liệu lịch trực cho Tháng ${targetMonth}/${targetYear} trong Google Sheet này! (Dữ liệu trang hiện tại là Tháng ${month}/${year}). Vui lòng kiểm tra lại liên kết hoặc mở đúng tab Tháng ${targetMonth}/${targetYear}.`
+      );
     }
   }
 
