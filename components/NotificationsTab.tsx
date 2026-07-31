@@ -20,6 +20,7 @@ import {
 import { ScheduleSettings, CustomNotificationItem } from '@/types/schedule';
 import { Card } from './ui/Card';
 import { useToast } from './ui/Toast';
+import { useAuth } from '@/components/AuthProvider';
 
 interface NotificationsTabProps {
   settings: ScheduleSettings;
@@ -335,6 +336,9 @@ export const NotificationsTab: React.FC<NotificationsTabProps> = ({
     });
   };
 
+  const { user } = useAuth();
+  const isChinhan = user?.username === 'chinhan';
+
   const handleTestSend = async (key: string, templateText: string) => {
     const token = settings.telegramBotToken;
     const chatId = settings.telegramChatId;
@@ -351,10 +355,10 @@ export const NotificationsTab: React.FC<NotificationsTabProps> = ({
     setTestingKey(key);
     try {
       const sampleText = templateText
-        .replace(/\{Ca\}/g, 'B18')
-        .replace(/\{ThờiGian\}/g, '18:00 - 22:00')
-        .replace(/\{ĐịaĐiểm\}/g, 'Highlands Coffee')
-        .replace(/\{GhiChú\}/g, 'Mang laptop & đồng phục');
+        .replace(/\{Ca\}/g, isChinhan ? 'Ca Sáng' : 'B18')
+        .replace(/\{ThờiGian\}/g, isChinhan ? '07:30 - 11:30' : '18:00 - 22:00')
+        .replace(/\{ĐịaĐiểm\}/g, isChinhan ? 'Viện Trí tuệ nhân tạo và Chuyển đổi số' : 'Highlands Coffee')
+        .replace(/\{GhiChú\}/g, isChinhan ? 'Sáng' : 'Mang laptop & đồng phục');
 
       const res = await fetch('/api/telegram-test', {
         method: 'POST',
