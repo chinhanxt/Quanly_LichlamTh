@@ -25,6 +25,7 @@ import {
   Lock,
   SearchCheck,
   ChevronDown,
+  FileText,
 } from 'lucide-react';
 import { useToast } from './ui/Toast';
 
@@ -268,6 +269,42 @@ export const RegisterTab: React.FC<RegisterTabProps> = ({
     });
   };
 
+  const handleCopyMonthClipboard = () => {
+    const daysInMonth = new Date(targetYear, targetMonth, 0).getDate();
+    const sangRowValues: string[] = [];
+    const chieuRowValues: string[] = [];
+
+    for (let d = 1; d <= daysInMonth; d++) {
+      const monthStr = String(targetMonth).padStart(2, '0');
+      const dayStr = String(d).padStart(2, '0');
+      const dateIso = `${targetYear}-${monthStr}-${dayStr}`;
+      const shift = getShiftForDate(dateIso);
+
+      if (shift === 'SANG') {
+        sangRowValues.push('x');
+        chieuRowValues.push('');
+      } else if (shift === 'CHIEU') {
+        sangRowValues.push('');
+        chieuRowValues.push('x');
+      } else if (shift === 'FULL') {
+        sangRowValues.push('x');
+        sangRowValues.push('x');
+      } else {
+        sangRowValues.push('');
+        chieuRowValues.push('');
+      }
+    }
+
+    const clipboardText = `${sangRowValues.join('\t')}\n${chieuRowValues.join('\t')}`;
+    navigator.clipboard.writeText(clipboardText);
+
+    showToast({
+      type: 'success',
+      title: 'Đã Sao Chép Dấu \'x\' 31 Ngày! 📋',
+      message: `Đã copy chuỗi dấu 'x' Tháng ${targetMonth}. Bạn chỉ cần chọn ô Ngày 1 của tên Nguyễn Chí Nhân và bấm Ctrl+V để dán toàn bộ 31 ngày trong 1 giây!`,
+    });
+  };
+
   const handleSaveRealtimeSheet = async () => {
     if (!isCurrentMonthAvailable) {
       showToast({
@@ -428,6 +465,15 @@ export const RegisterTab: React.FC<RegisterTabProps> = ({
         <div className="bg-slate-50 p-2 rounded-xl border border-slate-200 text-[11px] font-mono text-slate-500 truncate">
           {SHEET_URL}
         </div>
+
+        <button
+          type="button"
+          onClick={handleCopyMonthClipboard}
+          className="w-full py-2.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 font-extrabold text-xs rounded-xl flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-2xs"
+        >
+          <FileText className="w-3.5 h-3.5 text-emerald-600" />
+          <span>📋 Copy Dấu 'x' 31 Ngày Tháng {targetMonth} (Dán Nhanh 1 Giây)</span>
+        </button>
 
         {onSyncSheet && (
           <button
