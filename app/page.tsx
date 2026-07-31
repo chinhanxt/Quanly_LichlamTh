@@ -11,6 +11,7 @@ import { SettingsTab } from '@/components/SettingsTab';
 import { SalaryTab } from '@/components/SalaryTab';
 import { NotesTab } from '@/components/NotesTab';
 import { NotificationsTab } from '@/components/NotificationsTab';
+import { ExpenseTab } from '@/components/ExpenseTab';
 import { OcrPreviewModal } from '@/components/OcrPreviewModal';
 import { OcrLoadingModal } from '@/components/OcrLoadingModal';
 import { GoogleSheetSyncModal } from '@/components/GoogleSheetSyncModal';
@@ -25,7 +26,7 @@ export default function Home() {
   const { user } = useAuth();
   const isChinhan = user?.username === 'chinhan';
   const { showToast } = useToast();
-  const [activeTab, setActiveTab] = useState<'schedule' | 'salary' | 'notes' | 'notifications' | 'settings'>('schedule');
+  const [activeTab, setActiveTab] = useState<'schedule' | 'salary' | 'notes' | 'expense' | 'notifications' | 'settings'>('schedule');
   const [selectedDay, setSelectedDay] = useState<string>(() => getTodayInfo().dayKey);
   const [selectedDate, setSelectedDate] = useState<string>(() => getTodayInfo().dateIso);
   const [activeWeekDays, setActiveWeekDays] = useState<Array<{ key: string; fullDateIso: string }>>([]);
@@ -458,6 +459,8 @@ export default function Home() {
           <SalaryTab items={items} settings={settings} onSaveSettings={handleSaveSettings} />
         ) : activeTab === 'notes' ? (
           <NotesTab settings={settings} onSaveSettings={handleSaveSettings} items={items} />
+        ) : activeTab === 'expense' ? (
+          <ExpenseTab settings={settings} onSaveSettings={handleSaveSettings} />
         ) : activeTab === 'notifications' ? (
           <NotificationsTab settings={settings} onSaveSettings={handleSaveSettings} />
         ) : (

@@ -70,6 +70,18 @@ export interface NotificationSettings {
   sentRemindersLog?: Record<string, string>;
 }
 
+export interface ExpenseItem {
+  id: string;
+  date: string;       // "YYYY-MM-DD"
+  type: 'Thu' | 'Chi';
+  category: string;   // "Ăn uống", "Di chuyển", "Mua sắm", "Hóa đơn", "Giải trí", "Lương/Thưởng", "Đầu tư", "Khác"
+  amount: number;     // e.g. 45000
+  description: string;
+  rawText?: string;
+  createdAt?: string;
+  username?: string;
+}
+
 export interface ScheduleSettings extends NotificationSettings {
   username?: string;
   morningTime: string;       // "07:00"
@@ -80,6 +92,10 @@ export interface ScheduleSettings extends NotificationSettings {
   telegramChatId?: string;   // Chat ID nhận tin nhắn
   employeeName?: string;     // Tên nhân viên trên lịch
   geminiApiKey?: string;     // Google Gemini API Key cho AI OCR
+  groqApiKey?: string;       // Groq API Key cho AI Chi Tiêu
+  groqModel?: string;        // Model Groq (default: llama-3.3-70b-versatile)
+  expenseGoogleSheetUrl?: string; // Link Google Sheet Quản Lý Chi Tiêu
+  expenseAppsScriptUrl?: string;  // Webhook Apps Script nhận dữ liệu Chi Tiêu
   hourlyRate?: number;       // Lương theo giờ (default 26000 VND)
   googleSheetUrl?: string;   // Link Google Sheet đồng bộ lịch (cho CTV/Chí Nhân)
   customWebhookUrl?: string; // Webhook URL công khai tùy chỉnh
