@@ -1,6 +1,6 @@
 import fs from 'fs';
 import path from 'path';
-import { ScheduleItem, ScheduleSettings } from '@/types/schedule';
+import { ScheduleItem, ScheduleSettings, ExpenseItem } from '@/types/schedule';
 import { User } from '@/types/user';
 
 const DATA_DIR = path.join(process.cwd(), 'data');
@@ -320,6 +320,9 @@ export function getSettingsForUserLocal(username: string): ScheduleSettings {
         checkOutTemplate: "Hoàn thành ca làm: Ca {Ca} đã kết thúc. Hãy kiểm tra lại công việc và thực hiện check-out. Cảm ơn bạn đã nỗ lực hết mình trong ca làm việc hôm nay.",
         notesTemplate: "Ghi chú ca {Ca}: {GhiChú}. Hãy lưu ý thực hiện đầy đủ để đảm bảo chất lượng công việc.",
         morningSummaryTemplate: "Chào buổi sáng: Lịch làm việc hôm nay của bạn gồm ca {Ca} ({ThờiGian}) tại {ĐịaĐiểm}. Chúc bạn một ngày làm việc hiệu quả, kỷ luật và gặt hái nhiều kết quả tốt.",
+        groqApiKey: parsed.groqApiKey || process.env.GROQ_API_KEY || '',
+        groqModel: parsed.groqModel || 'llama-3.3-70b-versatile',
+        expenseGoogleSheetUrl: parsed.expenseGoogleSheetUrl || 'https://docs.google.com/spreadsheets/d/1XDHEr5jhqppyuxMu9posBwjNQj_6lddZCSmqBv2SAYk/edit?gid=0#gid=0',
       } : {};
 
       return {
@@ -346,6 +349,9 @@ export function getSettingsForUserLocal(username: string): ScheduleSettings {
       checkOutTemplate: "Hoàn thành ca làm: Ca {Ca} đã kết thúc. Hãy kiểm tra lại công việc và thực hiện check-out. Cảm ơn bạn đã nỗ lực hết mình trong ca làm việc hôm nay.",
       notesTemplate: "Ghi chú ca {Ca}: {GhiChú}. Hãy lưu ý thực hiện đầy đủ để đảm bảo chất lượng công việc.",
       morningSummaryTemplate: "Chào buổi sáng: Lịch làm việc hôm nay của bạn gồm ca {Ca} ({ThờiGian}) tại {ĐịaĐiểm}. Chúc bạn một ngày làm việc hiệu quả, kỷ luật và gặt hái nhiều kết quả tốt.",
+      groqApiKey: process.env.GROQ_API_KEY || '',
+      groqModel: 'llama-3.3-70b-versatile',
+      expenseGoogleSheetUrl: 'https://docs.google.com/spreadsheets/d/1XDHEr5jhqppyuxMu9posBwjNQj_6lddZCSmqBv2SAYk/edit?gid=0#gid=0',
     } : {};
 
     return {
@@ -380,4 +386,54 @@ export function saveSettingsForUserLocal(username: string, settings: ScheduleSet
     console.error(`Error saving settings for user ${username}:`, err);
     return settings;
   }
+}
+
+export function getExpenseItemsForUserLocal(username: string): ExpenseItem[] {
+  try {
+    ensureDataDir();
+    const userExpenseFile = path.join(DATA_DIR, `expense_${username}.json`);
+    if (fs.existsSync(userExpenseFile)) {
+      const raw = fs.readFileSync(userExpenseFile, 'utf-8');
+      return JSON.parse(raw);
+    }
+    return [];
+  } catch (err) {
+    console.error(`Error reading expenses for user ${username}:`, err);
+    return [];
+  }
+}
+
+export function saveExpenseItemsForUserLocal(username: string, items: ExpenseItem[]): ExpenseItem[] {
+  try {
+    ensureDataDir();
+    const userExpenseFile = path.join(DATA_DIR, `expense_${username}.json`);
+    fs.writeFileSync(userExpenseFile, JSON.stringify(items, null, 2), 'utf-8');
+    return items;
+  } catch (err) {
+    console.error(`Error saving expenses for user ${username}:`, err);
+    return items;
+  }
+}
+
+export function addExpenseItemForUserLocal(username: string, item: Omit<ExpenseItem, 'id'> & { id?: string }): ExpenseItem {
+  const items = getExpenseItemsForUserLocal(username);
+  const newItem: ExpenseItem = {
+    ...item,
+    id: item.id || ('exp_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7)),
+    username,
+    createdAt: item.createdAt || new Date().toISOString(),
+  };
+  items.unshift(newItem);
+  saveExpenseItemsForUserLocal(username, items);
+  return newItem;
+}
+
+export function deleteExpenseItemForUserLocal(username: string, id: string): boolean {
+  const items = getExpenseItemsForUserLocal(username);
+  const filtered = items.filter((i) => i.id !== id);
+  if (filtered.length !== items.length) {
+    saveExpenseItemsForUserLocal(username, filtered);
+    return true;
+  }
+  return false;
 }

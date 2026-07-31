@@ -387,3 +387,22 @@ export async function saveScheduleItemsForWeek(newItems: ScheduleItem[]): Promis
     await addScheduleItem(itemWithoutId);
   }
 }
+
+// Expense storage functions
+import {
+  getExpenseItemsForUserLocal,
+  addExpenseItemForUserLocal,
+  deleteExpenseItemForUserLocal
+} from './local-db';
+
+export async function getExpenseItemsForUser(username: string) {
+  return getExpenseItemsForUserLocal(username);
+}
+
+export async function addExpenseItemForUser(username: string, item: any) {
+  return addExpenseItemForUserLocal(username, item);
+}
+
+export async function deleteExpenseItemForUser(username: string, id: string) {
+  return deleteExpenseItemForUserLocal(username, id);
+}
