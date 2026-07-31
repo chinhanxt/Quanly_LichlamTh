@@ -12,6 +12,7 @@ import { SalaryTab } from '@/components/SalaryTab';
 import { NotesTab } from '@/components/NotesTab';
 import { NotificationsTab } from '@/components/NotificationsTab';
 import { OcrPreviewModal } from '@/components/OcrPreviewModal';
+import { OcrLoadingModal } from '@/components/OcrLoadingModal';
 import { ScheduleItem, ScheduleSettings } from '@/types/schedule';
 import { parseScheduleImage, ParsedShiftResult } from '@/lib/ocr-parser';
 import { useToast } from '@/components/ui/Toast';
@@ -350,6 +351,11 @@ export default function Home() {
         onConfirm={confirmDelete}
         title="Xác nhận xóa ca làm"
         message="Bạn có chắc chắn muốn xóa ca làm này khỏi thời khóa biểu không?"
+      />
+
+      <OcrLoadingModal
+        isOpen={isOcrLoading}
+        employeeName={settings.employeeName || 'Thanh Hương'}
       />
     </div>
   );
