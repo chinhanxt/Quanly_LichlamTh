@@ -13,6 +13,8 @@ import { NotesTab } from '@/components/NotesTab';
 import { NotificationsTab } from '@/components/NotificationsTab';
 import { OcrPreviewModal } from '@/components/OcrPreviewModal';
 import { OcrLoadingModal } from '@/components/OcrLoadingModal';
+import { GoogleSheetSyncModal } from '@/components/GoogleSheetSyncModal';
+import { GoogleSheetLoadingModal } from '@/components/GoogleSheetLoadingModal';
 import { ScheduleItem, ScheduleSettings } from '@/types/schedule';
 import { parseScheduleImage, ParsedShiftResult } from '@/lib/ocr-parser';
 import { useToast } from '@/components/ui/Toast';
@@ -216,21 +218,28 @@ export default function Home() {
     }
   };
 
+  const [isSheetModalOpen, setIsSheetModalOpen] = useState(false);
   const [isSheetSyncing, setIsSheetSyncing] = useState(false);
+  const [syncTargetMonth, setSyncTargetMonth] = useState<number>(new Date().getMonth() + 1);
+  const [syncTargetYear, setSyncTargetYear] = useState<number>(new Date().getFullYear());
 
-  const handleSyncGoogleSheet = async () => {
+  const handleSyncGoogleSheet = async (
+    targetMonth: number,
+    targetYear: number,
+    sheetUrl?: string
+  ) => {
+    setSyncTargetMonth(targetMonth);
+    setSyncTargetYear(targetYear);
     setIsSheetSyncing(true);
-    showToast({
-      type: 'info',
-      title: 'Đang kết nối Google Sheet...',
-      message: 'Đang bóc tách lịch làm từ Google Sheets...',
-    });
 
     try {
       const res = await fetch('/api/sync-google-sheet', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          targetMonth,
+          targetYear,
+          sheetUrl,
           employeeName: settings.employeeName || (user?.username === 'chinhan' ? 'Nguyễn Chí Nhân' : 'Thanh Hương'),
         }),
       });
@@ -245,7 +254,7 @@ export default function Home() {
       } else {
         showToast({
           type: 'error',
-          title: 'Lỗi đồng bộ',
+          title: 'Lỗi đồng bộ Google Sheet',
           message: json.error || 'Không thể đồng bộ từ Google Sheet',
         });
       }
@@ -259,6 +268,8 @@ export default function Home() {
       setIsSheetSyncing(false);
     }
   };
+
+  const isChinhan = user?.username === 'chinhan';
 
   const filteredItems = items.filter((item) => {
     if (selectedDate) {
@@ -324,7 +335,7 @@ export default function Home() {
               )}
             </div>
 
-            {/* Floating Action Buttons: Đồng bộ GG Sheet, Import Ảnh & (+) Thêm Lịch */}
+            {/* Floating Action Buttons */}
             <div className="fixed bottom-20 right-4 sm:right-6 flex items-center gap-2 sm:gap-3 z-30 flex-wrap justify-end">
               <input
                 type="file"
@@ -334,24 +345,28 @@ export default function Home() {
                 className="hidden"
               />
 
-              <button
-                onClick={handleSyncGoogleSheet}
-                disabled={isSheetSyncing}
-                className="px-3.5 py-3 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-extrabold text-xs rounded-full shadow-lg flex items-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
-                title="Đồng bộ từ Google Sheet"
-              >
-                <FileSpreadsheet className="w-4 h-4 text-emerald-100" />
-                <span>{isSheetSyncing ? 'Đang tải...' : 'GG Sheet'}</span>
-              </button>
-
-              <button
-                onClick={() => fileInputRef.current?.click()}
-                disabled={isOcrLoading}
-                className="px-4 py-3 bg-white hover:bg-slate-50 text-brand-700 font-extrabold text-xs rounded-full shadow-lg border border-slate-200/80 flex items-center gap-2 transition-all active:scale-95 cursor-pointer disabled:opacity-50"
-              >
-                <Camera className="w-4 h-4 text-brand-600" />
-                <span>{isOcrLoading ? 'Đang đọc...' : 'Import Ảnh'}</span>
-              </button>
+              {/* Show GG Sheet button ONLY for chinhan */}
+              {isChinhan ? (
+                <button
+                  onClick={() => setIsSheetModalOpen(true)}
+                  disabled={isSheetSyncing}
+                  className="px-4 py-3 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-extrabold text-xs rounded-full shadow-lg flex items-center gap-2 transition-all cursor-pointer disabled:opacity-50"
+                  title="Đồng bộ từ Google Sheet"
+                >
+                  <FileSpreadsheet className="w-4 h-4 text-emerald-100" />
+                  <span>GG Sheet</span>
+                </button>
+              ) : (
+                /* Show Import Ảnh button ONLY for non-chinhan users (thanhhuong) */
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={isOcrLoading}
+                  className="px-4 py-3 bg-white hover:bg-slate-50 text-brand-700 font-extrabold text-xs rounded-full shadow-lg border border-slate-200/80 flex items-center gap-2 transition-all active:scale-95 cursor-pointer disabled:opacity-50"
+                >
+                  <Camera className="w-4 h-4 text-brand-600" />
+                  <span>{isOcrLoading ? 'Đang đọc...' : 'Import Ảnh'}</span>
+                </button>
+              )}
 
               <button
                 onClick={() => {
@@ -412,6 +427,21 @@ export default function Home() {
       <OcrLoadingModal
         isOpen={isOcrLoading}
         employeeName={settings.employeeName || 'Thanh Hương'}
+      />
+
+      <GoogleSheetSyncModal
+        isOpen={isSheetModalOpen}
+        onClose={() => setIsSheetModalOpen(false)}
+        onSync={handleSyncGoogleSheet}
+        initialSheetUrl={settings.googleSheetUrl}
+        employeeName={settings.employeeName || (user?.username === 'chinhan' ? 'Nguyễn Chí Nhân' : 'Thanh Hương')}
+      />
+
+      <GoogleSheetLoadingModal
+        isOpen={isSheetSyncing}
+        employeeName={settings.employeeName || (user?.username === 'chinhan' ? 'Nguyễn Chí Nhân' : 'Thanh Hương')}
+        month={syncTargetMonth}
+        year={syncTargetYear}
       />
     </div>
   );
