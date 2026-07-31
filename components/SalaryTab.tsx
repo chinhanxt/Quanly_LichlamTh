@@ -521,9 +521,9 @@ export const SalaryTab: React.FC<SalaryTabProps> = ({ items, settings, onSaveSet
                     if (isDualShift) {
                       badgeText = 'Full';
                     } else if (isSang) {
-                      badgeText = 'Ca Sáng';
+                      badgeText = 'Sáng';
                     } else if (isChieu) {
-                      badgeText = 'Ca Chiều';
+                      badgeText = 'Chiều';
                     } else if (singleShift) {
                       badgeText = singleShift.shiftCode.length > 8 ? singleShift.shiftCode.substring(0, 7) : singleShift.shiftCode;
                     }

@@ -80,6 +80,8 @@ export const NotesTab: React.FC<NotesTabProps> = ({ settings, onSaveSettings }) 
     setNotes(settings.userNotes || []);
   }, [settings.userNotes]);
 
+  const isChinhan = settings.username === 'chinhan' || settings.employeeName?.toLowerCase().includes('nhân');
+
   // Calculate Current Week Days (Mon-Sun) for 7-Column Pill Grid (matching exact user design)
   const currentWeekDays = useMemo(() => {
     const now = new Date();
@@ -92,16 +94,27 @@ export const NotesTab: React.FC<NotesTabProps> = ({ settings, onSaveSettings }) 
     const dayNamesVi = ['Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7', 'Chủ Nhật'];
     const shortNames = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
 
-    // Map default Highlands shift pattern by day of week index
-    const defaultShifts: Record<number, { code: string; hours: string }> = {
-      1: { code: 'B18', hours: '4h' }, // T2
-      2: { code: 'B16', hours: '6h' }, // T3
-      3: { code: 'B18', hours: '4h' }, // T4
-      4: { code: 'B18', hours: '4h' }, // T5
-      5: { code: 'B18', hours: '4h' }, // T6
-      6: { code: 'B', hours: '7h' },   // T7
-      0: { code: 'OFF', hours: '0h' }, // CN
+    const defaultShiftsThanhHuong: Record<number, { code: string; hours: string }> = {
+      1: { code: 'B18', hours: '4h' },
+      2: { code: 'B16', hours: '6h' },
+      3: { code: 'B18', hours: '4h' },
+      4: { code: 'B18', hours: '4h' },
+      5: { code: 'B18', hours: '4h' },
+      6: { code: 'B', hours: '7h' },
+      0: { code: 'OFF', hours: '0h' },
     };
+
+    const defaultShiftsChinhan: Record<number, { code: string; hours: string }> = {
+      1: { code: 'Full', hours: '2 ca' },
+      2: { code: 'Full', hours: '2 ca' },
+      3: { code: 'Full', hours: '2 ca' },
+      4: { code: 'Full', hours: '2 ca' },
+      5: { code: 'Full', hours: '2 ca' },
+      6: { code: 'OFF', hours: '0 ca' },
+      0: { code: 'OFF', hours: '0 ca' },
+    };
+
+    const defaultShifts = isChinhan ? defaultShiftsChinhan : defaultShiftsThanhHuong;
 
     for (let i = 0; i < 7; i++) {
       const d = new Date(monday);
@@ -111,7 +124,7 @@ export const NotesTab: React.FC<NotesTabProps> = ({ settings, onSaveSettings }) 
       const monthNum = String(d.getMonth() + 1).padStart(2, '0');
       const dayIndex = d.getDay();
 
-      const shiftInfo = defaultShifts[dayIndex] || { code: 'B18', hours: '4h' };
+      const shiftInfo = defaultShifts[dayIndex] || (isChinhan ? { code: 'Full', hours: '2 ca' } : { code: 'B18', hours: '4h' });
 
       const todayIso = formatLocalDateIso(now);
 
@@ -128,7 +141,7 @@ export const NotesTab: React.FC<NotesTabProps> = ({ settings, onSaveSettings }) 
     }
 
     return days;
-  }, []);
+  }, [isChinhan]);
 
   // Generate 35-42 days for custom in-app calendar grid modal
   const calendarGridDays = useMemo(() => {
@@ -345,7 +358,11 @@ export const NotesTab: React.FC<NotesTabProps> = ({ settings, onSaveSettings }) 
               rows={3}
               value={content}
               onChange={(e) => setContent(e.target.value)}
-              placeholder="Nhập nội dung ghi chú (ví dụ: Mang đồng phục mới, quẹt thẻ điểm danh, đổi ca cho chị Hằng...)"
+              placeholder={
+                isChinhan
+                  ? 'Nhập nội dung ghi chú (ví dụ: Chuẩn bị tài liệu báo cáo Viện AI, nộp bảng công nhật...)'
+                  : 'Nhập nội dung ghi chú (ví dụ: Mang đồng phục mới, quẹt thẻ điểm danh, đổi ca cho chị Hằng...)'
+              }
               className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 font-medium focus:outline-none focus:border-brand-600 focus:bg-white resize-none transition-all"
             />
           </div>
