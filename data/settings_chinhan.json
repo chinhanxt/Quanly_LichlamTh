@@ -4,7 +4,7 @@
   "enableMorning": true,
   "enableLeadTime": true,
   "telegramBotToken": "TELEGRAM_BOT_TOKEN_REVOKED",
-  "telegramChatId": "20002",
+  "telegramChatId": "CHAT_ID_REVOKED",
   "employeeName": "Chí Nhân",
   "hourlyRate": 100000,
   "enableShiftReminder": true,
@@ -28,7 +28,7 @@
   "customNotifications": [],
   "customWebhookUrl": "https://schedule-telegram-app.vercel.app/api/telegram-webhook",
   "sentRemindersLog": {},
-  "allowedChatIdsStr": "20002",
+  "allowedChatIdsStr": "CHAT_ID_REVOKED",
   "geminiApiKey": "",
   "username": "chinhan"
 }
