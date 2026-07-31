@@ -605,10 +605,10 @@ export const RegisterTab: React.FC<RegisterTabProps> = ({
             <div className="p-3 bg-slate-50 border-t border-slate-100 flex items-center justify-between gap-2">
               <button
                 type="button"
-                onClick={applyClearAll}
+                onClick={() => setLocalDraftShifts({})}
                 className="px-3 py-2 text-xs font-bold text-slate-500 hover:text-slate-800 transition-colors cursor-pointer"
               >
-                OFF Hết
+                Đặt lại
               </button>
 
               <button
