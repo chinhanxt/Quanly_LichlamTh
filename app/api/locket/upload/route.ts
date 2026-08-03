@@ -1,12 +1,17 @@
 import { NextResponse } from 'next/server';
 import { saveLocketPhotoFirestore, getLocketBotSettingsFirestore } from '@/lib/firebase';
-import { sendTelegramMessage, sanitizeTelegramToken } from '@/lib/telegram';
+import { sanitizeTelegramToken } from '@/lib/telegram';
 import { execFile } from 'child_process';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
 
-function sendPhotoTelegramCurl(token: string, chatId: string, buffer: Buffer): Promise<{ ok: boolean; result?: any; description?: string }> {
+function sendPhotoTelegramCurl(
+  token: string,
+  chatId: string,
+  buffer: Buffer,
+  captionText?: string
+): Promise<{ ok: boolean; result?: any; description?: string }> {
   return new Promise((resolve) => {
     const tmpPath = path.join(os.tmpdir(), `locket_${Date.now()}.jpg`);
     try {
@@ -20,6 +25,9 @@ function sendPhotoTelegramCurl(token: string, chatId: string, buffer: Buffer): P
     const targetChatId = chatId.split(',')[0].trim();
     const url = `https://api.telegram.org/bot${cleanToken}/sendPhoto`;
     const args = ['-s', '-X', 'POST', url, '-F', `chat_id=${targetChatId}`, '-F', `photo=@${tmpPath}`];
+    if (captionText) {
+      args.push('-F', `caption=${captionText}`, '-F', 'parse_mode=Markdown');
+    }
 
     execFile('curl', args, { timeout: 15000 }, (error, stdout) => {
       try {
@@ -62,11 +70,12 @@ export async function POST(request: Request) {
       );
     }
 
-    // 1. Upload photo to Telegram Bot via curl
+    // 1. Send photo with notification caption attached directly to photo
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
+    const notifyCaption = `📸 *${sender}* vừa đăng một khoảnh khắc mới trên Locket!${caption ? `\n💬 "${caption}"` : ''}`;
 
-    const teleRes = await sendPhotoTelegramCurl(token, chatId, buffer);
+    const teleRes = await sendPhotoTelegramCurl(token, chatId, buffer, notifyCaption);
 
     if (!teleRes.ok || !teleRes.result?.photo) {
       return NextResponse.json(
@@ -75,16 +84,12 @@ export async function POST(request: Request) {
       );
     }
 
-    // Pick highest resolution photo file_id & message_id
+    // 2. Pick highest resolution photo file_id & message_id
     const photos = teleRes.result.photo;
     const largestPhoto = photos[photos.length - 1];
     const fileId = largestPhoto.file_id;
     const photoMessageId = teleRes.result.message_id;
     const targetChatId = teleRes.result.chat?.id || chatId.split(',')[0].trim();
-
-    // 2. Send Telegram notification to partner via sendTelegramMessage
-    const notifyText = `📸 *${sender}* vừa đăng một khoảnh khắc mới trên Locket!${caption ? `\n💬 "${caption}"` : ''}`;
-    const notifyRes = await sendTelegramMessage(notifyText, token, chatId).catch(() => null);
 
     // 3. Save metadata record to DB
     const photoRecord = {
@@ -92,7 +97,6 @@ export async function POST(request: Request) {
       sender,
       telegram_file_id: fileId,
       photo_message_id: photoMessageId,
-      notify_message_id: notifyRes?.message_id,
       chat_id: String(targetChatId),
       caption,
       created_at: new Date().toISOString(),
