@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Camera, Upload, Download, RefreshCw, Send, Image as ImageIcon, Settings, Save, X, FlipHorizontal } from 'lucide-react';
+import { Camera, Upload, Download, RefreshCw, Send, Image as ImageIcon, Settings, Save, X, FlipHorizontal, Eye } from 'lucide-react';
 import { useToast } from '@/components/ui/Toast';
 import { useAuth } from '@/components/AuthProvider';
 
@@ -17,6 +17,7 @@ export default function LocketTab() {
   const { user } = useAuth();
   const currentUser = user?.username || 'chinhan';
   const { showToast } = useToast();
+
   const [photos, setPhotos] = useState<LocketPhoto[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
@@ -24,10 +25,14 @@ export default function LocketTab() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [imgErrorMap, setImgErrorMap] = useState<Record<string, boolean>>({});
 
+  // View Mode: 'camera' (live viewfinder in main frame) vs 'photo' (viewing latest moment)
+  const [viewMode, setViewMode] = useState<'camera' | 'photo'>('camera');
+
   // WebCam Live Preview State
-  const [showCameraModal, setShowCameraModal] = useState(false);
   const [facingMode, setFacingMode] = useState<'user' | 'environment'>('user');
   const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
+  const [cameraActive, setCameraActive] = useState(false);
+  const [cameraError, setCameraError] = useState<string | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
 
   // Photo Capture / Preview State
@@ -42,7 +47,6 @@ export default function LocketTab() {
   const [locketChatId, setLocketChatId] = useState('');
   const [savingSettings, setSavingSettings] = useState(false);
 
-  const cameraInputRef = useRef<HTMLInputElement>(null);
   const galleryInputRef = useRef<HTMLInputElement>(null);
 
   const fetchFeed = async (pageNum = 1, append = false) => {
@@ -104,11 +108,13 @@ export default function LocketTab() {
     }
   };
 
-  const startCamera = async (mode: 'user' | 'environment' = facingMode) => {
+  const startCameraStream = async (mode: 'user' | 'environment' = facingMode) => {
     try {
+      setCameraError(null);
       if (cameraStream) {
         cameraStream.getTracks().forEach((track) => track.stop());
       }
+
       let stream: MediaStream | null = null;
       try {
         stream = await navigator.mediaDevices.getUserMedia({
@@ -116,7 +122,7 @@ export default function LocketTab() {
           audio: false,
         });
       } catch (e) {
-        // Fallback for desktop webcams without facingMode
+        // Fallback for desktop webcams
         stream = await navigator.mediaDevices.getUserMedia({
           video: true,
           audio: false,
@@ -124,39 +130,39 @@ export default function LocketTab() {
       }
 
       setCameraStream(stream);
-      setShowCameraModal(true);
+      setCameraActive(true);
       setTimeout(() => {
         if (videoRef.current) {
           videoRef.current.srcObject = stream;
         }
       }, 100);
     } catch (err: any) {
-      console.warn('getUserMedia failed, falling back to input capture:', err);
-      showToast({
-        type: 'error',
-        title: 'Chưa cấp quyền Camera',
-        message: 'Hãy cho phép trình duyệt truy cập Webcam/Camera hoặc dùng nút Thư viện.',
-      });
-      cameraInputRef.current?.click();
+      console.warn('getUserMedia failed:', err);
+      setCameraActive(false);
+      setCameraError('Chưa cấp quyền Camera hoặc thiết bị không hỗ trợ Webcam. Bạn có thể dùng nút Thư viện để đăng ảnh!');
     }
   };
 
-  const stopCamera = () => {
+  const stopCameraStream = () => {
     if (cameraStream) {
       cameraStream.getTracks().forEach((track) => track.stop());
       setCameraStream(null);
     }
-    setShowCameraModal(false);
+    setCameraActive(false);
   };
 
-  const toggleCameraFacing = () => {
-    const newMode = facingMode === 'user' ? 'environment' : 'user';
-    setFacingMode(newMode);
-    startCamera(newMode);
+  const toggleFacingMode = () => {
+    const nextMode = facingMode === 'user' ? 'environment' : 'user';
+    setFacingMode(nextMode);
+    startCameraStream(nextMode);
   };
 
-  const capturePhotoFromStream = () => {
-    if (!videoRef.current) return;
+  const capturePhotoFromHero = () => {
+    if (!videoRef.current || !cameraActive) {
+      galleryInputRef.current?.click();
+      return;
+    }
+
     const video = videoRef.current;
     const canvas = document.createElement('canvas');
     const size = Math.min(video.videoWidth || 640, video.videoHeight || 640);
@@ -165,7 +171,6 @@ export default function LocketTab() {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    // Crop center square
     const startX = (video.videoWidth - size) / 2;
     const startY = (video.videoHeight - size) / 2;
     ctx.drawImage(video, startX, startY, size, size, 0, 0, size, size);
@@ -175,23 +180,26 @@ export default function LocketTab() {
         const file = new File([blob], `locket_${Date.now()}.jpg`, { type: 'image/jpeg' });
         setSelectedFile(file);
         setPreviewUrl(URL.createObjectURL(file));
-        stopCamera();
       }
     }, 'image/jpeg', 0.9);
   };
 
   useEffect(() => {
-    return () => {
-      if (cameraStream) {
-        cameraStream.getTracks().forEach((track) => track.stop());
-      }
-    };
-  }, [cameraStream]);
-
-  useEffect(() => {
     fetchFeed(1, false);
     fetchBotSettings();
   }, []);
+
+  // Auto start camera on viewMode = 'camera'
+  useEffect(() => {
+    if (viewMode === 'camera') {
+      startCameraStream();
+    } else {
+      stopCameraStream();
+    }
+    return () => {
+      stopCameraStream();
+    };
+  }, [viewMode]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -223,6 +231,7 @@ export default function LocketTab() {
         setPreviewUrl(null);
         setCaption('');
         fetchFeed(1, false);
+        setViewMode('photo');
       } else {
         showToast({ type: 'error', message: `Lỗi: ${data.error}` });
       }
@@ -255,70 +264,104 @@ export default function LocketTab() {
       </div>
 
       {/* Main Hero Locket 1:1 Square Frame */}
-      <div className="relative aspect-square w-full bg-slate-900 rounded-3xl overflow-hidden shadow-2xl border-2 border-amber-500/30 flex items-center justify-center">
-        {loading ? (
-          <div className="flex flex-col items-center text-slate-400">
-            <RefreshCw className="w-8 h-8 animate-spin mb-2 text-amber-400" />
-            <span className="text-sm">Đang tải khoảnh khắc...</span>
-          </div>
-        ) : latestPhoto && !imgErrorMap[latestPhoto.id] ? (
-          <div className="relative w-full h-full group">
-            <img
-              src={`/api/locket/photo/${latestPhoto.telegram_file_id}`}
-              alt="Locket moment"
-              onError={() => setImgErrorMap((prev) => ({ ...prev, [latestPhoto.id]: true }))}
-              className="w-full h-full object-cover"
-            />
-            {/* Top Badge */}
-            <div className="absolute top-3 left-3 bg-black/60 backdrop-blur-md px-3 py-1.5 rounded-full flex items-center gap-2 border border-white/10">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-              <span className="text-xs font-semibold text-white">{latestPhoto.sender}</span>
-              <span className="text-[10px] text-slate-300">
-                • {new Date(latestPhoto.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-              </span>
-            </div>
-
-            {/* Download Button */}
-            <a
-              href={`/api/locket/photo/${latestPhoto.telegram_file_id}`}
-              download={`locket_${latestPhoto.id}.jpg`}
-              className="absolute top-3 right-3 p-2 bg-black/60 backdrop-blur-md rounded-full text-white hover:bg-black/80 transition-all border border-white/10"
-              title="Tải ảnh HD"
-            >
-              <Download className="w-4 h-4" />
-            </a>
-
-            {/* Bottom Caption Overlay */}
-            {latestPhoto.caption && (
-              <div className="absolute bottom-3 left-3 right-3 bg-black/70 backdrop-blur-md p-3 rounded-2xl text-white text-sm border border-white/10">
-                {latestPhoto.caption}
+      <div className="relative aspect-square w-full bg-slate-900 rounded-3xl overflow-hidden shadow-2xl border-2 border-amber-500/40 flex items-center justify-center">
+        {viewMode === 'camera' ? (
+          /* Live Camera Stream in Frame */
+          <div className="relative w-full h-full bg-black flex items-center justify-center">
+            {cameraActive ? (
+              <video
+                ref={videoRef}
+                autoPlay
+                playsInline
+                muted
+                className={`w-full h-full object-cover ${facingMode === 'user' ? 'scale-x-[-1]' : ''}`}
+              />
+            ) : (
+              <div className="text-center p-6 flex flex-col items-center">
+                <Camera className="w-12 h-12 text-amber-400 mb-2 opacity-80 animate-pulse" />
+                <p className="text-xs text-slate-300 text-center max-w-xs">{cameraError || 'Đang kết nối Camera...'}</p>
+                <button
+                  onClick={() => startCameraStream()}
+                  className="mt-3 px-4 py-2 bg-amber-500 text-slate-950 text-xs font-bold rounded-xl hover:bg-amber-400 cursor-pointer"
+                >
+                  Cấp quyền & Thử lại
+                </button>
               </div>
             )}
+
+            {/* Flip Camera Button Overlay */}
+            {cameraActive && (
+              <button
+                onClick={toggleFacingMode}
+                className="absolute top-3 right-3 p-2.5 bg-black/60 backdrop-blur-md rounded-full text-white hover:bg-black/80 transition-all border border-white/20 cursor-pointer"
+                title="Xoay Camera"
+              >
+                <FlipHorizontal className="w-4 h-4" />
+              </button>
+            )}
+
+            {/* Live Camera Badge */}
+            <div className="absolute top-3 left-3 bg-black/60 backdrop-blur-md px-3 py-1 rounded-full flex items-center gap-2 border border-white/10">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+              <span className="text-xs font-semibold text-white">Camera Trực Tiếp</span>
+            </div>
           </div>
         ) : (
-          <div className="text-center text-slate-500 p-6 flex flex-col items-center justify-center">
-            <div className="w-16 h-16 rounded-full bg-amber-500/10 border border-amber-500/30 flex items-center justify-center mb-3">
-              <Camera className="w-8 h-8 text-amber-400" />
+          /* Viewing Latest Photo */
+          loading ? (
+            <div className="flex flex-col items-center text-slate-400">
+              <RefreshCw className="w-8 h-8 animate-spin mb-2 text-amber-400" />
+              <span className="text-sm">Đang tải khoảnh khắc...</span>
             </div>
-            <p className="text-sm font-semibold text-slate-300 mb-1">Khoảnh khắc Locket</p>
-            <p className="text-xs text-slate-400 max-w-xs">Chưa có ảnh nào hoặc ảnh thử nghiệm đã hết hạn. Hãy bấm nút Chụp Ảnh để chia sẻ ngay!</p>
-          </div>
+          ) : latestPhoto && !imgErrorMap[latestPhoto.id] ? (
+            <div className="relative w-full h-full group">
+              <img
+                src={`/api/locket/photo/${latestPhoto.telegram_file_id}`}
+                alt="Locket moment"
+                onError={() => setImgErrorMap((prev) => ({ ...prev, [latestPhoto.id]: true }))}
+                className="w-full h-full object-cover"
+              />
+              {/* Top Badge */}
+              <div className="absolute top-3 left-3 bg-black/60 backdrop-blur-md px-3 py-1.5 rounded-full flex items-center gap-2 border border-white/10">
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                <span className="text-xs font-semibold text-white">{latestPhoto.sender}</span>
+                <span className="text-[10px] text-slate-300">
+                  • {new Date(latestPhoto.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                </span>
+              </div>
+
+              {/* Download Button */}
+              <a
+                href={`/api/locket/photo/${latestPhoto.telegram_file_id}`}
+                download={`locket_${latestPhoto.id}.jpg`}
+                className="absolute top-3 right-3 p-2 bg-black/60 backdrop-blur-md rounded-full text-white hover:bg-black/80 transition-all border border-white/10"
+                title="Tải ảnh HD"
+              >
+                <Download className="w-4 h-4" />
+              </a>
+
+              {/* Bottom Caption Overlay */}
+              {latestPhoto.caption && (
+                <div className="absolute bottom-3 left-3 right-3 bg-black/70 backdrop-blur-md p-3 rounded-2xl text-white text-sm border border-white/10">
+                  {latestPhoto.caption}
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="text-center text-slate-500 p-6 flex flex-col items-center justify-center">
+              <div className="w-16 h-16 rounded-full bg-amber-500/10 border border-amber-500/30 flex items-center justify-center mb-3">
+                <Camera className="w-8 h-8 text-amber-400" />
+              </div>
+              <p className="text-sm font-semibold text-slate-300 mb-1">Khoảnh khắc Locket</p>
+              <p className="text-xs text-slate-400 max-w-xs">Chưa có ảnh nào. Hãy chuyển sang Camera để chụp và chia sẻ ngay!</p>
+            </div>
+          )
         )}
       </div>
 
-      {/* Quick Snap & Camera Trigger Bar */}
+      {/* Control Bar: Shutter & Mode Switchers */}
       <div className="bg-slate-900 border border-slate-800 p-4 rounded-3xl shadow-xl flex items-center justify-around">
-        {/* Camera input with capture="environment" */}
-        <input
-          type="file"
-          accept="image/*"
-          capture="environment"
-          ref={cameraInputRef}
-          onChange={handleFileChange}
-          className="hidden"
-        />
-
-        {/* Gallery file picker without capture */}
+        {/* Gallery file picker */}
         <input
           type="file"
           accept="image/*"
@@ -327,75 +370,48 @@ export default function LocketTab() {
           className="hidden"
         />
 
-        {/* Big Snap Shutter Button */}
+        {/* View Mode Toggle: Photo / Camera */}
         <button
-          onClick={() => startCamera()}
-          className="flex items-center gap-2 bg-gradient-to-r from-amber-500 to-orange-500 text-slate-950 px-6 py-3 rounded-2xl font-bold hover:brightness-110 active:scale-95 transition-all shadow-lg cursor-pointer"
+          onClick={() => setViewMode(viewMode === 'camera' ? 'photo' : 'camera')}
+          className={`flex items-center gap-1.5 px-3 py-2.5 rounded-2xl text-xs font-semibold transition-all border cursor-pointer ${
+            viewMode === 'photo'
+              ? 'bg-amber-500/20 text-amber-400 border-amber-500/40'
+              : 'bg-slate-800 text-slate-300 border-slate-700 hover:text-white'
+          }`}
         >
-          <Camera className="w-5 h-5" />
-          <span>📸 Chụp Ảnh</span>
+          {viewMode === 'camera' ? (
+            <>
+              <Eye className="w-4 h-4 text-amber-400" />
+              <span>Xem ảnh mới</span>
+            </>
+          ) : (
+            <>
+              <Camera className="w-4 h-4 text-amber-400" />
+              <span>Mở Camera</span>
+            </>
+          )}
+        </button>
+
+        {/* Authentic Locket Round Shutter Button */}
+        <button
+          onClick={capturePhotoFromHero}
+          className="w-16 h-16 rounded-full bg-gradient-to-tr from-amber-500 to-orange-500 p-1 shadow-2xl hover:scale-105 active:scale-95 transition-all cursor-pointer flex items-center justify-center"
+          title="Chụp ngay"
+        >
+          <div className="w-full h-full rounded-full border-4 border-slate-950 flex items-center justify-center">
+            <div className="w-4 h-4 rounded-full bg-white"></div>
+          </div>
         </button>
 
         {/* Gallery Upload Button */}
         <button
           onClick={() => galleryInputRef.current?.click()}
-          className="flex items-center gap-2 bg-slate-800 text-slate-200 px-4 py-3 rounded-2xl font-medium hover:bg-slate-700 transition-all border border-slate-700 text-xs cursor-pointer"
+          className="flex items-center gap-1.5 bg-slate-800 text-slate-300 px-3 py-2.5 rounded-2xl font-semibold hover:bg-slate-700 transition-all border border-slate-700 text-xs cursor-pointer"
         >
-          <Upload className="w-4 h-4" />
-          <span>📁 Thư viện</span>
+          <Upload className="w-4 h-4 text-slate-400" />
+          <span>Thư viện</span>
         </button>
       </div>
-
-      {/* Live WebCam Viewfinder Modal */}
-      {showCameraModal && (
-        <div className="fixed inset-0 z-50 bg-black/90 backdrop-blur-md flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 w-full max-w-sm rounded-3xl p-4 space-y-4 shadow-2xl relative">
-            <div className="flex items-center justify-between">
-              <h3 className="text-white font-bold text-sm flex items-center gap-2">
-                <Camera className="w-4 h-4 text-amber-400" />
-                <span>Máy ảnh Locket</span>
-              </h3>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={toggleCameraFacing}
-                  className="p-2 bg-slate-800 text-slate-300 hover:text-white rounded-full transition-all"
-                  title="Xoay Camera"
-                >
-                  <FlipHorizontal className="w-4 h-4" />
-                </button>
-                <button
-                  onClick={stopCamera}
-                  className="p-2 bg-slate-800 text-slate-300 hover:text-white rounded-full transition-all"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-            </div>
-
-            {/* Live Video Preview Box */}
-            <div className="relative aspect-square w-full rounded-2xl overflow-hidden bg-black border border-slate-800 flex items-center justify-center">
-              <video
-                ref={videoRef}
-                autoPlay
-                playsInline
-                muted
-                className={`w-full h-full object-cover ${facingMode === 'user' ? 'scale-x-[-1]' : ''}`}
-              />
-            </div>
-
-            {/* Shutter Action Button */}
-            <div className="flex justify-center pt-2">
-              <button
-                onClick={capturePhotoFromStream}
-                className="w-16 h-16 rounded-full bg-amber-500 hover:bg-amber-400 border-4 border-white/80 shadow-2xl flex items-center justify-center active:scale-90 transition-all cursor-pointer"
-                title="Chụp ngay"
-              >
-                <div className="w-6 h-6 rounded-full bg-slate-950"></div>
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Storage Bot Settings Modal */}
       {showSettingsModal && (
