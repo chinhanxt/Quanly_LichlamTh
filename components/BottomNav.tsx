@@ -21,7 +21,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({ activeTab, onChangeTab, is
           }`}
         >
           <HeartHandshake className="w-5 h-5" />
-          <span className="text-xs">Locket</span>
+          <span className="text-xs">Khoảnh khắc</span>
         </button>
 
         <button
