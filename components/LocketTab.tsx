@@ -521,20 +521,19 @@ export default function LocketTab() {
   // Main Clean Locket View (White + Purple Theme with HD Capture & Pinch-to-Zoom)
   return (
     <div className="max-w-md mx-auto p-4 space-y-6 pb-20 select-none">
-      {/* Header Bar with Settings Icon */}
+      {/* Header Bar with Compact Settings Icon */}
       <div className="flex items-center justify-between bg-white/90 p-3.5 rounded-2xl border border-purple-100 shadow-sm">
         <div className="flex items-center gap-2">
           <span className="text-sm font-bold text-purple-700">✨ Khoảnh Khắc Locket</span>
         </div>
 
-        {/* Gear Icon Button for Storage Bot Settings */}
+        {/* Compact Gear Icon Button for Storage Settings */}
         <button
           onClick={() => setShowSettingsModal(true)}
-          className="p-2 bg-purple-50 text-purple-600 hover:bg-purple-100 rounded-xl border border-purple-200 transition-all cursor-pointer flex items-center gap-1.5 text-xs font-semibold"
-          title="Cấu hình Bot lưu trữ Telegram"
+          className="p-2 bg-purple-50 text-purple-600 hover:bg-purple-100 hover:text-purple-700 rounded-xl border border-purple-200 transition-all cursor-pointer flex items-center justify-center shadow-xs"
+          title="Cấu hình Locket"
         >
           <Settings className="w-4 h-4" />
-          <span>Cấu hình Bot</span>
         </button>
       </div>
 
@@ -641,11 +640,7 @@ export default function LocketTab() {
               </button>
             )}
 
-            {/* Live Camera Badge */}
-            <div className="absolute top-3 left-3 bg-black/60 backdrop-blur-md px-3 py-1 rounded-full flex items-center gap-2 border border-white/10 z-10">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
-              <span className="text-xs font-semibold text-white">Camera Trực Tiếp HD</span>
-            </div>
+
           </div>
         ) : (
           /* Viewing Photo in History with Pinch Zoom & Double Tap */
