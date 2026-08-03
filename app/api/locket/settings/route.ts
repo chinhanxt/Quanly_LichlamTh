@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getLocketBotSettingsFirestore, saveLocketBotSettingsFirestore } from '@/lib/firebase';
+import { sanitizeTelegramToken } from '@/lib/telegram';
 
 export async function GET() {
   try {
@@ -13,7 +14,8 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { locketBotToken, locketChatId } = body;
+    const locketBotToken = sanitizeTelegramToken(body.locketBotToken || '');
+    const locketChatId = (body.locketChatId || '').trim();
     await saveLocketBotSettingsFirestore({ locketBotToken, locketChatId });
     return NextResponse.json({ success: true });
   } catch (error: any) {
