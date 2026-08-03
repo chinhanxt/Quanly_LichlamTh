@@ -21,43 +21,7 @@ export interface ImageSticker {
   url: string;
 }
 
-export const CUTE_COUPLE_STICKERS: ImageSticker[] = [
-  // Cặp Đôi Chibi (1-10)
-  { id: 'stk_1', name: 'Selfie cặp đôi 🤳', url: '/stickers/sticker_1.png' },
-  { id: 'stk_2', name: 'Hôn má lãng mạn 💋', url: '/stickers/sticker_2.png' },
-  { id: 'stk_3', name: 'Móc ngoéo nắm tay 🤝', url: '/stickers/sticker_3.png' },
-  { id: 'stk_4', name: 'Dỗ dành khi giận 😤', url: '/stickers/sticker_4.png' },
-  { id: 'stk_5', name: 'Khóc nhè nũng nịu 😭', url: '/stickers/sticker_5.png' },
-  { id: 'stk_6', name: 'Hi-five thả dáng ✌️', url: '/stickers/sticker_6.png' },
-  { id: 'stk_7', name: 'Chán chường tâm trạng 🌧️', url: '/stickers/sticker_7.png' },
-  { id: 'stk_8', name: 'Ôm chặt thương thương 🤗', url: '/stickers/sticker_8.png' },
-  { id: 'stk_9', name: 'Đút bánh ăn chung 🍔', url: '/stickers/sticker_9.png' },
-  { id: 'stk_10', name: 'Uống trà sữa đôi 🧋', url: '/stickers/sticker_10.png' },
-
-  // Chibi Bạn Nữ (11-20)
-  { id: 'stk_11', name: 'Bạn nữ chống cằm 🌸', url: '/stickers/sticker_11.png' },
-  { id: 'stk_12', name: 'Bạn nữ nháy mắt ✌️', url: '/stickers/sticker_12.png' },
-  { id: 'stk_13', name: 'Bạn nữ áp má 💖', url: '/stickers/sticker_13.png' },
-  { id: 'stk_14', name: 'Bạn nữ giận dỗi 😤', url: '/stickers/sticker_14.png' },
-  { id: 'stk_15', name: 'Bạn nữ khóc nhè 😭', url: '/stickers/sticker_15.png' },
-  { id: 'stk_16', name: 'Bạn nữ suy nghĩ ❓', url: '/stickers/sticker_16.png' },
-  { id: 'stk_17', name: 'Bạn nữ bĩu môi 🥺', url: '/stickers/sticker_17.png' },
-  { id: 'stk_18', name: 'Bạn nữ thả tim 💖', url: '/stickers/sticker_18.png' },
-  { id: 'stk_19', name: 'Bạn nữ bất ngờ 😲', url: '/stickers/sticker_19.png' },
-  { id: 'stk_20', name: 'Bạn nữ thẹn thùng 💕', url: '/stickers/sticker_20.png' },
-
-  // Chibi Bạn Nam (21-30)
-  { id: 'stk_21', name: 'Bạn nam chống cằm 💭', url: '/stickers/sticker_21.png' },
-  { id: 'stk_22', name: 'Bạn nam khoanh tay 😤', url: '/stickers/sticker_22.png' },
-  { id: 'stk_23', name: 'Bạn nam nháy mắt 🌟', url: '/stickers/sticker_23.png' },
-  { id: 'stk_24', name: 'Bạn nam phồng má 🥺', url: '/stickers/sticker_24.png' },
-  { id: 'stk_25', name: 'Bạn nam khóc 😭', url: '/stickers/sticker_25.png' },
-  { id: 'stk_26', name: 'Bạn nam suy nghĩ ❓', url: '/stickers/sticker_26.png' },
-  { id: 'stk_27', name: 'Bạn nam u buồn 🌧️', url: '/stickers/sticker_27.png' },
-  { id: 'stk_28', name: 'Bạn nam cười tươi 😄', url: '/stickers/sticker_28.png' },
-  { id: 'stk_29', name: 'Bạn nam ngạc nhiên 😲', url: '/stickers/sticker_29.png' },
-  { id: 'stk_30', name: 'Bạn nam mỉm cười 😊', url: '/stickers/sticker_30.png' },
-];
+export const CUTE_COUPLE_STICKERS: ImageSticker[] = [];
 
 export const BEAUTY_FILTERS: FilterPreset[] = [
   {
