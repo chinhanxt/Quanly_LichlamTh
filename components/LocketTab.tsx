@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Camera, Upload, Download, RefreshCw, Send, Image as ImageIcon, Settings, Save, X } from 'lucide-react';
 import { useToast } from '@/components/ui/Toast';
+import { useAuth } from '@/components/AuthProvider';
 
 interface LocketPhoto {
   id: string;
@@ -13,15 +14,14 @@ interface LocketPhoto {
 }
 
 export default function LocketTab() {
+  const { user } = useAuth();
+  const currentUser = user?.username || 'chinhan';
   const { showToast } = useToast();
   const [photos, setPhotos] = useState<LocketPhoto[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
-
-  // User Selection
-  const [currentUser, setCurrentUser] = useState<'chinhan' | 'thanhhuong'>('chinhan');
 
   // Photo Capture / Preview State
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -146,37 +146,20 @@ export default function LocketTab() {
 
   return (
     <div className="max-w-md mx-auto p-4 space-y-6 pb-20">
-      {/* Header User Switcher & Settings Icon */}
+      {/* Header Bar with Settings Icon */}
       <div className="flex items-center justify-between bg-slate-800/80 p-3 rounded-2xl border border-slate-700">
         <div className="flex items-center gap-2">
-          <span className="text-sm font-medium text-slate-300">Tài khoản:</span>
-          <div className="flex bg-slate-900 rounded-xl p-1">
-            <button
-              onClick={() => setCurrentUser('chinhan')}
-              className={`px-3 py-1 text-xs rounded-lg font-bold transition-all cursor-pointer ${
-                currentUser === 'chinhan' ? 'bg-amber-500 text-slate-950 shadow' : 'text-slate-400 hover:text-white'
-              }`}
-            >
-              chinhan
-            </button>
-            <button
-              onClick={() => setCurrentUser('thanhhuong')}
-              className={`px-3 py-1 text-xs rounded-lg font-bold transition-all cursor-pointer ${
-                currentUser === 'thanhhuong' ? 'bg-pink-500 text-white shadow' : 'text-slate-400 hover:text-white'
-              }`}
-            >
-              thanhhuong
-            </button>
-          </div>
+          <span className="text-sm font-bold text-amber-400">✨ Khoảnh Khắc Locket</span>
         </div>
 
         {/* Gear Icon Button for Storage Bot Settings */}
         <button
           onClick={() => setShowSettingsModal(true)}
-          className="p-2.5 bg-slate-900 text-slate-400 hover:text-amber-400 rounded-xl border border-slate-700 hover:border-amber-500/50 transition-all cursor-pointer"
+          className="p-2 bg-slate-900 text-slate-400 hover:text-amber-400 rounded-xl border border-slate-700 hover:border-amber-500/50 transition-all cursor-pointer flex items-center gap-1.5 text-xs font-semibold"
           title="Cấu hình Bot lưu trữ Telegram"
         >
           <Settings className="w-4 h-4" />
+          <span>Cấu hình Bot</span>
         </button>
       </div>
 
