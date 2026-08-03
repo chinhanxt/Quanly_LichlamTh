@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Camera, Upload, Download, RefreshCw, Send, Image as ImageIcon, Settings, Save, X } from 'lucide-react';
+import { Camera, Upload, Download, RefreshCw, Send, Image as ImageIcon, Settings, Save, X, FlipHorizontal } from 'lucide-react';
 import { useToast } from '@/components/ui/Toast';
 import { useAuth } from '@/components/AuthProvider';
 
@@ -22,6 +22,13 @@ export default function LocketTab() {
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [imgErrorMap, setImgErrorMap] = useState<Record<string, boolean>>({});
+
+  // WebCam Live Preview State
+  const [showCameraModal, setShowCameraModal] = useState(false);
+  const [facingMode, setFacingMode] = useState<'user' | 'environment'>('user');
+  const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
 
   // Photo Capture / Preview State
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -97,6 +104,79 @@ export default function LocketTab() {
     }
   };
 
+  const startCamera = async (mode: 'user' | 'environment' = facingMode) => {
+    try {
+      if (cameraStream) {
+        cameraStream.getTracks().forEach((track) => track.stop());
+      }
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: mode, width: { ideal: 1080 }, height: { ideal: 1080 } },
+        audio: false,
+      });
+      setCameraStream(stream);
+      setShowCameraModal(true);
+      setTimeout(() => {
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+        }
+      }, 100);
+    } catch (err: any) {
+      console.warn('getUserMedia failed, falling back to input capture:', err);
+      showToast({
+        type: 'info',
+        message: 'Mở máy ảnh thiết bị để chụp khoảnh khắc...',
+      });
+      cameraInputRef.current?.click();
+    }
+  };
+
+  const stopCamera = () => {
+    if (cameraStream) {
+      cameraStream.getTracks().forEach((track) => track.stop());
+      setCameraStream(null);
+    }
+    setShowCameraModal(false);
+  };
+
+  const toggleCameraFacing = () => {
+    const newMode = facingMode === 'user' ? 'environment' : 'user';
+    setFacingMode(newMode);
+    startCamera(newMode);
+  };
+
+  const capturePhotoFromStream = () => {
+    if (!videoRef.current) return;
+    const video = videoRef.current;
+    const canvas = document.createElement('canvas');
+    const size = Math.min(video.videoWidth || 640, video.videoHeight || 640);
+    canvas.width = size;
+    canvas.height = size;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    // Crop center square
+    const startX = (video.videoWidth - size) / 2;
+    const startY = (video.videoHeight - size) / 2;
+    ctx.drawImage(video, startX, startY, size, size, 0, 0, size, size);
+
+    canvas.toBlob((blob) => {
+      if (blob) {
+        const file = new File([blob], `locket_${Date.now()}.jpg`, { type: 'image/jpeg' });
+        setSelectedFile(file);
+        setPreviewUrl(URL.createObjectURL(file));
+        stopCamera();
+      }
+    }, 'image/jpeg', 0.9);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (cameraStream) {
+        cameraStream.getTracks().forEach((track) => track.stop());
+      }
+    };
+  }, [cameraStream]);
+
   useEffect(() => {
     fetchFeed(1, false);
     fetchBotSettings();
@@ -170,11 +250,12 @@ export default function LocketTab() {
             <RefreshCw className="w-8 h-8 animate-spin mb-2 text-amber-400" />
             <span className="text-sm">Đang tải khoảnh khắc...</span>
           </div>
-        ) : latestPhoto ? (
+        ) : latestPhoto && !imgErrorMap[latestPhoto.id] ? (
           <div className="relative w-full h-full group">
             <img
               src={`/api/locket/photo/${latestPhoto.telegram_file_id}`}
               alt="Locket moment"
+              onError={() => setImgErrorMap((prev) => ({ ...prev, [latestPhoto.id]: true }))}
               className="w-full h-full object-cover"
             />
             {/* Top Badge */}
@@ -204,9 +285,12 @@ export default function LocketTab() {
             )}
           </div>
         ) : (
-          <div className="text-center text-slate-500 p-6">
-            <ImageIcon className="w-12 h-12 mx-auto mb-2 opacity-40" />
-            <p className="text-sm">Chưa có khoảnh khắc nào. Hãy là người đầu tiên chụp và đăng!</p>
+          <div className="text-center text-slate-500 p-6 flex flex-col items-center justify-center">
+            <div className="w-16 h-16 rounded-full bg-amber-500/10 border border-amber-500/30 flex items-center justify-center mb-3">
+              <Camera className="w-8 h-8 text-amber-400" />
+            </div>
+            <p className="text-sm font-semibold text-slate-300 mb-1">Khoảnh khắc Locket</p>
+            <p className="text-xs text-slate-400 max-w-xs">Chưa có ảnh nào hoặc ảnh thử nghiệm đã hết hạn. Hãy bấm nút Chụp Ảnh để chia sẻ ngay!</p>
           </div>
         )}
       </div>
@@ -234,7 +318,7 @@ export default function LocketTab() {
 
         {/* Big Snap Shutter Button */}
         <button
-          onClick={() => cameraInputRef.current?.click()}
+          onClick={() => startCamera()}
           className="flex items-center gap-2 bg-gradient-to-r from-amber-500 to-orange-500 text-slate-950 px-6 py-3 rounded-2xl font-bold hover:brightness-110 active:scale-95 transition-all shadow-lg cursor-pointer"
         >
           <Camera className="w-5 h-5" />
@@ -250,6 +334,57 @@ export default function LocketTab() {
           <span>📁 Thư viện</span>
         </button>
       </div>
+
+      {/* Live WebCam Viewfinder Modal */}
+      {showCameraModal && (
+        <div className="fixed inset-0 z-50 bg-black/90 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-800 w-full max-w-sm rounded-3xl p-4 space-y-4 shadow-2xl relative">
+            <div className="flex items-center justify-between">
+              <h3 className="text-white font-bold text-sm flex items-center gap-2">
+                <Camera className="w-4 h-4 text-amber-400" />
+                <span>Máy ảnh Locket</span>
+              </h3>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={toggleCameraFacing}
+                  className="p-2 bg-slate-800 text-slate-300 hover:text-white rounded-full transition-all"
+                  title="Xoay Camera"
+                >
+                  <FlipHorizontal className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={stopCamera}
+                  className="p-2 bg-slate-800 text-slate-300 hover:text-white rounded-full transition-all"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+
+            {/* Live Video Preview Box */}
+            <div className="relative aspect-square w-full rounded-2xl overflow-hidden bg-black border border-slate-800 flex items-center justify-center">
+              <video
+                ref={videoRef}
+                autoPlay
+                playsInline
+                muted
+                className={`w-full h-full object-cover ${facingMode === 'user' ? 'scale-x-[-1]' : ''}`}
+              />
+            </div>
+
+            {/* Shutter Action Button */}
+            <div className="flex justify-center pt-2">
+              <button
+                onClick={capturePhotoFromStream}
+                className="w-16 h-16 rounded-full bg-amber-500 hover:bg-amber-400 border-4 border-white/80 shadow-2xl flex items-center justify-center active:scale-90 transition-all cursor-pointer"
+                title="Chụp ngay"
+              >
+                <div className="w-6 h-6 rounded-full bg-slate-950"></div>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Storage Bot Settings Modal */}
       {showSettingsModal && (
@@ -368,13 +503,21 @@ export default function LocketTab() {
 
         <div className="grid grid-cols-2 gap-3">
           {photos.slice(1).map((photo) => (
-            <div key={photo.id} className="relative aspect-square rounded-2xl overflow-hidden bg-slate-900 border border-slate-800 group">
-              <img
-                src={`/api/locket/photo/${photo.telegram_file_id}`}
-                alt="Moment"
-                className="w-full h-full object-cover"
-                loading="lazy"
-              />
+            <div key={photo.id} className="relative aspect-square rounded-2xl overflow-hidden bg-slate-900 border border-slate-800 group flex items-center justify-center">
+              {!imgErrorMap[photo.id] ? (
+                <img
+                  src={`/api/locket/photo/${photo.telegram_file_id}`}
+                  alt="Moment"
+                  onError={() => setImgErrorMap((prev) => ({ ...prev, [photo.id]: true }))}
+                  className="w-full h-full object-cover"
+                  loading="lazy"
+                />
+              ) : (
+                <div className="flex flex-col items-center justify-center p-2 text-slate-500 text-center">
+                  <ImageIcon className="w-6 h-6 mb-1 opacity-40" />
+                  <span className="text-[10px]">Ảnh hết hạn</span>
+                </div>
+              )}
               <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/30 p-2 flex flex-col justify-between opacity-90">
                 <span className="text-[10px] text-white font-medium bg-black/40 px-2 py-0.5 rounded-full w-fit">
                   {photo.sender}
@@ -382,13 +525,15 @@ export default function LocketTab() {
 
                 <div className="flex items-end justify-between gap-1">
                   <p className="text-[11px] text-slate-200 truncate">{photo.caption || '...'}</p>
-                  <a
-                    href={`/api/locket/photo/${photo.telegram_file_id}`}
-                    download={`locket_${photo.id}.jpg`}
-                    className="p-1 bg-black/60 text-white rounded-lg hover:bg-black"
-                  >
-                    <Download className="w-3 h-3" />
-                  </a>
+                  {!imgErrorMap[photo.id] && (
+                    <a
+                      href={`/api/locket/photo/${photo.telegram_file_id}`}
+                      download={`locket_${photo.id}.jpg`}
+                      className="p-1 bg-black/60 text-white rounded-lg hover:bg-black"
+                    >
+                      <Download className="w-3 h-3" />
+                    </a>
+                  )}
                 </div>
               </div>
             </div>
