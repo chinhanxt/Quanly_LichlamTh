@@ -444,8 +444,23 @@ export interface LocketPhoto {
   id: string;
   sender: string;
   telegram_file_id: string;
+  photo_message_id?: number;
+  notify_message_id?: number;
+  chat_id?: string;
   caption?: string;
   created_at: string;
+}
+
+export function getLocketPhotoByIdLocal(id: string): LocketPhoto | null {
+  try {
+    ensureDataDir();
+    if (!fs.existsSync(LOCKET_PHOTOS_FILE)) return null;
+    const raw = fs.readFileSync(LOCKET_PHOTOS_FILE, 'utf-8');
+    const list: LocketPhoto[] = JSON.parse(raw);
+    return list.find((p) => p.id === id) || null;
+  } catch (err) {
+    return null;
+  }
 }
 
 export function getLocketPhotosLocal(page = 1, limit = 10): { photos: LocketPhoto[]; total: number; hasMore: boolean } {

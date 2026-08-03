@@ -36,6 +36,7 @@ import {
   getLocketBotSettingsLocal,
   saveLocketBotSettingsLocal,
   deleteLocketPhotoLocal,
+  getLocketPhotoByIdLocal,
 } from './local-db';
 
 const firebaseConfig = {
@@ -532,6 +533,19 @@ export async function saveLocketBotSettingsFirestore(settings: { locketBotToken:
     console.warn('Firebase saveLocketBotSettingsFirestore failed, saving local fallback:', error);
     return saveLocketBotSettingsLocal(settings);
   }
+}
+
+export async function getLocketPhotoByIdFirestore(id: string): Promise<LocketPhoto | null> {
+  try {
+    const docRef = doc(db, 'locket_photos', id);
+    const docSnap = await getDoc(docRef);
+    if (docSnap.exists()) {
+      return { id: docSnap.id, ...docSnap.data() } as LocketPhoto;
+    }
+  } catch (error) {
+    console.warn('Firebase getLocketPhotoByIdFirestore failed, falling back to local:', error);
+  }
+  return getLocketPhotoByIdLocal(id);
 }
 
 export async function deleteLocketPhotoFirestore(id: string): Promise<boolean> {
