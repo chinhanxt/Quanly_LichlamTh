@@ -173,7 +173,15 @@ export default function LocketTab() {
 
     const startX = (video.videoWidth - size) / 2;
     const startY = (video.videoHeight - size) / 2;
+
+    ctx.save();
+    if (facingMode === 'user') {
+      // Mirror selfie front camera to match live preview
+      ctx.translate(size, 0);
+      ctx.scale(-1, 1);
+    }
     ctx.drawImage(video, startX, startY, size, size, 0, 0, size, size);
+    ctx.restore();
 
     canvas.toBlob((blob) => {
       if (blob) {
@@ -274,7 +282,7 @@ export default function LocketTab() {
                 autoPlay
                 playsInline
                 muted
-                className="w-full h-full object-cover"
+                className={`w-full h-full object-cover ${facingMode === 'user' ? 'scale-x-[-1]' : ''}`}
               />
             ) : (
               <div className="text-center p-6 flex flex-col items-center">
