@@ -181,9 +181,6 @@ export default function LocketTab() {
   // Navigation View: 'main' (Clean Locket View) vs 'history' (Hidden Dedicated History Page)
   const [subView, setSubView] = useState<'main' | 'history'>('main');
 
-  // Collapsible Top Header Bar State (Default false = collapsed for max camera space)
-  const [showHeaderHeader, setShowHeaderHeader] = useState<boolean>(false);
-
   // Hero Frame Index: -1 = Live Camera, 0 = Latest Photo, 1..N = Older Photos
   const [heroIndex, setHeroIndex] = useState<number>(-1);
 
@@ -1028,44 +1025,7 @@ export default function LocketTab() {
 
   // Main Clean Locket View (White + Purple Theme with HD Capture & Pinch-to-Zoom)
   return (
-    <div className="max-w-md mx-auto p-4 space-y-6 pb-20 select-none">
-      {/* Collapsible Header Bar (Default Collapsed for Max Camera Space) */}
-      {showHeaderHeader ? (
-        <div className="flex items-center justify-between bg-white/90 p-3.5 rounded-2xl border border-purple-100 shadow-sm animate-in fade-in slide-in-from-top-2 duration-150">
-          <div className="flex items-center gap-2">
-            <span className="text-sm font-bold text-purple-700">✨ Khoảnh Khắc</span>
-          </div>
-
-          <div className="flex items-center gap-1.5">
-            <button
-              onClick={() => setShowSettingsModal(true)}
-              className="p-2 bg-purple-50 text-purple-600 hover:bg-purple-100 hover:text-purple-700 rounded-xl border border-purple-200 transition-all cursor-pointer flex items-center justify-center shadow-xs"
-              title="Cấu hình Khoảnh Khắc"
-            >
-              <Settings className="w-4 h-4" />
-            </button>
-            <button
-              onClick={() => setShowHeaderHeader(false)}
-              className="p-2 bg-slate-100 text-slate-600 hover:bg-slate-200 rounded-xl transition-all cursor-pointer flex items-center justify-center"
-              title="Ẩn thanh tiêu đề"
-            >
-              <ChevronUp className="w-4 h-4" />
-            </button>
-          </div>
-        </div>
-      ) : (
-        <div className="flex justify-end pr-1 -mb-3">
-          <button
-            onClick={() => setShowHeaderHeader(true)}
-            className="p-1.5 px-3 bg-white/80 backdrop-blur-md text-purple-600 hover:bg-white rounded-full border border-purple-200/60 shadow-xs text-xs font-bold flex items-center gap-1 cursor-pointer transition-all active:scale-95"
-            title="Hiện tiêu đề & cài đặt"
-          >
-            <span>✨ Khoảnh Khắc</span>
-            <ChevronDown className="w-3.5 h-3.5 text-purple-500" />
-          </button>
-        </div>
-      )}
-
+    <div className="max-w-lg mx-auto p-2 sm:p-4 space-y-4 pb-20 select-none">
       {/* Main Hero Locket 1:1 Square Frame with Pinch-to-Zoom & Double-Tap Support */}
       <div
         id="locket-hero-frame"
@@ -1074,6 +1034,14 @@ export default function LocketTab() {
         onTouchEnd={handleTouchEnd}
         className="relative aspect-square w-full bg-slate-950 rounded-3xl overflow-hidden shadow-xl border-4 border-white ring-1 ring-purple-200/80 flex items-center justify-center group touch-none select-none"
       >
+        {/* Floating Compact Settings Gear Icon Button (Top-Right of Hero Frame) */}
+        <button
+          onClick={() => setShowSettingsModal(true)}
+          className="absolute top-3 right-3 p-2 bg-white/70 hover:bg-white/95 backdrop-blur-md text-purple-700 rounded-2xl border border-white/80 z-30 transition-all cursor-pointer shadow-md active:scale-90"
+          title="Cấu hình Khoảnh Khắc"
+        >
+          <Settings className="w-4 h-4" />
+        </button>
         {previewUrl ? (
           /* Just Captured / Picked Image View (In-Frame HD Preview) */
           <div className="relative w-full h-full bg-black overflow-hidden flex items-center justify-center">
