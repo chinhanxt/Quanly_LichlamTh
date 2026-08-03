@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Camera, Upload, Download, RefreshCw, Send, Image as ImageIcon, Settings, Save, X, FlipHorizontal, Eye, ChevronLeft, ChevronRight, Trash2, RotateCcw, ArrowLeft, BookOpen } from 'lucide-react';
+import { Camera, Upload, Download, RefreshCw, Send, Image as ImageIcon, Settings, Save, X, FlipHorizontal, Eye, ChevronLeft, ChevronRight, Trash2, RotateCcw, ArrowLeft, BookOpen, ZoomIn, ZoomOut } from 'lucide-react';
 import { useToast } from '@/components/ui/Toast';
 import { useAuth } from '@/components/AuthProvider';
 
@@ -31,15 +31,22 @@ export default function LocketTab() {
   // Hero Frame Index: -1 = Live Camera, 0 = Latest Photo, 1..N = Older Photos
   const [heroIndex, setHeroIndex] = useState<number>(-1);
 
+  // Touch Pinch-to-Zoom & Pan Gesture State
+  const [zoomScale, setZoomScale] = useState<number>(1);
+  const [zoomOffset, setZoomOffset] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+  const [isDragging, setIsDragging] = useState(false);
+  const lastTapRef = useRef<number>(0);
+  const initialTouchDistRef = useRef<number | null>(null);
+  const initialScaleRef = useRef<number>(1);
+  const touchStartPosRef = useRef<{ x: number; y: number } | null>(null);
+  const touchStartOffsetRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
+
   // WebCam Live Preview State
   const [facingMode, setFacingMode] = useState<'user' | 'environment'>('user');
   const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
   const [cameraActive, setCameraActive] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
-
-  // Touch Swipe Gesture Tracking
-  const touchStartXRef = useRef<number | null>(null);
 
   // In-Frame Photo Capture / Preview State (NO POPUP)
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -54,6 +61,11 @@ export default function LocketTab() {
   const [savingSettings, setSavingSettings] = useState(false);
 
   const galleryInputRef = useRef<HTMLInputElement>(null);
+
+  const resetZoom = () => {
+    setZoomScale(1);
+    setZoomOffset({ x: 0, y: 0 });
+  };
 
   const fetchFeed = async (pageNum = 1, append = false) => {
     try {
@@ -114,6 +126,7 @@ export default function LocketTab() {
     }
   };
 
+  // High Resolution Camera Stream Configuration (1080p / 4K ideal)
   const startCameraStream = async (mode: 'user' | 'environment' = facingMode) => {
     try {
       setCameraError(null);
@@ -124,13 +137,16 @@ export default function LocketTab() {
       let stream: MediaStream | null = null;
       try {
         stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: mode },
+          video: {
+            facingMode: mode,
+            width: { ideal: 1920, min: 1080 },
+            height: { ideal: 1920, min: 1080 },
+          },
           audio: false,
         });
       } catch (e) {
-        // Fallback for desktop webcams
         stream = await navigator.mediaDevices.getUserMedia({
-          video: true,
+          video: { facingMode: mode },
           audio: false,
         });
       }
@@ -163,6 +179,7 @@ export default function LocketTab() {
     startCameraStream(nextMode);
   };
 
+  // Ultra HD Canvas Capture (0.98 JPEG Quality & Native Max Resolution)
   const capturePhotoFromHero = () => {
     if (previewUrl) {
       handleUpload();
@@ -171,6 +188,7 @@ export default function LocketTab() {
 
     if (heroIndex !== -1) {
       setHeroIndex(-1);
+      resetZoom();
       return;
     }
 
@@ -180,15 +198,21 @@ export default function LocketTab() {
     }
 
     const video = videoRef.current;
+    const rawWidth = video.videoWidth || 1280;
+    const rawHeight = video.videoHeight || 1280;
+    const size = Math.min(rawWidth, rawHeight);
+
     const canvas = document.createElement('canvas');
-    const size = Math.min(video.videoWidth || 640, video.videoHeight || 640);
     canvas.width = size;
     canvas.height = size;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    const startX = (video.videoWidth - size) / 2;
-    const startY = (video.videoHeight - size) / 2;
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+
+    const startX = (rawWidth - size) / 2;
+    const startY = (rawHeight - size) / 2;
 
     ctx.save();
     if (facingMode === 'user') {
@@ -203,8 +227,9 @@ export default function LocketTab() {
         const file = new File([blob], `locket_${Date.now()}.jpg`, { type: 'image/jpeg' });
         setSelectedFile(file);
         setPreviewUrl(URL.createObjectURL(file));
+        resetZoom();
       }
-    }, 'image/jpeg', 0.9);
+    }, 'image/jpeg', 0.98);
   };
 
   const discardCapturedPhoto = () => {
@@ -214,39 +239,97 @@ export default function LocketTab() {
     setSelectedFile(null);
     setPreviewUrl(null);
     setCaption('');
+    resetZoom();
   };
 
-  // Swipe Navigation Handlers
+  // Swipe & Zoom Touch Handlers
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (e.touches.length === 2) {
+      // 2 Finger Pinch-to-Zoom
+      const dist = Math.hypot(
+        e.touches[0].clientX - e.touches[1].clientX,
+        e.touches[0].clientY - e.touches[1].clientY
+      );
+      initialTouchDistRef.current = dist;
+      initialScaleRef.current = zoomScale;
+    } else if (e.touches.length === 1) {
+      // Single Finger Touch for Double-Tap or Pan / Swipe
+      const now = Date.now();
+      if (now - lastTapRef.current < 300) {
+        // Double-Tap detected! Toggle Zoom 1x <-> 2.5x
+        if (zoomScale > 1.1) {
+          resetZoom();
+        } else {
+          setZoomScale(2.5);
+          setZoomOffset({ x: 0, y: 0 });
+        }
+        lastTapRef.current = 0;
+        return;
+      }
+      lastTapRef.current = now;
+
+      touchStartPosRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+      touchStartOffsetRef.current = { ...zoomOffset };
+      setIsDragging(zoomScale > 1.1);
+    }
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (e.touches.length === 2 && initialTouchDistRef.current !== null) {
+      // Pinching to zoom
+      const dist = Math.hypot(
+        e.touches[0].clientX - e.touches[1].clientX,
+        e.touches[0].clientY - e.touches[1].clientY
+      );
+      const scaleRatio = dist / initialTouchDistRef.current;
+      const newScale = Math.min(Math.max(1, initialScaleRef.current * scaleRatio), 3.5);
+      setZoomScale(newScale);
+      if (newScale <= 1.05) setZoomOffset({ x: 0, y: 0 });
+    } else if (e.touches.length === 1 && touchStartPosRef.current && zoomScale > 1.1) {
+      // Panning zoomed photo
+      const deltaX = e.touches[0].clientX - touchStartPosRef.current.x;
+      const deltaY = e.touches[0].clientY - touchStartPosRef.current.y;
+      const maxPan = 100 * (zoomScale - 1);
+      setZoomOffset({
+        x: Math.min(Math.max(-maxPan, touchStartOffsetRef.current.x + deltaX), maxPan),
+        y: Math.min(Math.max(-maxPan, touchStartOffsetRef.current.y + deltaY), maxPan),
+      });
+    }
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    initialTouchDistRef.current = null;
+    setIsDragging(false);
+
+    if (e.changedTouches.length === 1 && touchStartPosRef.current && zoomScale <= 1.1) {
+      const deltaX = e.changedTouches[0].clientX - touchStartPosRef.current.x;
+      touchStartPosRef.current = null;
+
+      if (deltaX < -45) {
+        handlePrevPhoto();
+      } else if (deltaX > 45) {
+        handleNextPhoto();
+      }
+    }
+  };
+
   const handleNextPhoto = () => {
-    if (previewUrl) return; // Freeze swipe during captured preview
+    if (previewUrl) return;
     if (heroIndex > 0) {
       setHeroIndex((prev) => prev - 1);
+      resetZoom();
     } else if (heroIndex === 0) {
-      setHeroIndex(-1); // Live Camera!
+      setHeroIndex(-1);
+      resetZoom();
     }
   };
 
   const handlePrevPhoto = () => {
-    if (previewUrl) return; // Freeze swipe during captured preview
+    if (previewUrl) return;
     if (photos.length === 0) return;
     if (heroIndex < photos.length - 1) {
       setHeroIndex((prev) => prev + 1);
-    }
-  };
-
-  const handleTouchStart = (e: React.TouchEvent) => {
-    touchStartXRef.current = e.touches[0].clientX;
-  };
-
-  const handleTouchEnd = (e: React.TouchEvent) => {
-    if (touchStartXRef.current === null) return;
-    const deltaX = e.changedTouches[0].clientX - touchStartXRef.current;
-    touchStartXRef.current = null;
-
-    if (deltaX < -40) {
-      handlePrevPhoto();
-    } else if (deltaX > 40) {
-      handleNextPhoto();
+      resetZoom();
     }
   };
 
@@ -274,6 +357,7 @@ export default function LocketTab() {
       setPreviewUrl(URL.createObjectURL(file));
       setHeroIndex(-1);
       setSubView('main');
+      resetZoom();
     }
   };
 
@@ -287,6 +371,7 @@ export default function LocketTab() {
         setPhotos((prev) => prev.filter((p) => p.id !== photoId));
         if (heroIndex >= photos.length - 1) {
           setHeroIndex(-1);
+          resetZoom();
         }
       } else {
         showToast({ type: 'error', message: 'Không thể xóa khoảnh khắc' });
@@ -313,12 +398,13 @@ export default function LocketTab() {
 
       const data = await res.json();
       if (data.success) {
-        showToast({ type: 'success', message: 'Đã đăng khoảnh khắc thành công! 📸' });
+        showToast({ type: 'success', message: 'Đã đăng khoảnh khắc HD thành công! 📸' });
         setSelectedFile(null);
         setPreviewUrl(null);
         setCaption('');
         fetchFeed(1, false);
-        setHeroIndex(0); // View the newly posted photo
+        setHeroIndex(0);
+        resetZoom();
       } else {
         showToast({ type: 'error', message: `Lỗi: ${data.error}` });
       }
@@ -361,6 +447,7 @@ export default function LocketTab() {
                   discardCapturedPhoto();
                   setHeroIndex(index);
                   setSubView('main');
+                  resetZoom();
                 }}
                 className="relative aspect-square rounded-2xl overflow-hidden bg-slate-950 border border-purple-100 hover:border-purple-400 transition-all cursor-pointer group flex items-center justify-center shadow-md hover:shadow-lg"
               >
@@ -431,7 +518,7 @@ export default function LocketTab() {
     );
   }
 
-  // Main Clean Locket View (White + Purple Theme)
+  // Main Clean Locket View (White + Purple Theme with HD Capture & Pinch-to-Zoom)
   return (
     <div className="max-w-md mx-auto p-4 space-y-6 pb-20 select-none">
       {/* Header Bar with Settings Icon */}
@@ -451,16 +538,34 @@ export default function LocketTab() {
         </button>
       </div>
 
-      {/* Main Hero Locket 1:1 Square Frame (White + Purple System) */}
+      {/* Main Hero Locket 1:1 Square Frame with Pinch-to-Zoom & Double-Tap Support */}
       <div
         onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
-        className="relative aspect-square w-full bg-slate-950 rounded-3xl overflow-hidden shadow-xl border-4 border-white ring-1 ring-purple-200/80 flex items-center justify-center group"
+        className="relative aspect-square w-full bg-slate-950 rounded-3xl overflow-hidden shadow-xl border-4 border-white ring-1 ring-purple-200/80 flex items-center justify-center group touch-none"
       >
         {previewUrl ? (
-          /* Just Captured / Picked Image View (In-Frame Preview) */
-          <div className="relative w-full h-full bg-black">
-            <img src={previewUrl} alt="Captured preview" className="w-full h-full object-cover" />
+          /* Just Captured / Picked Image View (In-Frame HD Preview) */
+          <div className="relative w-full h-full bg-black overflow-hidden flex items-center justify-center">
+            <img
+              src={previewUrl}
+              alt="Captured preview"
+              className="w-full h-full object-cover origin-center"
+              style={{
+                transform: `scale(${zoomScale}) translate(${zoomOffset.x / zoomScale}px, ${zoomOffset.y / zoomScale}px)`,
+                transition: isDragging ? 'none' : 'transform 0.15s ease-out',
+              }}
+            />
+
+            {/* Zoom Indicator Badge */}
+            {zoomScale > 1.05 && (
+              <div className="absolute top-3 right-3 bg-black/70 backdrop-blur-md px-2.5 py-1 rounded-full text-white text-[11px] font-bold border border-white/20 z-20 flex items-center gap-1">
+                <ZoomIn className="w-3 h-3 text-purple-300" />
+                <span>{zoomScale.toFixed(1)}x</span>
+                <button onClick={resetZoom} className="ml-1 text-slate-300 hover:text-white text-[10px] underline">Đặt lại</button>
+              </div>
+            )}
 
             {/* Top Left Cancel / Retake Button */}
             <button
@@ -515,7 +620,7 @@ export default function LocketTab() {
             ) : (
               <div className="text-center p-6 flex flex-col items-center">
                 <Camera className="w-12 h-12 text-purple-400 mb-2 opacity-80 animate-pulse" />
-                <p className="text-xs text-slate-300 text-center max-w-xs">{cameraError || 'Đang kết nối Camera...'}</p>
+                <p className="text-xs text-slate-300 text-center max-w-xs">{cameraError || 'Đang kết nối Camera HD...'}</p>
                 <button
                   onClick={() => startCameraStream()}
                   className="mt-3 px-4 py-2 bg-purple-600 text-white text-xs font-bold rounded-xl hover:bg-purple-500 cursor-pointer shadow-md"
@@ -539,24 +644,37 @@ export default function LocketTab() {
             {/* Live Camera Badge */}
             <div className="absolute top-3 left-3 bg-black/60 backdrop-blur-md px-3 py-1 rounded-full flex items-center gap-2 border border-white/10 z-10">
               <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
-              <span className="text-xs font-semibold text-white">Camera Trực Tiếp</span>
+              <span className="text-xs font-semibold text-white">Camera Trực Tiếp HD</span>
             </div>
           </div>
         ) : (
-          /* Viewing Photo in History */
+          /* Viewing Photo in History with Pinch Zoom & Double Tap */
           loading ? (
             <div className="flex flex-col items-center text-slate-400">
               <RefreshCw className="w-8 h-8 animate-spin mb-2 text-purple-400" />
               <span className="text-sm">Đang tải khoảnh khắc...</span>
             </div>
           ) : currentPhoto && !imgErrorMap[currentPhoto.id] ? (
-            <div className="relative w-full h-full">
+            <div className="relative w-full h-full overflow-hidden bg-black flex items-center justify-center">
               <img
                 src={`/api/locket/photo/${currentPhoto.telegram_file_id}`}
                 alt="Locket moment"
                 onError={() => setImgErrorMap((prev) => ({ ...prev, [currentPhoto.id]: true }))}
-                className="w-full h-full object-cover"
+                className="w-full h-full object-cover origin-center"
+                style={{
+                  transform: `scale(${zoomScale}) translate(${zoomOffset.x / zoomScale}px, ${zoomOffset.y / zoomScale}px)`,
+                  transition: isDragging ? 'none' : 'transform 0.15s ease-out',
+                }}
               />
+
+              {/* Zoom Scale Badge */}
+              {zoomScale > 1.05 && (
+                <div className="absolute top-3 right-14 bg-black/75 backdrop-blur-md px-2.5 py-1 rounded-full text-white text-[11px] font-bold border border-white/20 z-20 flex items-center gap-1">
+                  <ZoomIn className="w-3 h-3 text-purple-300" />
+                  <span>{zoomScale.toFixed(1)}x</span>
+                  <button onClick={resetZoom} className="ml-1 text-slate-300 hover:text-white text-[10px] underline">Đặt lại</button>
+                </div>
+              )}
 
               {/* Top Sender Badge & Timestamp */}
               <div className="absolute top-3 left-3 bg-black/60 backdrop-blur-md px-3 py-1.5 rounded-full flex items-center gap-2 border border-white/10 z-10">
@@ -617,7 +735,7 @@ export default function LocketTab() {
         )}
 
         {/* Navigation Arrow Left (Older) */}
-        {!previewUrl && photos.length > 0 && heroIndex < photos.length - 1 && (
+        {!previewUrl && photos.length > 0 && heroIndex < photos.length - 1 && zoomScale <= 1.05 && (
           <button
             onClick={handlePrevPhoto}
             className="absolute left-2 top-1/2 -translate-y-1/2 p-2 bg-black/60 backdrop-blur-md text-white rounded-full hover:bg-black/90 transition-all border border-white/10 z-20 opacity-80 group-hover:opacity-100 cursor-pointer"
@@ -628,7 +746,7 @@ export default function LocketTab() {
         )}
 
         {/* Navigation Arrow Right (Newer / Live Camera) */}
-        {!previewUrl && heroIndex >= 0 && (
+        {!previewUrl && heroIndex >= 0 && zoomScale <= 1.05 && (
           <button
             onClick={handleNextPhoto}
             className="absolute right-2 top-1/2 -translate-y-1/2 p-2 bg-black/60 backdrop-blur-md text-white rounded-full hover:bg-black/90 transition-all border border-white/10 z-20 opacity-80 group-hover:opacity-100 cursor-pointer"
@@ -655,6 +773,7 @@ export default function LocketTab() {
           onClick={() => {
             if (previewUrl) discardCapturedPhoto();
             setSubView('history');
+            resetZoom();
           }}
           className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-2xl text-xs font-bold transition-all border border-purple-200 bg-purple-50/80 text-purple-700 hover:bg-purple-100 cursor-pointer shadow-xs"
           title="Mở Nhật Ký Tất Cả Khoảnh Khắc"
@@ -668,7 +787,7 @@ export default function LocketTab() {
           onClick={capturePhotoFromHero}
           disabled={uploading}
           className="w-16 h-16 rounded-full bg-gradient-to-tr from-purple-600 to-indigo-600 p-1 shadow-lg hover:scale-105 active:scale-95 transition-all cursor-pointer flex items-center justify-center disabled:opacity-50"
-          title={previewUrl ? 'Bấm để Đăng khoảnh khắc' : heroIndex === -1 ? 'Chụp ngay' : 'Về Camera để chụp'}
+          title={previewUrl ? 'Bấm để Đăng khoảnh khắc HD' : heroIndex === -1 ? 'Chụp ngay' : 'Về Camera để chụp'}
         >
           <div className="w-full h-full rounded-full border-4 border-white flex items-center justify-center">
             {previewUrl ? (
