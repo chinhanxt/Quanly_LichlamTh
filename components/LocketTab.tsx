@@ -331,22 +331,22 @@ export default function LocketTab() {
 
   const currentPhoto = heroIndex >= 0 ? photos[heroIndex] : null;
 
-  // Dedicated Hidden Sub-Page for History Gallery
+  // Dedicated Hidden Sub-Page for History Gallery (White + Purple Theme)
   if (subView === 'history') {
     return (
       <div className="max-w-md mx-auto p-4 space-y-6 pb-20 select-none">
         {/* History Header Navigation Bar */}
-        <div className="flex items-center justify-between bg-slate-800/90 p-3 rounded-2xl border border-slate-700 shadow-lg sticky top-2 z-30 backdrop-blur-md">
+        <div className="flex items-center justify-between bg-white/90 p-3.5 rounded-2xl border border-purple-100 shadow-sm sticky top-2 z-30 backdrop-blur-md">
           <button
             onClick={() => setSubView('main')}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-900 text-slate-300 hover:text-white rounded-xl border border-slate-700 text-xs font-bold transition-all cursor-pointer"
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-purple-50 text-purple-700 hover:bg-purple-100 rounded-xl border border-purple-200 text-xs font-bold transition-all cursor-pointer shadow-xs"
           >
-            <ArrowLeft className="w-4 h-4 text-amber-400" />
+            <ArrowLeft className="w-4 h-4 text-purple-600" />
             <span>Trở lại Locket</span>
           </button>
 
-          <div className="flex items-center gap-1.5 text-xs font-bold text-amber-400">
-            <BookOpen className="w-4 h-4" />
+          <div className="flex items-center gap-1.5 text-xs font-bold text-purple-800">
+            <BookOpen className="w-4 h-4 text-purple-600" />
             <span>Nhật Ký ({photos.length})</span>
           </div>
         </div>
@@ -362,7 +362,7 @@ export default function LocketTab() {
                   setHeroIndex(index);
                   setSubView('main');
                 }}
-                className="relative aspect-square rounded-2xl overflow-hidden bg-slate-900 border border-slate-800 hover:border-amber-400/60 transition-all cursor-pointer group flex items-center justify-center shadow-lg"
+                className="relative aspect-square rounded-2xl overflow-hidden bg-slate-950 border border-purple-100 hover:border-purple-400 transition-all cursor-pointer group flex items-center justify-center shadow-md hover:shadow-lg"
               >
                 {!imgErrorMap[photo.id] ? (
                   <img
@@ -373,19 +373,19 @@ export default function LocketTab() {
                     loading="lazy"
                   />
                 ) : (
-                  <div className="flex flex-col items-center justify-center p-2 text-slate-500 text-center">
-                    <ImageIcon className="w-6 h-6 mb-1 opacity-40" />
+                  <div className="flex flex-col items-center justify-center p-2 text-slate-400 text-center">
+                    <ImageIcon className="w-6 h-6 mb-1 opacity-40 text-purple-300" />
                     <span className="text-[10px]">Ảnh đã xóa</span>
                   </div>
                 )}
 
-                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/30 p-2 flex flex-col justify-between opacity-90">
-                  <span className="text-[10px] text-white font-semibold bg-black/50 backdrop-blur-md px-2 py-0.5 rounded-full w-fit border border-white/10">
+                <div className="absolute inset-0 bg-gradient-to-t from-slate-950/85 via-transparent to-black/30 p-2 flex flex-col justify-between opacity-95">
+                  <span className="text-[10px] text-purple-100 font-semibold bg-purple-950/70 backdrop-blur-md px-2 py-0.5 rounded-full w-fit border border-purple-500/30">
                     {photo.sender}
                   </span>
 
                   <div className="flex items-end justify-between gap-1">
-                    <p className="text-[11px] text-slate-200 truncate font-medium">{photo.caption || '...'}</p>
+                    <p className="text-[11px] text-white truncate font-medium">{photo.caption || '...'}</p>
                     <div className="flex items-center gap-1">
                       <button
                         onClick={(e) => handleDeletePhoto(photo.id, e)}
@@ -421,9 +421,9 @@ export default function LocketTab() {
                 fetchFeed(nextPage, true);
               }}
               disabled={loadingMore}
-              className="w-full bg-slate-900 border border-slate-800 text-slate-300 py-3 rounded-2xl text-xs font-semibold hover:bg-slate-800 transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 shadow-md"
+              className="w-full bg-white border border-purple-200 text-purple-700 py-3 rounded-2xl text-xs font-bold hover:bg-purple-50 transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 shadow-sm"
             >
-              {loadingMore ? <RefreshCw className="w-4 h-4 animate-spin" /> : 'Tải thêm 10 khoảnh khắc cũ'}
+              {loadingMore ? <RefreshCw className="w-4 h-4 animate-spin text-purple-600" /> : 'Tải thêm 10 khoảnh khắc cũ'}
             </button>
           )}
         </div>
@@ -431,19 +431,19 @@ export default function LocketTab() {
     );
   }
 
-  // Main Clean Locket View (NO BOTTOM GRID)
+  // Main Clean Locket View (White + Purple Theme)
   return (
     <div className="max-w-md mx-auto p-4 space-y-6 pb-20 select-none">
       {/* Header Bar with Settings Icon */}
-      <div className="flex items-center justify-between bg-slate-800/80 p-3 rounded-2xl border border-slate-700">
+      <div className="flex items-center justify-between bg-white/90 p-3.5 rounded-2xl border border-purple-100 shadow-sm">
         <div className="flex items-center gap-2">
-          <span className="text-sm font-bold text-amber-400">✨ Khoảnh Khắc Locket</span>
+          <span className="text-sm font-bold text-purple-700">✨ Khoảnh Khắc Locket</span>
         </div>
 
         {/* Gear Icon Button for Storage Bot Settings */}
         <button
           onClick={() => setShowSettingsModal(true)}
-          className="p-2 bg-slate-900 text-slate-400 hover:text-amber-400 rounded-xl border border-slate-700 hover:border-amber-500/50 transition-all cursor-pointer flex items-center gap-1.5 text-xs font-semibold"
+          className="p-2 bg-purple-50 text-purple-600 hover:bg-purple-100 rounded-xl border border-purple-200 transition-all cursor-pointer flex items-center gap-1.5 text-xs font-semibold"
           title="Cấu hình Bot lưu trữ Telegram"
         >
           <Settings className="w-4 h-4" />
@@ -451,11 +451,11 @@ export default function LocketTab() {
         </button>
       </div>
 
-      {/* Main Hero Locket 1:1 Square Frame (NO POPUP MODALS) */}
+      {/* Main Hero Locket 1:1 Square Frame (White + Purple System) */}
       <div
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
-        className="relative aspect-square w-full bg-slate-900 rounded-3xl overflow-hidden shadow-2xl border-2 border-amber-500/40 flex items-center justify-center group"
+        className="relative aspect-square w-full bg-slate-950 rounded-3xl overflow-hidden shadow-xl border-4 border-white ring-1 ring-purple-200/80 flex items-center justify-center group"
       >
         {previewUrl ? (
           /* Just Captured / Picked Image View (In-Frame Preview) */
@@ -473,7 +473,7 @@ export default function LocketTab() {
             </button>
 
             {/* In-Frame Caption Input & Send Pill Overlay */}
-            <div className="absolute bottom-3 left-3 right-3 bg-black/85 backdrop-blur-lg p-2.5 rounded-2xl border border-white/20 shadow-2xl flex items-center gap-2 z-20">
+            <div className="absolute bottom-3 left-3 right-3 bg-black/85 backdrop-blur-lg p-2.5 rounded-2xl border border-purple-500/30 shadow-2xl flex items-center gap-2 z-20">
               <input
                 type="text"
                 placeholder="💬 Thêm nhắn gửi ngắn..."
@@ -482,13 +482,13 @@ export default function LocketTab() {
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') handleUpload();
                 }}
-                className="flex-1 bg-transparent text-white placeholder-slate-400 text-xs px-2 py-1 focus:outline-none font-medium"
+                className="flex-1 bg-transparent text-white placeholder-purple-200/60 text-xs px-2 py-1 focus:outline-none font-medium"
                 autoFocus
               />
               <button
                 onClick={handleUpload}
                 disabled={uploading}
-                className="bg-gradient-to-r from-amber-500 to-orange-500 text-slate-950 px-3.5 py-1.5 rounded-xl font-bold text-xs flex items-center gap-1.5 hover:brightness-110 active:scale-95 transition-all shadow-md cursor-pointer disabled:opacity-50"
+                className="bg-gradient-to-r from-purple-600 to-indigo-600 text-white px-3.5 py-1.5 rounded-xl font-bold text-xs flex items-center gap-1.5 hover:brightness-110 active:scale-95 transition-all shadow-md cursor-pointer disabled:opacity-50"
               >
                 {uploading ? (
                   <RefreshCw className="w-3.5 h-3.5 animate-spin" />
@@ -514,11 +514,11 @@ export default function LocketTab() {
               />
             ) : (
               <div className="text-center p-6 flex flex-col items-center">
-                <Camera className="w-12 h-12 text-amber-400 mb-2 opacity-80 animate-pulse" />
+                <Camera className="w-12 h-12 text-purple-400 mb-2 opacity-80 animate-pulse" />
                 <p className="text-xs text-slate-300 text-center max-w-xs">{cameraError || 'Đang kết nối Camera...'}</p>
                 <button
                   onClick={() => startCameraStream()}
-                  className="mt-3 px-4 py-2 bg-amber-500 text-slate-950 text-xs font-bold rounded-xl hover:bg-amber-400 cursor-pointer"
+                  className="mt-3 px-4 py-2 bg-purple-600 text-white text-xs font-bold rounded-xl hover:bg-purple-500 cursor-pointer shadow-md"
                 >
                   Cấp quyền & Thử lại
                 </button>
@@ -532,7 +532,7 @@ export default function LocketTab() {
                 className="absolute top-3 right-3 p-2.5 bg-black/60 backdrop-blur-md rounded-full text-white hover:bg-black/80 transition-all border border-white/20 cursor-pointer z-10"
                 title="Xoay Camera"
               >
-                <FlipHorizontal className="w-4 h-4" />
+                <FlipHorizontal className="w-4 h-4 text-purple-300" />
               </button>
             )}
 
@@ -546,7 +546,7 @@ export default function LocketTab() {
           /* Viewing Photo in History */
           loading ? (
             <div className="flex flex-col items-center text-slate-400">
-              <RefreshCw className="w-8 h-8 animate-spin mb-2 text-amber-400" />
+              <RefreshCw className="w-8 h-8 animate-spin mb-2 text-purple-400" />
               <span className="text-sm">Đang tải khoảnh khắc...</span>
             </div>
           ) : currentPhoto && !imgErrorMap[currentPhoto.id] ? (
@@ -562,10 +562,10 @@ export default function LocketTab() {
               <div className="absolute top-3 left-3 bg-black/60 backdrop-blur-md px-3 py-1.5 rounded-full flex items-center gap-2 border border-white/10 z-10">
                 <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
                 <span className="text-xs font-semibold text-white">{currentPhoto.sender}</span>
-                <span className="text-[10px] text-slate-300">
+                <span className="text-[10px] text-purple-200">
                   • {new Date(currentPhoto.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                 </span>
-                <span className="text-[9px] bg-white/20 text-white px-1.5 py-0.5 rounded-md font-mono">
+                <span className="text-[9px] bg-purple-900/60 text-purple-100 px-1.5 py-0.5 rounded-md font-mono border border-purple-400/30">
                   {heroIndex + 1}/{photos.length}
                 </span>
               </div>
@@ -591,7 +591,7 @@ export default function LocketTab() {
 
               {/* Bottom Caption Overlay */}
               {currentPhoto.caption && (
-                <div className="absolute bottom-3 left-3 right-3 bg-black/70 backdrop-blur-md p-3 rounded-2xl text-white text-sm border border-white/10 z-10">
+                <div className="absolute bottom-3 left-3 right-3 bg-black/75 backdrop-blur-md p-3 rounded-2xl text-white text-sm border border-purple-500/30 z-10">
                   {currentPhoto.caption}
                 </div>
               )}
@@ -639,8 +639,8 @@ export default function LocketTab() {
         )}
       </div>
 
-      {/* Control Bar: Shutter & Mode Switchers */}
-      <div className="bg-slate-900 border border-slate-800 p-4 rounded-3xl shadow-xl flex items-center justify-around">
+      {/* Control Bar: Shutter & Mode Switchers (White + Purple Card) */}
+      <div className="bg-white/90 border border-purple-100 p-4 rounded-3xl shadow-sm flex items-center justify-around">
         {/* Gallery file picker */}
         <input
           type="file"
@@ -656,10 +656,10 @@ export default function LocketTab() {
             if (previewUrl) discardCapturedPhoto();
             setSubView('history');
           }}
-          className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-2xl text-xs font-semibold transition-all border border-slate-700 bg-slate-800 text-slate-300 hover:text-amber-400 hover:border-amber-500/40 cursor-pointer"
+          className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-2xl text-xs font-bold transition-all border border-purple-200 bg-purple-50/80 text-purple-700 hover:bg-purple-100 cursor-pointer shadow-xs"
           title="Mở Nhật Ký Tất Cả Khoảnh Khắc"
         >
-          <BookOpen className="w-4 h-4 text-amber-400" />
+          <BookOpen className="w-4 h-4 text-purple-600" />
           <span>Xem nhật ký</span>
         </button>
 
@@ -667,10 +667,10 @@ export default function LocketTab() {
         <button
           onClick={capturePhotoFromHero}
           disabled={uploading}
-          className="w-16 h-16 rounded-full bg-gradient-to-tr from-amber-500 to-orange-500 p-1 shadow-2xl hover:scale-105 active:scale-95 transition-all cursor-pointer flex items-center justify-center disabled:opacity-50"
+          className="w-16 h-16 rounded-full bg-gradient-to-tr from-purple-600 to-indigo-600 p-1 shadow-lg hover:scale-105 active:scale-95 transition-all cursor-pointer flex items-center justify-center disabled:opacity-50"
           title={previewUrl ? 'Bấm để Đăng khoảnh khắc' : heroIndex === -1 ? 'Chụp ngay' : 'Về Camera để chụp'}
         >
-          <div className="w-full h-full rounded-full border-4 border-slate-950 flex items-center justify-center">
+          <div className="w-full h-full rounded-full border-4 border-white flex items-center justify-center">
             {previewUrl ? (
               <Send className="w-5 h-5 text-white" />
             ) : (
@@ -682,25 +682,25 @@ export default function LocketTab() {
         {/* Gallery Upload Button */}
         <button
           onClick={() => galleryInputRef.current?.click()}
-          className="flex items-center gap-1.5 bg-slate-800 text-slate-300 px-3.5 py-2.5 rounded-2xl font-semibold hover:bg-slate-700 transition-all border border-slate-700 text-xs cursor-pointer"
+          className="flex items-center gap-1.5 bg-purple-50/80 text-purple-700 px-3.5 py-2.5 rounded-2xl font-bold hover:bg-purple-100 transition-all border border-purple-200 text-xs cursor-pointer shadow-xs"
         >
-          <Upload className="w-4 h-4 text-slate-400" />
+          <Upload className="w-4 h-4 text-purple-600" />
           <span>Thư viện</span>
         </button>
       </div>
 
       {/* Storage Bot Settings Modal */}
       {showSettingsModal && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 w-full max-w-sm rounded-3xl p-5 space-y-4 shadow-2xl">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-              <h3 className="text-white font-bold text-base flex items-center gap-2">
-                <Settings className="w-4 h-4 text-amber-400" />
+        <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white border border-purple-100 w-full max-w-sm rounded-3xl p-5 space-y-4 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-purple-100 pb-3">
+              <h3 className="text-purple-900 font-bold text-base flex items-center gap-2">
+                <Settings className="w-4 h-4 text-purple-600" />
                 <span>Cấu hình Bot Lưu Trữ Locket</span>
               </h3>
               <button
                 onClick={() => setShowSettingsModal(false)}
-                className="text-slate-400 hover:text-white p-1 cursor-pointer"
+                className="text-slate-400 hover:text-purple-600 p-1 cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -708,24 +708,24 @@ export default function LocketTab() {
 
             <div className="space-y-3">
               <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">Telegram Bot Token</label>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">Telegram Bot Token</label>
                 <input
                   type="password"
                   placeholder="123456789:ABCdef..."
                   value={locketBotToken}
                   onChange={(e) => setLocketBotToken(e.target.value)}
-                  className="w-full bg-slate-800 border border-slate-700 text-white rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-amber-500"
+                  className="w-full bg-purple-50/50 border border-purple-200 text-slate-900 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-100"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">Storage Chat ID / Channel ID</label>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">Storage Chat ID / Channel ID</label>
                 <input
                   type="text"
                   placeholder="-100123456789 hoặc Chat ID"
                   value={locketChatId}
                   onChange={(e) => setLocketChatId(e.target.value)}
-                  className="w-full bg-slate-800 border border-slate-700 text-white rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-amber-500"
+                  className="w-full bg-purple-50/50 border border-purple-200 text-slate-900 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-100"
                 />
               </div>
             </div>
@@ -733,14 +733,14 @@ export default function LocketTab() {
             <div className="flex justify-end gap-2 pt-2">
               <button
                 onClick={() => setShowSettingsModal(false)}
-                className="px-4 py-2 bg-slate-800 text-slate-300 text-xs font-medium rounded-xl hover:bg-slate-700 cursor-pointer"
+                className="px-4 py-2 bg-slate-100 text-slate-600 text-xs font-semibold rounded-xl hover:bg-slate-200 cursor-pointer"
               >
                 Đóng
               </button>
               <button
                 onClick={saveBotSettings}
                 disabled={savingSettings}
-                className="px-4 py-2 bg-amber-500 text-slate-950 text-xs font-bold rounded-xl hover:bg-amber-400 flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                className="px-4 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 text-white text-xs font-bold rounded-xl hover:brightness-110 flex items-center gap-1.5 cursor-pointer disabled:opacity-50 shadow-md"
               >
                 {savingSettings ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
                 <span>Lưu Cấu Hình</span>

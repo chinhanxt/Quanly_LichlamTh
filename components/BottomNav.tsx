@@ -16,8 +16,8 @@ export const BottomNav: React.FC<BottomNavProps> = ({ activeTab, onChangeTab, is
           onClick={() => onChangeTab('locket')}
           className={`flex flex-col items-center gap-1 py-1 px-3 rounded-2xl transition-all duration-200 cursor-pointer ${
             activeTab === 'locket'
-              ? 'text-amber-500 font-bold scale-105'
-              : 'text-surface-textSecondary hover:text-amber-500 font-medium'
+              ? 'text-purple-600 font-bold scale-105'
+              : 'text-surface-textSecondary hover:text-purple-600 font-medium'
           }`}
         >
           <HeartHandshake className="w-5 h-5" />
