@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Camera, Upload, Download, RefreshCw, Send, Image as ImageIcon, Settings, Save, X, FlipHorizontal, Eye, ChevronLeft, ChevronRight, Trash2 } from 'lucide-react';
+import { Camera, Upload, Download, RefreshCw, Send, Image as ImageIcon, Settings, Save, X, FlipHorizontal, Eye, ChevronLeft, ChevronRight, Trash2, RotateCcw } from 'lucide-react';
 import { useToast } from '@/components/ui/Toast';
 import { useAuth } from '@/components/AuthProvider';
 
@@ -38,7 +38,7 @@ export default function LocketTab() {
   // Touch Swipe Gesture Tracking
   const touchStartXRef = useRef<number | null>(null);
 
-  // Photo Capture / Preview State
+  // In-Frame Photo Capture / Preview State (NO POPUP)
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [caption, setCaption] = useState('');
@@ -161,8 +161,12 @@ export default function LocketTab() {
   };
 
   const capturePhotoFromHero = () => {
+    if (previewUrl) {
+      handleUpload();
+      return;
+    }
+
     if (heroIndex !== -1) {
-      // Switch back to camera mode
       setHeroIndex(-1);
       return;
     }
@@ -200,9 +204,18 @@ export default function LocketTab() {
     }, 'image/jpeg', 0.9);
   };
 
+  const discardCapturedPhoto = () => {
+    if (previewUrl) {
+      URL.revokeObjectURL(previewUrl);
+    }
+    setSelectedFile(null);
+    setPreviewUrl(null);
+    setCaption('');
+  };
+
   // Swipe Navigation Handlers
   const handleNextPhoto = () => {
-    // Go towards newer moment or Camera
+    if (previewUrl) return; // Freeze swipe during captured preview
     if (heroIndex > 0) {
       setHeroIndex((prev) => prev - 1);
     } else if (heroIndex === 0) {
@@ -211,7 +224,7 @@ export default function LocketTab() {
   };
 
   const handlePrevPhoto = () => {
-    // Go towards older moments
+    if (previewUrl) return; // Freeze swipe during captured preview
     if (photos.length === 0) return;
     if (heroIndex < photos.length - 1) {
       setHeroIndex((prev) => prev + 1);
@@ -228,10 +241,8 @@ export default function LocketTab() {
     touchStartXRef.current = null;
 
     if (deltaX < -40) {
-      // Swiped Left -> View older photo
       handlePrevPhoto();
     } else if (deltaX > 40) {
-      // Swiped Right -> View newer photo / Camera
       handleNextPhoto();
     }
   };
@@ -241,9 +252,9 @@ export default function LocketTab() {
     fetchBotSettings();
   }, []);
 
-  // Auto start/stop camera based on heroIndex === -1
+  // Auto start/stop camera based on heroIndex === -1 && !previewUrl
   useEffect(() => {
-    if (heroIndex === -1) {
+    if (heroIndex === -1 && !previewUrl) {
       startCameraStream();
     } else {
       stopCameraStream();
@@ -251,13 +262,14 @@ export default function LocketTab() {
     return () => {
       stopCameraStream();
     };
-  }, [heroIndex]);
+  }, [heroIndex, previewUrl]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       setSelectedFile(file);
       setPreviewUrl(URL.createObjectURL(file));
+      setHeroIndex(-1);
     }
   };
 
@@ -302,7 +314,7 @@ export default function LocketTab() {
         setPreviewUrl(null);
         setCaption('');
         fetchFeed(1, false);
-        setHeroIndex(0); // View the new photo
+        setHeroIndex(0); // View the newly posted photo
       } else {
         showToast({ type: 'error', message: `Lỗi: ${data.error}` });
       }
@@ -334,13 +346,57 @@ export default function LocketTab() {
         </button>
       </div>
 
-      {/* Main Hero Locket 1:1 Square Frame with Touch Swipe Support */}
+      {/* Main Hero Locket 1:1 Square Frame (NO POPUP MODALS) */}
       <div
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
         className="relative aspect-square w-full bg-slate-900 rounded-3xl overflow-hidden shadow-2xl border-2 border-amber-500/40 flex items-center justify-center group"
       >
-        {heroIndex === -1 ? (
+        {previewUrl ? (
+          /* Just Captured / Picked Image View (In-Frame Preview) */
+          <div className="relative w-full h-full bg-black">
+            <img src={previewUrl} alt="Captured preview" className="w-full h-full object-cover" />
+
+            {/* Top Left Cancel / Retake Button */}
+            <button
+              onClick={discardCapturedPhoto}
+              className="absolute top-3 left-3 p-2 bg-black/60 backdrop-blur-md rounded-full text-white hover:bg-rose-500 transition-all border border-white/20 cursor-pointer z-10 flex items-center gap-1 px-3 py-1.5 text-xs font-semibold"
+              title="Chụp lại / Hủy"
+            >
+              <RotateCcw className="w-3.5 h-3.5 text-rose-400" />
+              <span>Chụp lại</span>
+            </button>
+
+            {/* In-Frame Caption Input & Send Pill Overlay */}
+            <div className="absolute bottom-3 left-3 right-3 bg-black/85 backdrop-blur-lg p-2.5 rounded-2xl border border-white/20 shadow-2xl flex items-center gap-2 z-20">
+              <input
+                type="text"
+                placeholder="💬 Thêm nhắn gửi ngắn..."
+                value={caption}
+                onChange={(e) => setCaption(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') handleUpload();
+                }}
+                className="flex-1 bg-transparent text-white placeholder-slate-400 text-xs px-2 py-1 focus:outline-none font-medium"
+                autoFocus
+              />
+              <button
+                onClick={handleUpload}
+                disabled={uploading}
+                className="bg-gradient-to-r from-amber-500 to-orange-500 text-slate-950 px-3.5 py-1.5 rounded-xl font-bold text-xs flex items-center gap-1.5 hover:brightness-110 active:scale-95 transition-all shadow-md cursor-pointer disabled:opacity-50"
+              >
+                {uploading ? (
+                  <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <>
+                    <Send className="w-3.5 h-3.5" />
+                    <span>Đăng</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        ) : heroIndex === -1 ? (
           /* Live Camera Stream in Frame */
           <div className="relative w-full h-full bg-black flex items-center justify-center">
             {cameraActive ? (
@@ -456,7 +512,7 @@ export default function LocketTab() {
         )}
 
         {/* Navigation Arrow Left (Older) */}
-        {photos.length > 0 && heroIndex < photos.length - 1 && (
+        {!previewUrl && photos.length > 0 && heroIndex < photos.length - 1 && (
           <button
             onClick={handlePrevPhoto}
             className="absolute left-2 top-1/2 -translate-y-1/2 p-2 bg-black/60 backdrop-blur-md text-white rounded-full hover:bg-black/90 transition-all border border-white/10 z-20 opacity-80 group-hover:opacity-100 cursor-pointer"
@@ -467,7 +523,7 @@ export default function LocketTab() {
         )}
 
         {/* Navigation Arrow Right (Newer / Live Camera) */}
-        {heroIndex >= 0 && (
+        {!previewUrl && heroIndex >= 0 && (
           <button
             onClick={handleNextPhoto}
             className="absolute right-2 top-1/2 -translate-y-1/2 p-2 bg-black/60 backdrop-blur-md text-white rounded-full hover:bg-black/90 transition-all border border-white/10 z-20 opacity-80 group-hover:opacity-100 cursor-pointer"
@@ -491,14 +547,17 @@ export default function LocketTab() {
 
         {/* View Mode Toggle Button */}
         <button
-          onClick={() => setHeroIndex(heroIndex === -1 ? 0 : -1)}
+          onClick={() => {
+            if (previewUrl) discardCapturedPhoto();
+            setHeroIndex(heroIndex === -1 ? 0 : -1);
+          }}
           className={`flex items-center gap-1.5 px-3 py-2.5 rounded-2xl text-xs font-semibold transition-all border cursor-pointer ${
-            heroIndex >= 0
+            heroIndex >= 0 && !previewUrl
               ? 'bg-amber-500/20 text-amber-400 border-amber-500/40'
               : 'bg-slate-800 text-slate-300 border-slate-700 hover:text-white'
           }`}
         >
-          {heroIndex === -1 ? (
+          {heroIndex === -1 && !previewUrl ? (
             <>
               <Eye className="w-4 h-4 text-amber-400" />
               <span>Xem nhật ký</span>
@@ -511,14 +570,19 @@ export default function LocketTab() {
           )}
         </button>
 
-        {/* Authentic Locket Round Shutter Button */}
+        {/* Authentic Locket Round Shutter Button / Send Action */}
         <button
           onClick={capturePhotoFromHero}
-          className="w-16 h-16 rounded-full bg-gradient-to-tr from-amber-500 to-orange-500 p-1 shadow-2xl hover:scale-105 active:scale-95 transition-all cursor-pointer flex items-center justify-center"
-          title={heroIndex === -1 ? 'Chụp ngay' : 'Về Camera để chụp'}
+          disabled={uploading}
+          className="w-16 h-16 rounded-full bg-gradient-to-tr from-amber-500 to-orange-500 p-1 shadow-2xl hover:scale-105 active:scale-95 transition-all cursor-pointer flex items-center justify-center disabled:opacity-50"
+          title={previewUrl ? 'Bấm để Đăng khoảnh khắc' : heroIndex === -1 ? 'Chụp ngay' : 'Về Camera để chụp'}
         >
           <div className="w-full h-full rounded-full border-4 border-slate-950 flex items-center justify-center">
-            <div className="w-4 h-4 rounded-full bg-white"></div>
+            {previewUrl ? (
+              <Send className="w-5 h-5 text-white" />
+            ) : (
+              <div className="w-4 h-4 rounded-full bg-white"></div>
+            )}
           </div>
         </button>
 
@@ -593,53 +657,6 @@ export default function LocketTab() {
         </div>
       )}
 
-      {/* Preview Modal for Confirmation */}
-      {previewUrl && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 w-full max-w-sm rounded-3xl p-4 space-y-4 shadow-2xl">
-            <h3 className="text-center text-white font-bold text-base">Xem lại & Đăng khoảnh khắc</h3>
-            <div className="aspect-square w-full rounded-2xl overflow-hidden bg-black">
-              <img src={previewUrl} alt="Preview" className="w-full h-full object-cover" />
-            </div>
-
-            <input
-              type="text"
-              placeholder="Nhập caption ngắn (tùy chọn)..."
-              value={caption}
-              onChange={(e) => setCaption(e.target.value)}
-              className="w-full bg-slate-800 border border-slate-700 text-white rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-amber-500"
-            />
-
-            <div className="flex gap-2">
-              <button
-                onClick={() => {
-                  setSelectedFile(null);
-                  setPreviewUrl(null);
-                }}
-                disabled={uploading}
-                className="flex-1 bg-slate-800 text-slate-300 py-2.5 rounded-xl font-medium hover:bg-slate-700 text-sm cursor-pointer disabled:opacity-50"
-              >
-                Hủy
-              </button>
-              <button
-                onClick={handleUpload}
-                disabled={uploading}
-                className="flex-1 bg-amber-500 text-slate-950 py-2.5 rounded-xl font-bold hover:bg-amber-400 text-sm flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
-              >
-                {uploading ? (
-                  <RefreshCw className="w-4 h-4 animate-spin" />
-                ) : (
-                  <>
-                    <Send className="w-4 h-4" />
-                    <span>📤 Tải lên</span>
-                  </>
-                )}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* History Grid (10 items / page) */}
       <div className="space-y-3 pt-4 border-t border-slate-800">
         <h3 className="text-sm font-semibold text-slate-400 flex items-center justify-between">
@@ -651,9 +668,12 @@ export default function LocketTab() {
           {photos.map((photo, index) => (
             <div
               key={photo.id}
-              onClick={() => setHeroIndex(index)}
+              onClick={() => {
+                discardCapturedPhoto();
+                setHeroIndex(index);
+              }}
               className={`relative aspect-square rounded-2xl overflow-hidden bg-slate-900 border transition-all cursor-pointer group flex items-center justify-center ${
-                heroIndex === index ? 'border-amber-400 ring-2 ring-amber-400/50 scale-[0.98]' : 'border-slate-800 hover:border-slate-700'
+                heroIndex === index && !previewUrl ? 'border-amber-400 ring-2 ring-amber-400/50 scale-[0.98]' : 'border-slate-800 hover:border-slate-700'
               }`}
             >
               {!imgErrorMap[photo.id] ? (
