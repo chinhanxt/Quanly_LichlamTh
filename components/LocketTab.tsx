@@ -219,6 +219,43 @@ export default function LocketTab() {
     }
   };
 
+  // Touch Pinch-to-Zoom & Double-Tap Camera Touch Handlers
+  const lastCameraTapRef = useRef<number>(0);
+  const initialCameraTouchDistRef = useRef<number | null>(null);
+  const initialCameraZoomRef = useRef<number>(1);
+
+  const handleCameraTouchStart = (e: React.TouchEvent) => {
+    if (e.touches.length === 2) {
+      const dx = e.touches[0].clientX - e.touches[1].clientX;
+      const dy = e.touches[0].clientY - e.touches[1].clientY;
+      initialCameraTouchDistRef.current = Math.hypot(dx, dy);
+      initialCameraZoomRef.current = cameraZoom;
+    } else if (e.touches.length === 1) {
+      const now = Date.now();
+      if (now - lastCameraTapRef.current < 280) {
+        const nextZoom = cameraZoom === 1 ? 2 : 1;
+        applyHardwareZoom(nextZoom);
+      }
+      lastCameraTapRef.current = now;
+    }
+  };
+
+  const handleCameraTouchMove = (e: React.TouchEvent) => {
+    if (e.touches.length === 2 && initialCameraTouchDistRef.current) {
+      const dx = e.touches[0].clientX - e.touches[1].clientX;
+      const dy = e.touches[0].clientY - e.touches[1].clientY;
+      const currentDist = Math.hypot(dx, dy);
+      const ratio = currentDist / initialCameraTouchDistRef.current;
+      let newZoom = Math.min(Math.max(initialCameraZoomRef.current * ratio, 1), 3);
+      newZoom = Math.round(newZoom * 10) / 10;
+      applyHardwareZoom(newZoom);
+    }
+  };
+
+  const handleCameraTouchEnd = () => {
+    initialCameraTouchDistRef.current = null;
+  };
+
   // Beauty Filter State
   const [activeFilter, setActiveFilter] = useState<FilterType>('beauty');
   const [showFilterPicker, setShowFilterPicker] = useState(false);
@@ -1228,14 +1265,19 @@ export default function LocketTab() {
           </div>
         ) : heroIndex === -1 ? (
           /* Live Camera Stream in Frame */
-          <div className="relative w-full h-full bg-black flex items-center justify-center">
+          <div
+            onTouchStart={handleCameraTouchStart}
+            onTouchMove={handleCameraTouchMove}
+            onTouchEnd={handleCameraTouchEnd}
+            className="relative w-full h-full bg-black flex items-center justify-center overflow-hidden touch-none select-none"
+          >
             {cameraActive ? (
               <video
                 ref={videoRef}
                 autoPlay
                 playsInline
                 muted
-                className="w-full h-full object-cover transition-transform duration-200 ease-out"
+                className="w-full h-full object-cover transition-transform duration-200 ease-out pointer-events-none"
                 style={{
                   filter: BEAUTY_FILTERS.find((f) => f.id === activeFilter)?.css || 'none',
                   transform: `scale(${cameraZoom}) ${facingMode === 'user' ? 'scaleX(-1)' : ''}`,
@@ -1267,17 +1309,17 @@ export default function LocketTab() {
               </button>
             )}
 
-            {/* Camera Zoom Toggle Pill Button (Top Center: 1x -> 1.5x -> 2x -> 3x) */}
+            {/* Compact Minimal Camera Zoom Pill (Top Center: No Icon, Tiny Circle Pill 1x -> 1.5x -> 2x -> 3x) */}
             {cameraActive && (
               <button
                 onClick={() => {
                   const nextZoom = cameraZoom === 1 ? 1.5 : cameraZoom === 1.5 ? 2 : cameraZoom === 2 ? 3 : 1;
                   applyHardwareZoom(nextZoom);
                 }}
-                className="absolute top-3 left-1/2 -translate-x-1/2 bg-white/25 backdrop-blur-xl border border-white/50 text-slate-900 font-extrabold text-xs px-3 py-1.5 rounded-full shadow-xl z-20 hover:bg-white/40 active:scale-90 transition-all cursor-pointer flex items-center gap-1"
-                title="Phóng to / thu nhỏ Camera (Zoom 1x - 3x)"
+                className="absolute top-3 left-1/2 -translate-x-1/2 px-2.5 py-1 bg-white/20 backdrop-blur-xl border border-white/45 text-slate-900 font-black text-[11px] rounded-full shadow-lg z-20 hover:bg-white/35 active:scale-90 transition-all cursor-pointer flex items-center justify-center select-none tracking-tight"
+                title="Chạm để đổi Zoom hoặc chụm 2 ngón tay"
               >
-                <span>🔍 {cameraZoom}x</span>
+                <span>{cameraZoom}x</span>
               </button>
             )}
 
