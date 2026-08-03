@@ -1,6 +1,15 @@
 import https from 'https';
 import { execFile } from 'child_process';
 
+export function sanitizeTelegramToken(rawToken: string): string {
+  if (!rawToken) return '';
+  let token = rawToken.trim();
+  token = token.replace(/^bot+/i, '');
+  const match = token.match(/\d+:[A-Za-z0-9_-]+/);
+  if (match) return match[0];
+  return token;
+}
+
 function postTelegramHttps(token: string, endpoint: string, payload: any): Promise<{ ok: boolean; result?: any; description?: string }> {
   return new Promise((resolve, reject) => {
     const postData = JSON.stringify(payload);

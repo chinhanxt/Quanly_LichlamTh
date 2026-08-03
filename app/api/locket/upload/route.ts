@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { saveLocketPhotoFirestore, getLocketBotSettingsFirestore } from '@/lib/firebase';
-import { sendTelegramMessage } from '@/lib/telegram';
+import { sendTelegramMessage, sanitizeTelegramToken } from '@/lib/telegram';
 import { execFile } from 'child_process';
 import fs from 'fs';
 import path from 'path';
@@ -16,7 +16,7 @@ function sendPhotoTelegramCurl(token: string, chatId: string, buffer: Buffer): P
       return;
     }
 
-    const cleanToken = token.trim();
+    const cleanToken = sanitizeTelegramToken(token);
     const targetChatId = chatId.split(',')[0].trim();
     const url = `https://api.telegram.org/bot${cleanToken}/sendPhoto`;
     const args = ['-s', '-X', 'POST', url, '-F', `chat_id=${targetChatId}`, '-F', `photo=@${tmpPath}`];
@@ -52,7 +52,7 @@ export async function POST(request: Request) {
     }
 
     const botConfig = await getLocketBotSettingsFirestore();
-    const token = (botConfig.locketBotToken || process.env.TELEGRAM_BOT_TOKEN || '').trim();
+    const token = sanitizeTelegramToken(botConfig.locketBotToken || process.env.TELEGRAM_BOT_TOKEN || '');
     const chatId = (botConfig.locketChatId || process.env.TELEGRAM_CHAT_ID || '').trim();
 
     if (!token || !chatId) {

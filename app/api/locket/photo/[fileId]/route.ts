@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getTelegramFilePath, downloadTelegramPhotoBuffer } from '@/lib/telegram';
+import { getTelegramFilePath, downloadTelegramPhotoBuffer, sanitizeTelegramToken } from '@/lib/telegram';
 import { getLocketBotSettingsFirestore } from '@/lib/firebase';
 
 export async function GET(
@@ -8,7 +8,7 @@ export async function GET(
 ) {
   try {
     const botConfig = await getLocketBotSettingsFirestore();
-    const token = botConfig.locketBotToken || process.env.TELEGRAM_BOT_TOKEN;
+    const token = sanitizeTelegramToken(botConfig.locketBotToken || process.env.TELEGRAM_BOT_TOKEN || '');
 
     if (!token) {
       return new NextResponse('Bot Token Missing', { status: 500 });
