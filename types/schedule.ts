@@ -90,6 +90,8 @@ export interface ScheduleSettings extends NotificationSettings {
   enableLeadTime: boolean;   // true
   telegramBotToken?: string; // Token Bot Telegram
   telegramChatId?: string;   // Chat ID nhận tin nhắn
+  locketBotToken?: string;   // Token Bot Locket Telegram
+  locketChatId?: string;     // Chat ID nhận Locket
   employeeName?: string;     // Tên nhân viên trên lịch
   geminiApiKey?: string;     // Google Gemini API Key cho AI OCR
   groqApiKey?: string;       // Groq API Key cho AI Chi Tiêu

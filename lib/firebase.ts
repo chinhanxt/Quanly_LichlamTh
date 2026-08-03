@@ -8,7 +8,9 @@ import {
   updateDoc, 
   deleteDoc, 
   getDoc, 
-  setDoc 
+  setDoc,
+  query,
+  orderBy
 } from 'firebase/firestore';
 import { ScheduleItem, ScheduleSettings } from '@/types/schedule';
 import { User } from '@/types/user';
@@ -28,6 +30,11 @@ import {
   addScheduleItemForUserLocal,
   updateScheduleItemForUserLocal,
   deleteScheduleItemForUserLocal,
+  LocketPhoto,
+  getLocketPhotosLocal,
+  saveLocketPhotoLocal,
+  getLocketBotSettingsLocal,
+  saveLocketBotSettingsLocal,
 } from './local-db';
 
 const firebaseConfig = {
@@ -454,3 +461,80 @@ export async function deleteExpenseItemForUser(username: string, id: string): Pr
   }
   return deleteExpenseItemForUserLocal(username, id);
 }
+
+// Locket Photos & Bot Settings Firestore Helpers
+export async function getLocketPhotosFirestore(page = 1, limit = 10): Promise<{ photos: LocketPhoto[]; total: number; hasMore: boolean }> {
+  try {
+    const colRef = collection(db, 'locket_photos');
+    const q = query(colRef, orderBy('created_at', 'desc'));
+    const snapshot = await getDocs(q);
+    const list: LocketPhoto[] = [];
+    snapshot.forEach((docSnap) => {
+      const data = docSnap.data();
+      list.push({
+        id: data.id || docSnap.id,
+        sender: data.sender || '',
+        telegram_file_id: data.telegram_file_id || '',
+        caption: data.caption || '',
+        created_at: data.created_at || new Date().toISOString(),
+      });
+    });
+    list.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    const total = list.length;
+    const start = (page - 1) * limit;
+    const photos = list.slice(start, start + limit);
+    if (list.length > 0) {
+      return { photos, total, hasMore: start + limit < total };
+    }
+  } catch (error) {
+    console.warn('Firebase getLocketPhotosFirestore failed, falling back to local db:', error);
+  }
+  return getLocketPhotosLocal(page, limit);
+}
+
+export async function saveLocketPhotoFirestore(photo: LocketPhoto): Promise<boolean> {
+  try {
+    const docRef = doc(db, 'locket_photos', photo.id);
+    await setDoc(docRef, photo, { merge: true });
+    saveLocketPhotoLocal(photo);
+    return true;
+  } catch (error) {
+    console.warn('Firebase saveLocketPhotoFirestore failed, saving to local fallback:', error);
+    return saveLocketPhotoLocal(photo);
+  }
+}
+
+export async function getLocketBotSettingsFirestore(): Promise<{ locketBotToken: string; locketChatId: string }> {
+  try {
+    const settings = await getSettingsForUser('chinhan');
+    return {
+      locketBotToken: settings?.locketBotToken || process.env.TELEGRAM_BOT_TOKEN || '',
+      locketChatId: settings?.locketChatId || process.env.TELEGRAM_CHAT_ID || '',
+    };
+  } catch (error) {
+    console.warn('Firebase getLocketBotSettingsFirestore failed, using local fallback:', error);
+    return getLocketBotSettingsLocal();
+  }
+}
+
+export async function saveLocketBotSettingsFirestore(settings: { locketBotToken: string; locketChatId: string }): Promise<boolean> {
+  try {
+    const currentSettings = await getSettingsForUser('chinhan');
+    await saveSettingsForUser('chinhan', {
+      ...currentSettings,
+      locketBotToken: settings.locketBotToken,
+      locketChatId: settings.locketChatId,
+    });
+    saveLocketBotSettingsLocal(settings);
+    return true;
+  } catch (error) {
+    console.warn('Firebase saveLocketBotSettingsFirestore failed, saving local fallback:', error);
+    return saveLocketBotSettingsLocal(settings);
+  }
+}
+
+export const getLocketPhotos = getLocketPhotosFirestore;
+export const saveLocketPhoto = saveLocketPhotoFirestore;
+export const getLocketBotSettings = getLocketBotSettingsFirestore;
+export const saveLocketBotSettings = saveLocketBotSettingsFirestore;
+
