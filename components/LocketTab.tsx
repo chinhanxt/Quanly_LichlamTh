@@ -194,12 +194,30 @@ export default function LocketTab() {
   const touchStartPosRef = useRef<{ x: number; y: number } | null>(null);
   const touchStartOffsetRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
 
-  // WebCam Live Preview State
+  // WebCam Live Preview & Zoom State
   const [facingMode, setFacingMode] = useState<'user' | 'environment'>('user');
   const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
   const [cameraActive, setCameraActive] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
+  const [cameraZoom, setCameraZoom] = useState<number>(1);
   const videoRef = useRef<HTMLVideoElement>(null);
+
+  // Apply Camera Zoom (both Hardware WebRTC & Software Fallback)
+  const applyHardwareZoom = (zoomVal: number) => {
+    setCameraZoom(zoomVal);
+    if (cameraStream) {
+      const track = cameraStream.getVideoTracks()[0];
+      if (track && typeof track.getCapabilities === 'function') {
+        const caps = track.getCapabilities() as any;
+        if (caps && caps.zoom) {
+          const minZ = caps.zoom.min || 1;
+          const maxZ = caps.zoom.max || 5;
+          const targetZ = Math.min(Math.max(zoomVal, minZ), maxZ);
+          track.applyConstraints({ advanced: [{ zoom: targetZ } as any] }).catch(() => {});
+        }
+      }
+    }
+  };
 
   // Beauty Filter State
   const [activeFilter, setActiveFilter] = useState<FilterType>('beauty');
@@ -505,13 +523,16 @@ export default function LocketTab() {
 
     const startX = (rawWidth - rawSize) / 2;
     const startY = (rawHeight - rawSize) / 2;
+    const zoomedSize = rawSize / cameraZoom;
+    const zoomCropX = startX + (rawSize - zoomedSize) / 2;
+    const zoomCropY = startY + (rawSize - zoomedSize) / 2;
 
     ctx.save();
     if (facingMode === 'user') {
       ctx.translate(exportSize, 0);
       ctx.scale(-1, 1);
     }
-    ctx.drawImage(video, startX, startY, rawSize, rawSize, 0, 0, exportSize, exportSize);
+    ctx.drawImage(video, zoomCropX, zoomCropY, zoomedSize, zoomedSize, 0, 0, exportSize, exportSize);
     ctx.restore();
 
     // Draw Cute Anime Couple Image Sticker if selected
@@ -1214,8 +1235,12 @@ export default function LocketTab() {
                 autoPlay
                 playsInline
                 muted
-                className={`w-full h-full object-cover ${facingMode === 'user' ? 'scale-x-[-1]' : ''}`}
-                style={{ filter: BEAUTY_FILTERS.find((f) => f.id === activeFilter)?.css || 'none' }}
+                className="w-full h-full object-cover transition-transform duration-200 ease-out"
+                style={{
+                  filter: BEAUTY_FILTERS.find((f) => f.id === activeFilter)?.css || 'none',
+                  transform: `scale(${cameraZoom}) ${facingMode === 'user' ? 'scaleX(-1)' : ''}`,
+                  transformOrigin: 'center center',
+                }}
               />
             ) : (
               <div className="text-center p-6 flex flex-col items-center">
@@ -1239,6 +1264,20 @@ export default function LocketTab() {
               >
                 <Sparkles className="w-3.5 h-3.5 text-purple-600 animate-pulse" />
                 <span>Hiệu ứng</span>
+              </button>
+            )}
+
+            {/* Camera Zoom Toggle Pill Button (Top Center: 1x -> 1.5x -> 2x -> 3x) */}
+            {cameraActive && (
+              <button
+                onClick={() => {
+                  const nextZoom = cameraZoom === 1 ? 1.5 : cameraZoom === 1.5 ? 2 : cameraZoom === 2 ? 3 : 1;
+                  applyHardwareZoom(nextZoom);
+                }}
+                className="absolute top-3 left-1/2 -translate-x-1/2 bg-white/25 backdrop-blur-xl border border-white/50 text-slate-900 font-extrabold text-xs px-3 py-1.5 rounded-full shadow-xl z-20 hover:bg-white/40 active:scale-90 transition-all cursor-pointer flex items-center gap-1"
+                title="Phóng to / thu nhỏ Camera (Zoom 1x - 3x)"
+              >
+                <span>🔍 {cameraZoom}x</span>
               </button>
             )}
 
