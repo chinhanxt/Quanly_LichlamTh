@@ -64,8 +64,8 @@ export const BEAUTY_FILTERS: FilterPreset[] = [
     id: 'beauty',
     name: 'Mịn Da',
     colorClass: 'bg-gradient-to-tr from-amber-100 via-pink-200 to-purple-200 border-2 border-white',
-    css: 'brightness(1.08) contrast(1.04) saturate(1.1) blur(0.2px)',
-    canvasFilter: 'brightness(108%) contrast(104%) saturate(110%) blur(1px)',
+    css: 'brightness(1.06) contrast(1.03) saturate(1.08)',
+    canvasFilter: 'brightness(106%) contrast(103%) saturate(108%)',
   },
   {
     id: 'rosy',
@@ -113,7 +113,7 @@ interface LocketPhoto {
   localBlobUrl?: string;
 }
 
-const compressImageFile = async (file: File, maxDim = 1200, quality = 0.82): Promise<File> => {
+const compressImageFile = async (file: File, maxDim = 1600, quality = 0.92): Promise<File> => {
   return new Promise((resolve) => {
     if (file.size < 300 * 1024) {
       resolve(file);
@@ -495,7 +495,7 @@ export default function LocketTab() {
     const rawWidth = video.videoWidth || 1280;
     const rawHeight = video.videoHeight || 1280;
     const rawSize = Math.min(rawWidth, rawHeight);
-    const exportSize = Math.min(rawSize, 1200);
+    const exportSize = Math.max(rawSize, 1200);
 
     const canvas = document.createElement('canvas');
     canvas.width = exportSize;
@@ -580,7 +580,7 @@ export default function LocketTab() {
         setPreviewUrl(URL.createObjectURL(file));
         resetZoom();
       }
-    }, 'image/jpeg', 0.85);
+    }, 'image/jpeg', 0.96);
   };
 
   const discardCapturedPhoto = () => {
@@ -841,7 +841,7 @@ export default function LocketTab() {
             }
           },
           'image/jpeg',
-          0.85
+          0.96
         );
       } catch (e) {
         console.error('Bake photo failed:', e);
