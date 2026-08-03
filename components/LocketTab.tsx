@@ -109,10 +109,20 @@ export default function LocketTab() {
       if (cameraStream) {
         cameraStream.getTracks().forEach((track) => track.stop());
       }
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: mode, width: { ideal: 1080 }, height: { ideal: 1080 } },
-        audio: false,
-      });
+      let stream: MediaStream | null = null;
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: mode },
+          audio: false,
+        });
+      } catch (e) {
+        // Fallback for desktop webcams without facingMode
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: true,
+          audio: false,
+        });
+      }
+
       setCameraStream(stream);
       setShowCameraModal(true);
       setTimeout(() => {
@@ -123,8 +133,9 @@ export default function LocketTab() {
     } catch (err: any) {
       console.warn('getUserMedia failed, falling back to input capture:', err);
       showToast({
-        type: 'info',
-        message: 'Mở máy ảnh thiết bị để chụp khoảnh khắc...',
+        type: 'error',
+        title: 'Chưa cấp quyền Camera',
+        message: 'Hãy cho phép trình duyệt truy cập Webcam/Camera hoặc dùng nút Thư viện.',
       });
       cameraInputRef.current?.click();
     }
