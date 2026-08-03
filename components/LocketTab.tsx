@@ -572,11 +572,7 @@ export default function LocketTab() {
       const zoomCropY = startY + (rawSize - zoomedSize) / 2;
       ctx.drawImage(video, zoomCropX, zoomCropY, zoomedSize, zoomedSize, 0, 0, exportSize, exportSize);
     } else {
-      const targetSize = exportSize * cameraZoom;
-      const offset = (exportSize - targetSize) / 2;
-      ctx.fillStyle = '#000000';
-      ctx.fillRect(0, 0, exportSize, exportSize);
-      ctx.drawImage(video, startX, startY, rawSize, rawSize, offset, offset, targetSize, targetSize);
+      ctx.drawImage(video, startX, startY, rawSize, rawSize, 0, 0, exportSize, exportSize);
     }
     ctx.restore();
 
@@ -1288,7 +1284,7 @@ export default function LocketTab() {
                 className="w-full h-full object-cover transition-transform duration-200 ease-out pointer-events-none"
                 style={{
                   filter: BEAUTY_FILTERS.find((f) => f.id === activeFilter)?.css || 'none',
-                  transform: `scale(${cameraZoom}) ${facingMode === 'user' ? 'scaleX(-1)' : ''}`,
+                  transform: `scale(${cameraZoom < 1 ? 1 : cameraZoom}) ${facingMode === 'user' ? 'scaleX(-1)' : ''}`,
                   transformOrigin: 'center center',
                 }}
               />
