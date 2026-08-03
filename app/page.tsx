@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Plus, Camera, FileSpreadsheet } from 'lucide-react';
 import { Header } from '@/components/Header';
+import LocketTab from '@/components/LocketTab';
 import { DaySelector, getTodayInfo } from '@/components/DaySelector';
 import { ScheduleCard } from '@/components/ScheduleCard';
 import { ScheduleFormModal } from '@/components/ScheduleFormModal';
@@ -26,7 +27,7 @@ export default function Home() {
   const { user } = useAuth();
   const isChinhan = user?.username === 'chinhan';
   const { showToast } = useToast();
-  const [activeTab, setActiveTab] = useState<'schedule' | 'salary' | 'notes' | 'expense' | 'notifications' | 'settings'>('schedule');
+  const [activeTab, setActiveTab] = useState<'locket' | 'schedule' | 'salary' | 'notes' | 'expense' | 'notifications' | 'settings'>('locket');
   const [selectedDay, setSelectedDay] = useState<string>(() => getTodayInfo().dayKey);
   const [selectedDate, setSelectedDate] = useState<string>(() => getTodayInfo().dateIso);
   const [activeWeekDays, setActiveWeekDays] = useState<Array<{ key: string; fullDateIso: string }>>([]);
@@ -360,7 +361,9 @@ export default function Home() {
           onOpenNotifications={() => setActiveTab('notifications')}
         />
 
-        {activeTab === 'schedule' ? (
+        {activeTab === 'locket' ? (
+          <LocketTab />
+        ) : activeTab === 'schedule' ? (
           <>
             <DaySelector
               selectedDay={selectedDay}
