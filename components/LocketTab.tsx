@@ -274,7 +274,7 @@ export default function LocketTab() {
                 autoPlay
                 playsInline
                 muted
-                className={`w-full h-full object-cover ${facingMode === 'user' ? 'scale-x-[-1]' : ''}`}
+                className="w-full h-full object-cover"
               />
             ) : (
               <div className="text-center p-6 flex flex-col items-center">
