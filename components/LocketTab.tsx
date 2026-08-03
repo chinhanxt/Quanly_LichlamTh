@@ -1083,14 +1083,14 @@ export default function LocketTab() {
 
   // Main Clean Locket View (White + Purple Theme with HD Capture & Pinch-to-Zoom)
   return (
-    <div className="max-w-lg mx-auto p-2 sm:p-4 space-y-4 pb-20 select-none">
-      {/* Main Hero Locket 1:1 Square Frame with Pinch-to-Zoom & Double-Tap Support */}
+    <div className="max-w-lg mx-auto p-2 sm:p-3 flex flex-col justify-between min-h-[calc(100vh-8.5rem)] pb-20 select-none space-y-3">
+      {/* Main Hero Locket Frame with Pinch-to-Zoom & Double-Tap Support */}
       <div
         id="locket-hero-frame"
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
-        className="relative aspect-square w-full bg-slate-950 rounded-3xl overflow-hidden shadow-xl border-4 border-white ring-1 ring-purple-200/80 flex items-center justify-center group touch-none select-none"
+        className="relative flex-1 min-h-[350px] max-h-[62vh] sm:aspect-square w-full bg-slate-950 rounded-3xl overflow-hidden shadow-xl border-4 border-white ring-1 ring-purple-200/80 flex items-center justify-center group touch-none select-none"
       >
         {previewUrl ? (
           /* Just Captured / Picked Image View (In-Frame HD Preview) */
