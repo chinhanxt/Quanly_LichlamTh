@@ -516,8 +516,25 @@ export function saveLocketBotSettingsLocal(settings: { locketBotToken: string; l
   }
 }
 
+export function deleteLocketPhotoLocal(id: string): boolean {
+  try {
+    ensureDataDir();
+    if (fs.existsSync(LOCKET_PHOTOS_FILE)) {
+      const raw = fs.readFileSync(LOCKET_PHOTOS_FILE, 'utf-8');
+      let list: LocketPhoto[] = JSON.parse(raw);
+      list = list.filter((p) => p.id !== id);
+      fs.writeFileSync(LOCKET_PHOTOS_FILE, JSON.stringify(list, null, 2), 'utf-8');
+    }
+    return true;
+  } catch (err) {
+    console.error('Error deleting locket photo local:', err);
+    return false;
+  }
+}
+
 export const getLocketPhotos = getLocketPhotosLocal;
 export const saveLocketPhoto = saveLocketPhotoLocal;
+export const deleteLocketPhoto = deleteLocketPhotoLocal;
 export const getLocketBotSettings = getLocketBotSettingsLocal;
 export const saveLocketBotSettings = saveLocketBotSettingsLocal;
 

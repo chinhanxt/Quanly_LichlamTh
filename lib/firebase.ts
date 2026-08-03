@@ -35,6 +35,7 @@ import {
   saveLocketPhotoLocal,
   getLocketBotSettingsLocal,
   saveLocketBotSettingsLocal,
+  deleteLocketPhotoLocal,
 } from './local-db';
 
 const firebaseConfig = {
@@ -533,8 +534,21 @@ export async function saveLocketBotSettingsFirestore(settings: { locketBotToken:
   }
 }
 
+export async function deleteLocketPhotoFirestore(id: string): Promise<boolean> {
+  try {
+    const docRef = doc(db, 'locket_photos', id);
+    await deleteDoc(docRef);
+    deleteLocketPhotoLocal(id);
+    return true;
+  } catch (error) {
+    console.warn('Firebase deleteLocketPhotoFirestore failed, removing from local fallback:', error);
+    return deleteLocketPhotoLocal(id);
+  }
+}
+
 export const getLocketPhotos = getLocketPhotosFirestore;
 export const saveLocketPhoto = saveLocketPhotoFirestore;
+export const deleteLocketPhoto = deleteLocketPhotoFirestore;
 export const getLocketBotSettings = getLocketBotSettingsFirestore;
 export const saveLocketBotSettings = saveLocketBotSettingsFirestore;
 
