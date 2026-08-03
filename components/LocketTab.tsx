@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Camera, Upload, Download, RefreshCw, Send, Image as ImageIcon, Settings, Save, X, FlipHorizontal, Eye } from 'lucide-react';
+import { Camera, Upload, Download, RefreshCw, Send, Image as ImageIcon, Settings, Save, X, FlipHorizontal, Eye, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useToast } from '@/components/ui/Toast';
 import { useAuth } from '@/components/AuthProvider';
 
@@ -25,8 +25,8 @@ export default function LocketTab() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [imgErrorMap, setImgErrorMap] = useState<Record<string, boolean>>({});
 
-  // View Mode: 'camera' (live viewfinder in main frame) vs 'photo' (viewing latest moment)
-  const [viewMode, setViewMode] = useState<'camera' | 'photo'>('camera');
+  // Hero Frame Index: -1 = Live Camera, 0 = Latest Photo, 1..N = Older Photos
+  const [heroIndex, setHeroIndex] = useState<number>(-1);
 
   // WebCam Live Preview State
   const [facingMode, setFacingMode] = useState<'user' | 'environment'>('user');
@@ -34,6 +34,9 @@ export default function LocketTab() {
   const [cameraActive, setCameraActive] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
+
+  // Touch Swipe Gesture Tracking
+  const touchStartXRef = useRef<number | null>(null);
 
   // Photo Capture / Preview State
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -158,6 +161,12 @@ export default function LocketTab() {
   };
 
   const capturePhotoFromHero = () => {
+    if (heroIndex !== -1) {
+      // Switch back to camera mode
+      setHeroIndex(-1);
+      return;
+    }
+
     if (!videoRef.current || !cameraActive) {
       galleryInputRef.current?.click();
       return;
@@ -176,7 +185,6 @@ export default function LocketTab() {
 
     ctx.save();
     if (facingMode === 'user') {
-      // Mirror selfie front camera to match live preview
       ctx.translate(size, 0);
       ctx.scale(-1, 1);
     }
@@ -192,14 +200,50 @@ export default function LocketTab() {
     }, 'image/jpeg', 0.9);
   };
 
+  // Swipe Navigation Handlers
+  const handleNextPhoto = () => {
+    // Go towards newer moment or Camera
+    if (heroIndex > 0) {
+      setHeroIndex((prev) => prev - 1);
+    } else if (heroIndex === 0) {
+      setHeroIndex(-1); // Live Camera!
+    }
+  };
+
+  const handlePrevPhoto = () => {
+    // Go towards older moments
+    if (photos.length === 0) return;
+    if (heroIndex < photos.length - 1) {
+      setHeroIndex((prev) => prev + 1);
+    }
+  };
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartXRef.current = e.touches[0].clientX;
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (touchStartXRef.current === null) return;
+    const deltaX = e.changedTouches[0].clientX - touchStartXRef.current;
+    touchStartXRef.current = null;
+
+    if (deltaX < -40) {
+      // Swiped Left -> View older photo
+      handlePrevPhoto();
+    } else if (deltaX > 40) {
+      // Swiped Right -> View newer photo / Camera
+      handleNextPhoto();
+    }
+  };
+
   useEffect(() => {
     fetchFeed(1, false);
     fetchBotSettings();
   }, []);
 
-  // Auto start camera on viewMode = 'camera'
+  // Auto start/stop camera based on heroIndex === -1
   useEffect(() => {
-    if (viewMode === 'camera') {
+    if (heroIndex === -1) {
       startCameraStream();
     } else {
       stopCameraStream();
@@ -207,7 +251,7 @@ export default function LocketTab() {
     return () => {
       stopCameraStream();
     };
-  }, [viewMode]);
+  }, [heroIndex]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -239,7 +283,7 @@ export default function LocketTab() {
         setPreviewUrl(null);
         setCaption('');
         fetchFeed(1, false);
-        setViewMode('photo');
+        setHeroIndex(0); // View the new photo
       } else {
         showToast({ type: 'error', message: `Lỗi: ${data.error}` });
       }
@@ -250,10 +294,10 @@ export default function LocketTab() {
     }
   };
 
-  const latestPhoto = photos[0];
+  const currentPhoto = heroIndex >= 0 ? photos[heroIndex] : null;
 
   return (
-    <div className="max-w-md mx-auto p-4 space-y-6 pb-20">
+    <div className="max-w-md mx-auto p-4 space-y-6 pb-20 select-none">
       {/* Header Bar with Settings Icon */}
       <div className="flex items-center justify-between bg-slate-800/80 p-3 rounded-2xl border border-slate-700">
         <div className="flex items-center gap-2">
@@ -271,9 +315,13 @@ export default function LocketTab() {
         </button>
       </div>
 
-      {/* Main Hero Locket 1:1 Square Frame */}
-      <div className="relative aspect-square w-full bg-slate-900 rounded-3xl overflow-hidden shadow-2xl border-2 border-amber-500/40 flex items-center justify-center">
-        {viewMode === 'camera' ? (
+      {/* Main Hero Locket 1:1 Square Frame with Touch Swipe Support */}
+      <div
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
+        className="relative aspect-square w-full bg-slate-900 rounded-3xl overflow-hidden shadow-2xl border-2 border-amber-500/40 flex items-center justify-center group"
+      >
+        {heroIndex === -1 ? (
           /* Live Camera Stream in Frame */
           <div className="relative w-full h-full bg-black flex items-center justify-center">
             {cameraActive ? (
@@ -301,7 +349,7 @@ export default function LocketTab() {
             {cameraActive && (
               <button
                 onClick={toggleFacingMode}
-                className="absolute top-3 right-3 p-2.5 bg-black/60 backdrop-blur-md rounded-full text-white hover:bg-black/80 transition-all border border-white/20 cursor-pointer"
+                className="absolute top-3 right-3 p-2.5 bg-black/60 backdrop-blur-md rounded-full text-white hover:bg-black/80 transition-all border border-white/20 cursor-pointer z-10"
                 title="Xoay Camera"
               >
                 <FlipHorizontal className="w-4 h-4" />
@@ -309,49 +357,53 @@ export default function LocketTab() {
             )}
 
             {/* Live Camera Badge */}
-            <div className="absolute top-3 left-3 bg-black/60 backdrop-blur-md px-3 py-1 rounded-full flex items-center gap-2 border border-white/10">
+            <div className="absolute top-3 left-3 bg-black/60 backdrop-blur-md px-3 py-1 rounded-full flex items-center gap-2 border border-white/10 z-10">
               <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
               <span className="text-xs font-semibold text-white">Camera Trực Tiếp</span>
             </div>
           </div>
         ) : (
-          /* Viewing Latest Photo */
+          /* Viewing Photo in History */
           loading ? (
             <div className="flex flex-col items-center text-slate-400">
               <RefreshCw className="w-8 h-8 animate-spin mb-2 text-amber-400" />
               <span className="text-sm">Đang tải khoảnh khắc...</span>
             </div>
-          ) : latestPhoto && !imgErrorMap[latestPhoto.id] ? (
-            <div className="relative w-full h-full group">
+          ) : currentPhoto && !imgErrorMap[currentPhoto.id] ? (
+            <div className="relative w-full h-full">
               <img
-                src={`/api/locket/photo/${latestPhoto.telegram_file_id}`}
+                src={`/api/locket/photo/${currentPhoto.telegram_file_id}`}
                 alt="Locket moment"
-                onError={() => setImgErrorMap((prev) => ({ ...prev, [latestPhoto.id]: true }))}
+                onError={() => setImgErrorMap((prev) => ({ ...prev, [currentPhoto.id]: true }))}
                 className="w-full h-full object-cover"
               />
-              {/* Top Badge */}
-              <div className="absolute top-3 left-3 bg-black/60 backdrop-blur-md px-3 py-1.5 rounded-full flex items-center gap-2 border border-white/10">
+
+              {/* Top Sender Badge & Timestamp */}
+              <div className="absolute top-3 left-3 bg-black/60 backdrop-blur-md px-3 py-1.5 rounded-full flex items-center gap-2 border border-white/10 z-10">
                 <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-                <span className="text-xs font-semibold text-white">{latestPhoto.sender}</span>
+                <span className="text-xs font-semibold text-white">{currentPhoto.sender}</span>
                 <span className="text-[10px] text-slate-300">
-                  • {new Date(latestPhoto.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  • {new Date(currentPhoto.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                </span>
+                <span className="text-[9px] bg-white/20 text-white px-1.5 py-0.5 rounded-md font-mono">
+                  {heroIndex + 1}/{photos.length}
                 </span>
               </div>
 
               {/* Download Button */}
               <a
-                href={`/api/locket/photo/${latestPhoto.telegram_file_id}`}
-                download={`locket_${latestPhoto.id}.jpg`}
-                className="absolute top-3 right-3 p-2 bg-black/60 backdrop-blur-md rounded-full text-white hover:bg-black/80 transition-all border border-white/10"
+                href={`/api/locket/photo/${currentPhoto.telegram_file_id}`}
+                download={`locket_${currentPhoto.id}.jpg`}
+                className="absolute top-3 right-3 p-2 bg-black/60 backdrop-blur-md rounded-full text-white hover:bg-black/80 transition-all border border-white/10 z-10"
                 title="Tải ảnh HD"
               >
                 <Download className="w-4 h-4" />
               </a>
 
               {/* Bottom Caption Overlay */}
-              {latestPhoto.caption && (
-                <div className="absolute bottom-3 left-3 right-3 bg-black/70 backdrop-blur-md p-3 rounded-2xl text-white text-sm border border-white/10">
-                  {latestPhoto.caption}
+              {currentPhoto.caption && (
+                <div className="absolute bottom-3 left-3 right-3 bg-black/70 backdrop-blur-md p-3 rounded-2xl text-white text-sm border border-white/10 z-10">
+                  {currentPhoto.caption}
                 </div>
               )}
             </div>
@@ -364,6 +416,28 @@ export default function LocketTab() {
               <p className="text-xs text-slate-400 max-w-xs">Chưa có ảnh nào. Hãy chuyển sang Camera để chụp và chia sẻ ngay!</p>
             </div>
           )
+        )}
+
+        {/* Navigation Arrow Left (Older) */}
+        {photos.length > 0 && heroIndex < photos.length - 1 && (
+          <button
+            onClick={handlePrevPhoto}
+            className="absolute left-2 top-1/2 -translate-y-1/2 p-2 bg-black/60 backdrop-blur-md text-white rounded-full hover:bg-black/90 transition-all border border-white/10 z-20 opacity-80 group-hover:opacity-100 cursor-pointer"
+            title="Khoảnh khắc cũ hơn"
+          >
+            <ChevronLeft className="w-5 h-5" />
+          </button>
+        )}
+
+        {/* Navigation Arrow Right (Newer / Live Camera) */}
+        {heroIndex >= 0 && (
+          <button
+            onClick={handleNextPhoto}
+            className="absolute right-2 top-1/2 -translate-y-1/2 p-2 bg-black/60 backdrop-blur-md text-white rounded-full hover:bg-black/90 transition-all border border-white/10 z-20 opacity-80 group-hover:opacity-100 cursor-pointer"
+            title={heroIndex === 0 ? 'Quay lại Camera trực tiếp' : 'Khoảnh khắc mới hơn'}
+          >
+            <ChevronRight className="w-5 h-5" />
+          </button>
         )}
       </div>
 
@@ -378,19 +452,19 @@ export default function LocketTab() {
           className="hidden"
         />
 
-        {/* View Mode Toggle: Photo / Camera */}
+        {/* View Mode Toggle Button */}
         <button
-          onClick={() => setViewMode(viewMode === 'camera' ? 'photo' : 'camera')}
+          onClick={() => setHeroIndex(heroIndex === -1 ? 0 : -1)}
           className={`flex items-center gap-1.5 px-3 py-2.5 rounded-2xl text-xs font-semibold transition-all border cursor-pointer ${
-            viewMode === 'photo'
+            heroIndex >= 0
               ? 'bg-amber-500/20 text-amber-400 border-amber-500/40'
               : 'bg-slate-800 text-slate-300 border-slate-700 hover:text-white'
           }`}
         >
-          {viewMode === 'camera' ? (
+          {heroIndex === -1 ? (
             <>
               <Eye className="w-4 h-4 text-amber-400" />
-              <span>Xem ảnh mới</span>
+              <span>Xem nhật ký</span>
             </>
           ) : (
             <>
@@ -404,7 +478,7 @@ export default function LocketTab() {
         <button
           onClick={capturePhotoFromHero}
           className="w-16 h-16 rounded-full bg-gradient-to-tr from-amber-500 to-orange-500 p-1 shadow-2xl hover:scale-105 active:scale-95 transition-all cursor-pointer flex items-center justify-center"
-          title="Chụp ngay"
+          title={heroIndex === -1 ? 'Chụp ngay' : 'Về Camera để chụp'}
         >
           <div className="w-full h-full rounded-full border-4 border-slate-950 flex items-center justify-center">
             <div className="w-4 h-4 rounded-full bg-white"></div>
@@ -532,13 +606,19 @@ export default function LocketTab() {
       {/* History Grid (10 items / page) */}
       <div className="space-y-3 pt-4 border-t border-slate-800">
         <h3 className="text-sm font-semibold text-slate-400 flex items-center justify-between">
-          <span>Khoảnh khắc cũ</span>
+          <span>Tất cả khoảnh khắc</span>
           <span className="text-xs text-slate-500">{photos.length} ảnh</span>
         </h3>
 
         <div className="grid grid-cols-2 gap-3">
-          {photos.slice(1).map((photo) => (
-            <div key={photo.id} className="relative aspect-square rounded-2xl overflow-hidden bg-slate-900 border border-slate-800 group flex items-center justify-center">
+          {photos.map((photo, index) => (
+            <div
+              key={photo.id}
+              onClick={() => setHeroIndex(index)}
+              className={`relative aspect-square rounded-2xl overflow-hidden bg-slate-900 border transition-all cursor-pointer group flex items-center justify-center ${
+                heroIndex === index ? 'border-amber-400 ring-2 ring-amber-400/50 scale-[0.98]' : 'border-slate-800 hover:border-slate-700'
+              }`}
+            >
               {!imgErrorMap[photo.id] ? (
                 <img
                   src={`/api/locket/photo/${photo.telegram_file_id}`}
@@ -564,6 +644,7 @@ export default function LocketTab() {
                     <a
                       href={`/api/locket/photo/${photo.telegram_file_id}`}
                       download={`locket_${photo.id}.jpg`}
+                      onClick={(e) => e.stopPropagation()}
                       className="p-1 bg-black/60 text-white rounded-lg hover:bg-black"
                     >
                       <Download className="w-3 h-3" />
