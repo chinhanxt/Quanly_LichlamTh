@@ -1034,14 +1034,6 @@ export default function LocketTab() {
         onTouchEnd={handleTouchEnd}
         className="relative aspect-square w-full bg-slate-950 rounded-3xl overflow-hidden shadow-xl border-4 border-white ring-1 ring-purple-200/80 flex items-center justify-center group touch-none select-none"
       >
-        {/* Floating Compact Settings Gear Icon Button (Top-Right of Hero Frame) */}
-        <button
-          onClick={() => setShowSettingsModal(true)}
-          className="absolute top-3 right-3 p-2 bg-white/70 hover:bg-white/95 backdrop-blur-md text-purple-700 rounded-2xl border border-white/80 z-30 transition-all cursor-pointer shadow-md active:scale-90"
-          title="Cấu hình Khoảnh Khắc"
-        >
-          <Settings className="w-4 h-4" />
-        </button>
         {previewUrl ? (
           /* Just Captured / Picked Image View (In-Frame HD Preview) */
           <div className="relative w-full h-full bg-black overflow-hidden flex items-center justify-center">
@@ -1163,9 +1155,9 @@ export default function LocketTab() {
               </div>
             )}
 
-            {/* Horizontal 10 Chibi Couple Stickers Carousel Bar (Frosted White Glass) */}
+            {/* Horizontal 10 Chibi Couple Stickers Carousel Bar (Frosted Crystal Glass) */}
             {showStickerPicker && (
-              <div className="absolute bottom-16 left-1/2 -translate-x-1/2 bg-white/45 backdrop-blur-md px-3 py-2 rounded-full border border-white/60 shadow-xl flex items-center gap-2 z-30 max-w-[95%] overflow-x-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+              <div className="absolute bottom-16 left-1/2 -translate-x-1/2 bg-white/15 backdrop-blur-xl px-3 py-2 rounded-full border border-white/35 shadow-2xl flex items-center gap-2 z-30 max-w-[95%] overflow-x-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
                 {CUTE_COUPLE_STICKERS.map((stk) => (
                   <button
                     key={stk.id}
@@ -1186,14 +1178,14 @@ export default function LocketTab() {
               </div>
             )}
 
-            {/* In-Frame Caption Input & Sticker Button & Send Pill Overlay (Translucent White Frosted Glass) */}
-            <div className="absolute bottom-3 left-3 right-3 bg-white/40 backdrop-blur-md p-2 sm:p-2.5 rounded-2xl border border-white/60 shadow-xl flex items-center gap-1.5 z-20">
+            {/* In-Frame Caption Input & Sticker Button & Send Pill Overlay (Translucent Crystal Glass) */}
+            <div className="absolute bottom-3 left-3 right-3 bg-white/20 backdrop-blur-xl p-2 sm:p-2.5 rounded-2xl border border-white/40 shadow-2xl flex items-center gap-1.5 z-20">
               <button
                 onClick={() => setShowStickerPicker((prev) => !prev)}
                 className={`shrink-0 p-1.5 px-2.5 rounded-xl border text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
                   selectedSticker || selectedImageSticker
                     ? 'bg-purple-600 text-white border-purple-400 shadow-sm'
-                    : 'bg-white/60 text-slate-800 border-white/70 hover:bg-white/80'
+                    : 'bg-white/25 text-slate-900 border-white/40 hover:bg-white/45 backdrop-blur-md'
                 }`}
                 title="Đính kèm Sticker / Tag"
               >
@@ -1238,11 +1230,11 @@ export default function LocketTab() {
               </div>
             )}
 
-            {/* Beauty Filter Toggle Button (Top Left - White Frosted Glass + "Hiệu ứng") */}
+            {/* Beauty Filter Toggle Button (Top Left - Translucent Crystal Glass + "Hiệu ứng") */}
             {cameraActive && (
               <button
                 onClick={() => setShowFilterPicker((prev) => !prev)}
-                className="absolute top-3 left-3 bg-white/40 backdrop-blur-md text-slate-900 border border-white/60 shadow-lg px-3 py-1.5 rounded-full flex items-center gap-1.5 text-xs font-bold cursor-pointer hover:bg-white/60 active:scale-95 transition-all z-20"
+                className="absolute top-3 left-3 bg-white/20 backdrop-blur-xl text-slate-900 border border-white/45 shadow-lg px-3 py-1.5 rounded-full flex items-center gap-1.5 text-xs font-bold cursor-pointer hover:bg-white/35 active:scale-95 transition-all z-20"
                 title="Chọn hiệu ứng bộ lọc"
               >
                 <Sparkles className="w-3.5 h-3.5 text-purple-600 animate-pulse" />
@@ -1254,10 +1246,10 @@ export default function LocketTab() {
             {cameraActive && (
               <button
                 onClick={toggleFacingMode}
-                className="absolute top-3 right-3 p-2 bg-black/60 backdrop-blur-md rounded-full text-white hover:bg-black/80 transition-all border border-white/20 cursor-pointer z-10"
+                className="absolute top-3 right-3 p-2 bg-white/20 backdrop-blur-xl rounded-full text-white hover:bg-white/35 transition-all border border-white/40 cursor-pointer z-10 shadow-md active:scale-90"
                 title="Xoay Camera"
               >
-                <FlipHorizontal className="w-4 h-4 text-purple-300" />
+                <FlipHorizontal className="w-4 h-4 text-purple-200" />
               </button>
             )}
 
@@ -1337,7 +1329,7 @@ export default function LocketTab() {
                       rotatePrev();
                     }
                   }}
-                  className="absolute bottom-3 left-1/2 -translate-x-1/2 bg-white/45 backdrop-blur-md px-4 py-2.5 rounded-full border border-white/60 shadow-xl flex items-center justify-between z-30 w-[175px] select-none cursor-grab active:cursor-grabbing [mask-image:linear-gradient(to_right,transparent_0%,black_20%,black_80%,transparent_100%)]"
+                  className="absolute bottom-3 left-1/2 -translate-x-1/2 bg-white/15 backdrop-blur-xl px-4 py-2.5 rounded-full border border-white/35 shadow-2xl flex items-center justify-between z-30 w-[175px] select-none cursor-grab active:cursor-grabbing [mask-image:linear-gradient(to_right,transparent_0%,black_20%,black_80%,transparent_100%)]"
                 >
                   {/* Fixed Center Reticle Indicator Ring (Vòng chọn cố định 100% ở chính giữa) */}
                   <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-10 h-10 rounded-full ring-4 ring-purple-600 ring-offset-2 ring-offset-slate-900 pointer-events-none shadow-xl z-20" />
@@ -1525,14 +1517,26 @@ export default function LocketTab() {
           </div>
         </button>
 
-        {/* Gallery Upload Button */}
-        <button
-          onClick={() => galleryInputRef.current?.click()}
-          className="flex items-center gap-1 bg-purple-50/70 text-purple-700 px-2.5 py-1.5 rounded-xl font-semibold hover:bg-purple-100 transition-all border border-purple-200/70 text-[11px] sm:text-xs cursor-pointer shadow-2xs active:scale-95"
-        >
-          <Upload className="w-3.5 h-3.5 text-purple-600 shrink-0" />
-          <span>Thư viện</span>
-        </button>
+        {/* Gallery Upload Button & Settings Button */}
+        <div className="flex items-center gap-1.5">
+          <button
+            onClick={() => galleryInputRef.current?.click()}
+            className="flex items-center gap-1 bg-purple-50/70 text-purple-700 px-2.5 py-1.5 rounded-xl font-semibold hover:bg-purple-100 transition-all border border-purple-200/70 text-[11px] sm:text-xs cursor-pointer shadow-2xs active:scale-95"
+            title="Tải ảnh lên từ thiết bị"
+          >
+            <Upload className="w-3.5 h-3.5 text-purple-600 shrink-0" />
+            <span>Thư viện</span>
+          </button>
+
+          {/* Settings Gear Icon Button (Right of Thư viện) */}
+          <button
+            onClick={() => setShowSettingsModal(true)}
+            className="p-1.5 sm:p-2 rounded-xl text-purple-700 bg-purple-50/70 hover:bg-purple-100 border border-purple-200/70 transition-all cursor-pointer shadow-2xs active:scale-95 flex items-center justify-center"
+            title="Cấu hình Khoảnh Khắc"
+          >
+            <Settings className="w-4 h-4 text-purple-600" />
+          </button>
+        </div>
       </div>
 
       {/* Storage Bot Settings Modal */}
