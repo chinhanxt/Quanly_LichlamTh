@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Camera, Upload, Download, RefreshCw, Send, Image as ImageIcon, Settings, Save, X, FlipHorizontal, Eye, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Camera, Upload, Download, RefreshCw, Send, Image as ImageIcon, Settings, Save, X, FlipHorizontal, Eye, ChevronLeft, ChevronRight, Trash2 } from 'lucide-react';
 import { useToast } from '@/components/ui/Toast';
 import { useAuth } from '@/components/AuthProvider';
 
@@ -261,6 +261,25 @@ export default function LocketTab() {
     }
   };
 
+  const handleDeletePhoto = async (photoId: string, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    try {
+      const res = await fetch(`/api/locket/feed?id=${photoId}`, { method: 'DELETE' });
+      const data = await res.json();
+      if (data.success) {
+        showToast({ type: 'success', message: 'Đã xóa khoảnh khắc khỏi nhật ký!' });
+        setPhotos((prev) => prev.filter((p) => p.id !== photoId));
+        if (heroIndex >= photos.length - 1) {
+          setHeroIndex(-1);
+        }
+      } else {
+        showToast({ type: 'error', message: 'Không thể xóa khoảnh khắc' });
+      }
+    } catch (err) {
+      showToast({ type: 'error', message: 'Lỗi khi xóa khoảnh khắc' });
+    }
+  };
+
   const handleUpload = async () => {
     if (!selectedFile) return;
 
@@ -390,15 +409,24 @@ export default function LocketTab() {
                 </span>
               </div>
 
-              {/* Download Button */}
-              <a
-                href={`/api/locket/photo/${currentPhoto.telegram_file_id}`}
-                download={`locket_${currentPhoto.id}.jpg`}
-                className="absolute top-3 right-3 p-2 bg-black/60 backdrop-blur-md rounded-full text-white hover:bg-black/80 transition-all border border-white/10 z-10"
-                title="Tải ảnh HD"
-              >
-                <Download className="w-4 h-4" />
-              </a>
+              {/* Download & Delete Buttons */}
+              <div className="absolute top-3 right-3 flex items-center gap-1.5 z-10">
+                <button
+                  onClick={(e) => handleDeletePhoto(currentPhoto.id, e)}
+                  className="p-2 bg-black/60 backdrop-blur-md rounded-full text-rose-400 hover:bg-rose-500 hover:text-white transition-all border border-white/10 cursor-pointer"
+                  title="Xóa khoảnh khắc khỏi nhật ký"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+                <a
+                  href={`/api/locket/photo/${currentPhoto.telegram_file_id}`}
+                  download={`locket_${currentPhoto.id}.jpg`}
+                  className="p-2 bg-black/60 backdrop-blur-md rounded-full text-white hover:bg-black/80 transition-all border border-white/10"
+                  title="Tải ảnh HD"
+                >
+                  <Download className="w-4 h-4" />
+                </a>
+              </div>
 
               {/* Bottom Caption Overlay */}
               {currentPhoto.caption && (
@@ -409,11 +437,20 @@ export default function LocketTab() {
             </div>
           ) : (
             <div className="text-center text-slate-500 p-6 flex flex-col items-center justify-center">
-              <div className="w-16 h-16 rounded-full bg-amber-500/10 border border-amber-500/30 flex items-center justify-center mb-3">
-                <Camera className="w-8 h-8 text-amber-400" />
+              <div className="w-16 h-16 rounded-full bg-rose-500/10 border border-rose-500/30 flex items-center justify-center mb-3">
+                <ImageIcon className="w-8 h-8 text-rose-400 opacity-80" />
               </div>
-              <p className="text-sm font-semibold text-slate-300 mb-1">Khoảnh khắc Locket</p>
-              <p className="text-xs text-slate-400 max-w-xs">Chưa có ảnh nào. Hãy chuyển sang Camera để chụp và chia sẻ ngay!</p>
+              <p className="text-sm font-semibold text-slate-300 mb-1">Ảnh đã bị xóa trên Telegram</p>
+              <p className="text-xs text-slate-400 max-w-xs mb-3">File ảnh không còn tồn tại trên kho lưu trữ Telegram Bot.</p>
+              {currentPhoto && (
+                <button
+                  onClick={(e) => handleDeletePhoto(currentPhoto.id, e)}
+                  className="px-4 py-2 bg-rose-500/20 text-rose-400 hover:bg-rose-500 hover:text-white rounded-xl text-xs font-bold border border-rose-500/30 transition-all cursor-pointer flex items-center gap-1.5"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>Xóa bản ghi khỏi Web</span>
+                </button>
+              )}
             </div>
           )
         )}
@@ -640,16 +677,26 @@ export default function LocketTab() {
 
                 <div className="flex items-end justify-between gap-1">
                   <p className="text-[11px] text-slate-200 truncate">{photo.caption || '...'}</p>
-                  {!imgErrorMap[photo.id] && (
-                    <a
-                      href={`/api/locket/photo/${photo.telegram_file_id}`}
-                      download={`locket_${photo.id}.jpg`}
-                      onClick={(e) => e.stopPropagation()}
-                      className="p-1 bg-black/60 text-white rounded-lg hover:bg-black"
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={(e) => handleDeletePhoto(photo.id, e)}
+                      className="p-1 bg-black/60 text-rose-400 hover:bg-rose-500 hover:text-white rounded-lg transition-all"
+                      title="Xóa khoảnh khắc"
                     >
-                      <Download className="w-3 h-3" />
-                    </a>
-                  )}
+                      <Trash2 className="w-3 h-3" />
+                    </button>
+                    {!imgErrorMap[photo.id] && (
+                      <a
+                        href={`/api/locket/photo/${photo.telegram_file_id}`}
+                        download={`locket_${photo.id}.jpg`}
+                        onClick={(e) => e.stopPropagation()}
+                        className="p-1 bg-black/60 text-white rounded-lg hover:bg-black"
+                        title="Tải ảnh HD"
+                      >
+                        <Download className="w-3 h-3" />
+                      </a>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
