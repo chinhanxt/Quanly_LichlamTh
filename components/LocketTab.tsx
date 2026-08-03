@@ -210,7 +210,7 @@ export default function LocketTab() {
       if (track && typeof track.getCapabilities === 'function') {
         const caps = track.getCapabilities() as any;
         if (caps && caps.zoom) {
-          const minZ = caps.zoom.min || 1;
+          const minZ = caps.zoom.min || 0.5;
           const maxZ = caps.zoom.max || 5;
           const targetZ = Math.min(Math.max(zoomVal, minZ), maxZ);
           track.applyConstraints({ advanced: [{ zoom: targetZ } as any] }).catch(() => {});
@@ -233,7 +233,7 @@ export default function LocketTab() {
     } else if (e.touches.length === 1) {
       const now = Date.now();
       if (now - lastCameraTapRef.current < 280) {
-        const nextZoom = cameraZoom === 1 ? 2 : 1;
+        const nextZoom = cameraZoom === 1 ? 0.5 : cameraZoom === 0.5 ? 2 : 1;
         applyHardwareZoom(nextZoom);
       }
       lastCameraTapRef.current = now;
@@ -246,7 +246,7 @@ export default function LocketTab() {
       const dy = e.touches[0].clientY - e.touches[1].clientY;
       const currentDist = Math.hypot(dx, dy);
       const ratio = currentDist / initialCameraTouchDistRef.current;
-      let newZoom = Math.min(Math.max(initialCameraZoomRef.current * ratio, 1), 3);
+      let newZoom = Math.min(Math.max(initialCameraZoomRef.current * ratio, 0.5), 3);
       newZoom = Math.round(newZoom * 10) / 10;
       applyHardwareZoom(newZoom);
     }
@@ -560,16 +560,24 @@ export default function LocketTab() {
 
     const startX = (rawWidth - rawSize) / 2;
     const startY = (rawHeight - rawSize) / 2;
-    const zoomedSize = rawSize / cameraZoom;
-    const zoomCropX = startX + (rawSize - zoomedSize) / 2;
-    const zoomCropY = startY + (rawSize - zoomedSize) / 2;
 
     ctx.save();
     if (facingMode === 'user') {
       ctx.translate(exportSize, 0);
       ctx.scale(-1, 1);
     }
-    ctx.drawImage(video, zoomCropX, zoomCropY, zoomedSize, zoomedSize, 0, 0, exportSize, exportSize);
+    if (cameraZoom >= 1) {
+      const zoomedSize = rawSize / cameraZoom;
+      const zoomCropX = startX + (rawSize - zoomedSize) / 2;
+      const zoomCropY = startY + (rawSize - zoomedSize) / 2;
+      ctx.drawImage(video, zoomCropX, zoomCropY, zoomedSize, zoomedSize, 0, 0, exportSize, exportSize);
+    } else {
+      const targetSize = exportSize * cameraZoom;
+      const offset = (exportSize - targetSize) / 2;
+      ctx.fillStyle = '#000000';
+      ctx.fillRect(0, 0, exportSize, exportSize);
+      ctx.drawImage(video, startX, startY, rawSize, rawSize, offset, offset, targetSize, targetSize);
+    }
     ctx.restore();
 
     // Draw Cute Anime Couple Image Sticker if selected
@@ -1309,15 +1317,15 @@ export default function LocketTab() {
               </button>
             )}
 
-            {/* Compact Minimal Camera Zoom Pill (Top Center: No Icon, Tiny Circle Pill 1x -> 1.5x -> 2x -> 3x) */}
+            {/* Compact Minimal Camera Zoom Pill (Top Center: 0.5x -> 1x -> 1.5x -> 2x -> 3x) */}
             {cameraActive && (
               <button
                 onClick={() => {
-                  const nextZoom = cameraZoom === 1 ? 1.5 : cameraZoom === 1.5 ? 2 : cameraZoom === 2 ? 3 : 1;
+                  const nextZoom = cameraZoom === 0.5 ? 1 : cameraZoom === 1 ? 1.5 : cameraZoom === 1.5 ? 2 : cameraZoom === 2 ? 3 : 0.5;
                   applyHardwareZoom(nextZoom);
                 }}
                 className="absolute top-3 left-1/2 -translate-x-1/2 px-2.5 py-1 bg-white/20 backdrop-blur-xl border border-white/45 text-slate-900 font-black text-[11px] rounded-full shadow-lg z-20 hover:bg-white/35 active:scale-90 transition-all cursor-pointer flex items-center justify-center select-none tracking-tight"
-                title="Chạm để đổi Zoom hoặc chụm 2 ngón tay"
+                title="Chạm để đổi Zoom (0.5x - 3x) hoặc chụm 2 ngón tay"
               >
                 <span>{cameraZoom}x</span>
               </button>
@@ -1334,7 +1342,7 @@ export default function LocketTab() {
               </button>
             )}
 
-            {/* Infinite 3-Circle Filter Wheel (Fixed Center Reticle, Always 3 Visible: Prev -> Center -> Next) */}
+            {/* Infinite 3-Circle Filter Wheel (Fixed Center Reticle, High Sensitivity Swipe: Prev -> Center -> Next) */}
             {cameraActive && showFilterPicker && (() => {
               const activeIndex = BEAUTY_FILTERS.findIndex((f) => f.id === activeFilter);
               const currIdx = activeIndex >= 0 ? activeIndex : 0;
@@ -1366,12 +1374,12 @@ export default function LocketTab() {
                     filterTouchStartXRef.current = null;
 
                     const now = Date.now();
-                    if (now - lastFilterSwipeTimeRef.current < 220) return;
+                    if (now - lastFilterSwipeTimeRef.current < 120) return;
 
-                    if (deltaX < -40) {
+                    if (deltaX < -18) {
                       lastFilterSwipeTimeRef.current = now;
                       rotateNext();
-                    } else if (deltaX > 40) {
+                    } else if (deltaX > 18) {
                       lastFilterSwipeTimeRef.current = now;
                       rotatePrev();
                     }
@@ -1387,12 +1395,12 @@ export default function LocketTab() {
                     filterTouchStartXRef.current = null;
 
                     const now = Date.now();
-                    if (now - lastFilterSwipeTimeRef.current < 220) return;
+                    if (now - lastFilterSwipeTimeRef.current < 120) return;
 
-                    if (deltaX < -40) {
+                    if (deltaX < -18) {
                       lastFilterSwipeTimeRef.current = now;
                       rotateNext();
-                    } else if (deltaX > 40) {
+                    } else if (deltaX > 18) {
                       lastFilterSwipeTimeRef.current = now;
                       rotatePrev();
                     }
@@ -1400,12 +1408,12 @@ export default function LocketTab() {
                   onWheel={(e) => {
                     e.stopPropagation();
                     const now = Date.now();
-                    if (now - lastFilterSwipeTimeRef.current < 220) return;
+                    if (now - lastFilterSwipeTimeRef.current < 120) return;
 
-                    if (e.deltaY > 20 || e.deltaX > 20) {
+                    if (e.deltaY > 15 || e.deltaX > 15) {
                       lastFilterSwipeTimeRef.current = now;
                       rotateNext();
-                    } else if (e.deltaY < -20 || e.deltaX < -20) {
+                    } else if (e.deltaY < -15 || e.deltaX < -15) {
                       lastFilterSwipeTimeRef.current = now;
                       rotatePrev();
                     }
