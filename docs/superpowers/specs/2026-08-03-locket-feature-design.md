@@ -3,7 +3,7 @@
 **Project**: `Quanly_LichlamTh`  
 **Date**: 2026-08-03  
 **Target Users**: `chinhan` & `thanhhuong`  
-**Status**: Approved / Ready for Implementation  
+**Status**: Approved / Updated with Bot Settings Modal  
 
 ---
 
@@ -13,7 +13,7 @@ This feature introduces a Locket-style real-time photo-sharing experience direct
 
 ### Key Highlights
 - **Default App Tab**: The app opens directly to the Locket tab upon launch.
-- **Telegram Bot Storage**: Leverages a Telegram Bot (`sendPhoto`) as an unlimited cloud media storage backend to keep photos without incurring storage fees or server space limits.
+- **Telegram Bot Storage & Custom Config**: Leverages a Telegram Bot (`sendPhoto`) as an unlimited cloud media storage backend. Includes a dedicated **Settings modal button** on the Locket tab to easily configure the Bot Token & Chat ID.
 - **Hero Locket Feed**: Displays the latest shared moment in a prominent 1:1 square card with sender info, timestamp, caption, and HD photo download option.
 - **Quick Camera & Explicit Upload**: Features an inline camera shutter button for instant snapping/file picker, followed by a preview screen with caption entry and an explicit **Upload** button.
 - **Paginated History Feed**: Shows historical moments capped at 10 items per page with a "Load More" ("Tải thêm") button to avoid page lag.
@@ -36,6 +36,7 @@ sequenceDiagram
     Web->>User: Shows preview & caption input
     User->>Web: Clicks "📤 Tải lên"
     Web->>API: POST /api/locket/upload (formData: image, caption, sender)
+    API->>DB: Fetch Locket Bot Token & Chat ID settings (fallback to env)
     API->>Tele: sendPhoto (Upload image buffer to storage chat)
     Tele-->>API: Returns file_id
     API->>DB: Save metadata record (id, sender, file_id, caption, timestamp)
@@ -64,6 +65,11 @@ interface LocketPhoto {
   caption?: string;            // Optional short caption
   created_at: string;          // ISO 8601 Timestamp string
 }
+
+interface LocketSettings {
+  locketBotToken?: string;     // Dedicated Telegram Bot Token for Locket photos
+  locketChatId?: string;       // Target Chat ID / Channel ID for storage
+}
 ```
 
 ### 3.2 API Routes
@@ -71,10 +77,11 @@ interface LocketPhoto {
 #### 1. `POST /api/locket/upload`
 - **Request**: `FormData` containing `file` (Buffer/Blob), `caption` (string, optional), `sender` (string).
 - **Process**:
-  1. Uploads file buffer via Telegram `sendPhoto` API.
-  2. Extracts `file_id` from Telegram response.
-  3. Saves `LocketPhoto` metadata record into Firestore / Local DB.
-  4. Triggers Telegram message to partner's Chat ID.
+  1. Reads user settings for custom `locketBotToken` & `locketChatId` (falls back to process.env).
+  2. Uploads file buffer via Telegram `sendPhoto` API.
+  3. Extracts `file_id` from Telegram response.
+  4. Saves `LocketPhoto` metadata record into Firestore / Local DB.
+  5. Triggers Telegram message to partner's Chat ID.
 - **Response**: `{ success: true, photo: LocketPhoto }`
 
 #### 2. `GET /api/locket/feed`
@@ -95,13 +102,19 @@ interface LocketPhoto {
 
 ### Layout Components
 
-1. **Top Locket Hero Frame (Latest Moment)**
+1. **Header Bar with Storage Bot Settings Button**
+   - User selector (`chinhan` vs `thanhhuong`).
+   - Gear icon button (`<Settings />`) that opens a **Locket Bot Settings Modal** allowing direct editing & saving of:
+     - Telegram Storage Bot Token.
+     - Storage Chat ID / Channel ID.
+
+2. **Top Locket Hero Frame (Latest Moment)**
    - Ratio: `aspect-square` (1:1 aspect ratio).
    - Sender avatar badge & relative time indicator ("5 phút trước").
    - Caption overlay at bottom.
    - HD Download button (`<a download href="/api/locket/photo/[fileId]">`) to save original photo.
 
-2. **Quick Camera & Action Bar**
+3. **Quick Camera & Action Bar**
    - **"📸 Chụp Ảnh"**: Native web camera capture / HTML5 camera stream modal.
    - **"📁 Chọn Ảnh"**: Hidden file input trigger for library uploads.
    - **Preview Modal / Container**: Displayed after photo capture with:
@@ -109,7 +122,7 @@ interface LocketPhoto {
      - Text input for caption.
      - **"📤 Tải lên"** button to confirm sending.
 
-3. **History Moments Feed**
+4. **History Moments Feed**
    - Grid layout (2 columns on mobile, 3-4 columns on desktop).
    - Each item displays: 1:1 image thumbnail, sender tag, time, and quick download icon.
    - Initial load: 10 items.
@@ -126,10 +139,10 @@ interface LocketPhoto {
 ---
 
 ## 6. Implementation Checklist
-- [ ] Create DB helpers in `lib/firebase.ts` & `lib/local-db.ts` for `locket_photos`.
+- [ ] Create DB helpers in `lib/firebase.ts` & `lib/local-db.ts` for `locket_photos` and Locket Bot settings.
 - [ ] Create API route `app/api/locket/upload/route.ts`.
 - [ ] Create API route `app/api/locket/feed/route.ts`.
 - [ ] Create API route `app/api/locket/photo/[fileId]/route.ts`.
-- [ ] Create `components/LocketTab.tsx` with 1:1 Hero frame, camera snap, preview, upload confirm, and history pagination.
+- [ ] Create `components/LocketTab.tsx` with 1:1 Hero frame, camera snap, preview modal, upload confirm, storage bot settings modal, and 10-item history pagination.
 - [ ] Update `app/page.tsx` to set `locket` as the default active tab.
 - [ ] Run build & end-to-end verification.

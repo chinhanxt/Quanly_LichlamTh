@@ -2,36 +2,36 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Build a Locket-style real-time photo-sharing feature for `chinhan` and `thanhhuong`, leveraging a Telegram Bot for unlimited cloud photo storage and Next.js API proxying for high-performance caching.
+**Goal:** Build a Locket-style real-time photo-sharing feature for `chinhan` and `thanhhuong`, leveraging a Telegram Bot for unlimited cloud photo storage, with an in-tab Settings Modal for configuring the storage bot credentials, and Next.js API proxying for high-performance caching.
 
-**Architecture:** A dedicated `LocketTab.tsx` set as default active tab in `app/page.tsx`. Photos captured via live web camera or file selector are uploaded via `POST /api/locket/upload` to Telegram Bot API (`sendPhoto`), storing metadata in Firestore / Local DB. Image binaries are proxied via `GET /api/locket/photo/[fileId]` with HTTP caching, and photos are displayed in a 1:1 square hero frame alongside a paginated 10-item history list.
+**Architecture:** A dedicated `LocketTab.tsx` set as default active tab in `app/page.tsx`. Photos captured via live web camera or file selector are uploaded via `POST /api/locket/upload` to Telegram Bot API (`sendPhoto`), storing metadata in Firestore / Local DB. Image binaries are proxied via `GET /api/locket/photo/[fileId]` with HTTP caching, and photos are displayed in a 1:1 square hero frame alongside a paginated 10-item history list and a Bot Settings Modal.
 
 **Tech Stack:** Next.js (App Router), React, TypeScript, Tailwind CSS, Telegram Bot API, Firebase Firestore / Local JSON DB.
 
 ## Global Constraints
 - Photos MUST be proxied through `GET /api/locket/photo/[fileId]` with `Cache-Control: public, max-age=86400` to prevent Telegram Bot Token leakage and maximize load speeds.
+- Storage Bot Token & Chat ID can be configured via a gear icon Settings Modal in `LocketTab.tsx` or read from environment variables as fallback.
 - Paginated feeds MUST load 10 photos per request with a "Tải thêm" button for performance.
 - Both Firebase Firestore and Local DB fallback MUST be supported seamlessly.
 - Telegram Bot notification MUST be sent to partner upon successful photo upload.
 
 ---
 
-### Task 1: Database Metadata Storage Helpers
+### Task 1: Database Metadata Storage & Locket Bot Settings Helpers
 
 **Files:**
 - Modify: `lib/local-db.ts`
 - Modify: `lib/firebase.ts`
-- Modify: `types/index.ts` (or create if needed)
 - Test: `test_locket_db.ts`
 
 **Interfaces:**
-- Consumes: `LocketPhoto` interface
-- Produces: `getLocketPhotos(page, limit)`, `saveLocketPhoto(photoData)`
+- Consumes: `LocketPhoto` interface, `locketBotToken`, `locketChatId`
+- Produces: `getLocketPhotos(page, limit)`, `saveLocketPhoto(photoData)`, `getLocketBotSettings()`, `saveLocketBotSettings(settings)`
 
 - [ ] **Step 1: Write the failing test script `test_locket_db.ts`**
 
 ```typescript
-import { saveLocketPhoto, getLocketPhotos } from './lib/local-db';
+import { saveLocketPhoto, getLocketPhotos, saveLocketBotSettings, getLocketBotSettings } from './lib/local-db';
 
 async function testDb() {
   const dummy = {
@@ -44,6 +44,10 @@ async function testDb() {
   await saveLocketPhoto(dummy);
   const feed = await getLocketPhotos(1, 10);
   console.log('Saved photo found:', feed.photos.some((p: any) => p.id === dummy.id));
+
+  await saveLocketBotSettings({ locketBotToken: '12345:test', locketChatId: '-100123' });
+  const settings = await getLocketBotSettings();
+  console.log('Bot token saved:', settings.locketBotToken === '12345:test');
 }
 testDb();
 ```
@@ -53,7 +57,7 @@ testDb();
 Run: `npx tsx test_locket_db.ts`
 Expected: FAIL with "saveLocketPhoto is not exported"
 
-- [ ] **Step 3: Implement `saveLocketPhoto` and `getLocketPhotos` in `lib/local-db.ts` and `lib/firebase.ts`**
+- [ ] **Step 3: Implement `saveLocketPhoto`, `getLocketPhotos`, `saveLocketBotSettings`, `getLocketBotSettings` in `lib/local-db.ts` and `lib/firebase.ts`**
 
 In `lib/local-db.ts`:
 ```typescript
@@ -82,12 +86,28 @@ export async function saveLocketPhotoLocal(photo: LocketPhoto): Promise<boolean>
   await writeLocalDb(db);
   return true;
 }
+
+export async function getLocketBotSettingsLocal() {
+  const db = await readLocalDb();
+  return {
+    locketBotToken: db.settings?.locketBotToken || process.env.TELEGRAM_BOT_TOKEN || '',
+    locketChatId: db.settings?.locketChatId || process.env.TELEGRAM_CHAT_ID || '',
+  };
+}
+
+export async function saveLocketBotSettingsLocal(settings: { locketBotToken: string; locketChatId: string }) {
+  const db = await readLocalDb();
+  if (!db.settings) db.settings = {};
+  db.settings.locketBotToken = settings.locketBotToken;
+  db.settings.locketChatId = settings.locketChatId;
+  await writeLocalDb(db);
+  return true;
+}
 ```
 
 In `lib/firebase.ts`:
 ```typescript
 export async function getLocketPhotosFirestore(page = 1, limit = 10) {
-  // Queries collection 'locket_photos' ordered by created_at desc
   try {
     const snapshot = await db.collection('locket_photos').orderBy('created_at', 'desc').get();
     const list = snapshot.docs.map(doc => doc.data() as LocketPhoto);
@@ -109,19 +129,41 @@ export async function saveLocketPhotoFirestore(photo: LocketPhoto) {
     return saveLocketPhotoLocal(photo);
   }
 }
+
+export async function getLocketBotSettingsFirestore() {
+  try {
+    const settings = await getSettingsForUser('chinhan');
+    return {
+      locketBotToken: settings?.locketBotToken || process.env.TELEGRAM_BOT_TOKEN || '',
+      locketChatId: settings?.locketChatId || process.env.TELEGRAM_CHAT_ID || '',
+    };
+  } catch (e) {
+    return getLocketBotSettingsLocal();
+  }
+}
+
+export async function saveLocketBotSettingsFirestore(settings: { locketBotToken: string; locketChatId: string }) {
+  try {
+    await saveSettingsForUser('chinhan', settings);
+    await saveLocketBotSettingsLocal(settings);
+    return true;
+  } catch (e) {
+    return saveLocketBotSettingsLocal(settings);
+  }
+}
 ```
 
 - [ ] **Step 4: Run test to verify it passes**
 
 Run: `npx tsx test_locket_db.ts`
-Expected: PASS outputting "Saved photo found: true"
+Expected: PASS outputting "Saved photo found: true" & "Bot token saved: true"
 
 - [ ] **Step 5: Clean up test script & Commit**
 
 ```bash
 rm test_locket_db.ts
 git add lib/local-db.ts lib/firebase.ts
-git commit -m "feat(locket): add database helpers for locket_photos"
+git commit -m "feat(locket): add database and bot config helpers for locket_photos"
 ```
 
 ---
@@ -139,7 +181,7 @@ git commit -m "feat(locket): add database helpers for locket_photos"
 
 ```typescript
 import { NextResponse } from 'next/server';
-import { saveLocketPhotoFirestore, getSettingsForUser } from '@/lib/firebase';
+import { saveLocketPhotoFirestore, getLocketBotSettingsFirestore } from '@/lib/firebase';
 
 export async function POST(request: Request) {
   try {
@@ -152,11 +194,12 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, error: 'No image file provided' }, { status: 400 });
     }
 
-    const token = process.env.TELEGRAM_BOT_TOKEN;
-    const chatId = process.env.TELEGRAM_CHAT_ID;
+    const botConfig = await getLocketBotSettingsFirestore();
+    const token = botConfig.locketBotToken || process.env.TELEGRAM_BOT_TOKEN;
+    const chatId = botConfig.locketChatId || process.env.TELEGRAM_CHAT_ID;
 
     if (!token || !chatId) {
-      return NextResponse.json({ success: false, error: 'Telegram Bot Token / Chat ID missing' }, { status: 500 });
+      return NextResponse.json({ success: false, error: 'Telegram Bot Token / Chat ID missing. Please configure storage bot in settings.' }, { status: 500 });
     }
 
     // 1. Upload photo to Telegram Bot via sendPhoto multipart API
@@ -222,14 +265,15 @@ git commit -m "feat(locket): add POST /api/locket/upload endpoint"
 
 ---
 
-### Task 3: Feed API Route (`GET /api/locket/feed`)
+### Task 3: Feed & Settings API Routes (`GET/POST /api/locket/settings` & `GET /api/locket/feed`)
 
 **Files:**
 - Create: `app/api/locket/feed/route.ts`
+- Create: `app/api/locket/settings/route.ts`
 
 **Interfaces:**
-- Consumes: Query params `page`, `limit`
-- Produces: `GET /api/locket/feed` JSON response
+- Consumes: Query params `page`, `limit` and JSON settings `{ locketBotToken, locketChatId }`
+- Produces: JSON responses
 
 - [ ] **Step 1: Create `app/api/locket/feed/route.ts`**
 
@@ -251,11 +295,38 @@ export async function GET(request: Request) {
 }
 ```
 
-- [ ] **Step 2: Commit API route**
+- [ ] **Step 2: Create `app/api/locket/settings/route.ts`**
+
+```typescript
+import { NextResponse } from 'next/server';
+import { getLocketBotSettingsFirestore, saveLocketBotSettingsFirestore } from '@/lib/firebase';
+
+export async function GET() {
+  try {
+    const data = await getLocketBotSettingsFirestore();
+    return NextResponse.json({ success: true, data });
+  } catch (error: any) {
+    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+  }
+}
+
+export async function POST(request: Request) {
+  try {
+    const body = await request.json();
+    const { locketBotToken, locketChatId } = body;
+    await saveLocketBotSettingsFirestore({ locketBotToken, locketChatId });
+    return NextResponse.json({ success: true });
+  } catch (error: any) {
+    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+  }
+}
+```
+
+- [ ] **Step 3: Commit API routes**
 
 ```bash
-git add app/api/locket/feed/route.ts
-git commit -m "feat(locket): add GET /api/locket/feed endpoint"
+git add app/api/locket/feed/route.ts app/api/locket/settings/route.ts
+git commit -m "feat(locket): add feed and bot settings API endpoints"
 ```
 
 ---
@@ -274,10 +345,13 @@ git commit -m "feat(locket): add GET /api/locket/feed endpoint"
 ```typescript
 import { NextResponse } from 'next/server';
 import { getTelegramFilePath, downloadTelegramPhotoBuffer } from '@/lib/telegram';
+import { getLocketBotSettingsFirestore } from '@/lib/firebase';
 
 export async function GET(request: Request, { params }: { params: { fileId: string } }) {
   try {
-    const token = process.env.TELEGRAM_BOT_TOKEN;
+    const botConfig = await getLocketBotSettingsFirestore();
+    const token = botConfig.locketBotToken || process.env.TELEGRAM_BOT_TOKEN;
+    
     if (!token) {
       return new NextResponse('Bot Token Missing', { status: 500 });
     }
@@ -289,7 +363,7 @@ export async function GET(request: Request, { params }: { params: { fileId: stri
 
     const filePath = await getTelegramFilePath(token, fileId);
     if (!filePath) {
-      return new NextResponse('File path not found', { status: 44 });
+      return new NextResponse('File path not found', { status: 404 });
     }
 
     const buffer = await downloadTelegramPhotoBuffer(token, filePath);
@@ -319,7 +393,7 @@ git commit -m "feat(locket): add GET /api/locket/photo/[fileId] image proxy endp
 
 ---
 
-### Task 5: Frontend `LocketTab.tsx` Component & App Integration
+### Task 5: Frontend `LocketTab.tsx` Component with Settings Modal & App Integration
 
 **Files:**
 - Create: `components/LocketTab.tsx`
@@ -327,7 +401,7 @@ git commit -m "feat(locket): add GET /api/locket/photo/[fileId] image proxy endp
 
 **Interfaces:**
 - Consumes: `/api/locket/*` APIs
-- Produces: UI component with 1:1 hero feed, instant camera/upload button, preview modal with explicit upload, and 10-item history pagination.
+- Produces: UI component with 1:1 hero feed, instant camera/upload button, preview modal with explicit upload, Bot Settings Modal, and 10-item history pagination.
 
 - [ ] **Step 1: Create `components/LocketTab.tsx`**
 
@@ -335,7 +409,7 @@ git commit -m "feat(locket): add GET /api/locket/photo/[fileId] image proxy endp
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Camera, Upload, Download, RefreshCw, Send, Image as ImageIcon } from 'lucide-react';
+import { Camera, Upload, Download, RefreshCw, Send, Image as ImageIcon, Settings, Save, X } from 'lucide-react';
 import { useToast } from './ui/Toast';
 
 interface LocketPhoto {
@@ -363,6 +437,12 @@ export default function LocketTab() {
   const [caption, setCaption] = useState('');
   const [uploading, setUploading] = useState(false);
 
+  // Bot Settings Modal State
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [locketBotToken, setLocketBotToken] = useState('');
+  const [locketChatId, setLocketChatId] = useState('');
+  const [savingSettings, setSavingSettings] = useState(false);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const fetchFeed = async (pageNum = 1, append = false) => {
@@ -389,8 +469,44 @@ export default function LocketTab() {
     }
   };
 
+  const fetchBotSettings = async () => {
+    try {
+      const res = await fetch('/api/locket/settings');
+      const data = await res.json();
+      if (data.success && data.data) {
+        setLocketBotToken(data.data.locketBotToken || '');
+        setLocketChatId(data.data.locketChatId || '');
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const saveBotSettings = async () => {
+    try {
+      setSavingSettings(true);
+      const res = await fetch('/api/locket/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ locketBotToken, locketChatId }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        showToast('Đã lưu cấu hình Telegram Bot Locket!', 'success');
+        setShowSettingsModal(false);
+      } else {
+        showToast(`Lỗi: ${data.error}`, 'error');
+      }
+    } catch (e: any) {
+      showToast('Không thể lưu cài đặt Bot', 'error');
+    } finally {
+      setSavingSettings(false);
+    }
+  };
+
   useEffect(() => {
     fetchFeed(1, false);
+    fetchBotSettings();
   }, []);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -437,27 +553,38 @@ export default function LocketTab() {
 
   return (
     <div className="max-w-md mx-auto p-4 space-y-6 pb-20">
-      {/* Header User Switcher */}
+      {/* Header User Switcher & Settings Icon */}
       <div className="flex items-center justify-between bg-slate-800/80 p-3 rounded-2xl border border-slate-700">
-        <span className="text-sm font-medium text-slate-300">Đang đăng với tên:</span>
-        <div className="flex bg-slate-900 rounded-xl p-1">
-          <button
-            onClick={() => setCurrentUser('chinhan')}
-            className={`px-3 py-1 text-xs rounded-lg font-bold transition-all ${
-              currentUser === 'chinhan' ? 'bg-amber-500 text-slate-950 shadow' : 'text-slate-400 hover:text-white'
-            }`}
-          >
-            chinhan
-          </button>
-          <button
-            onClick={() => setCurrentUser('thanhhuong')}
-            className={`px-3 py-1 text-xs rounded-lg font-bold transition-all ${
-              currentUser === 'thanhhuong' ? 'bg-pink-500 text-white shadow' : 'text-slate-400 hover:text-white'
-            }`}
-          >
-            thanhhuong
-          </button>
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-medium text-slate-300">Tài khoản:</span>
+          <div className="flex bg-slate-900 rounded-xl p-1">
+            <button
+              onClick={() => setCurrentUser('chinhan')}
+              className={`px-3 py-1 text-xs rounded-lg font-bold transition-all ${
+                currentUser === 'chinhan' ? 'bg-amber-500 text-slate-950 shadow' : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              chinhan
+            </button>
+            <button
+              onClick={() => setCurrentUser('thanhhuong')}
+              className={`px-3 py-1 text-xs rounded-lg font-bold transition-all ${
+                currentUser === 'thanhhuong' ? 'bg-pink-500 text-white shadow' : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              thanhhuong
+            </button>
+          </div>
         </div>
+
+        {/* Gear Icon Button for Storage Bot Settings */}
+        <button
+          onClick={() => setShowSettingsModal(true)}
+          className="p-2.5 bg-slate-900 text-slate-400 hover:text-amber-400 rounded-xl border border-slate-700 hover:border-amber-500/50 transition-all"
+          title="Cấu hình Bot lưu trữ Telegram"
+        >
+          <Settings className="w-4 h-4" />
+        </button>
       </div>
 
       {/* Main Hero Locket 1:1 Square Frame */}
@@ -542,6 +669,67 @@ export default function LocketTab() {
           <span>Thư viện</span>
         </button>
       </div>
+
+      {/* Storage Bot Settings Modal */}
+      {showSettingsModal && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-800 w-full max-w-sm rounded-3xl p-5 space-y-4 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <h3 className="text-white font-bold text-base flex items-center gap-2">
+                <Settings className="w-4 h-4 text-amber-400" />
+                <span>Cấu hình Bot Lưu Trữ Locket</span>
+              </h3>
+              <button
+                onClick={() => setShowSettingsModal(false)}
+                className="text-slate-400 hover:text-white p-1"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 mb-1">Telegram Bot Token</label>
+                <input
+                  type="password"
+                  placeholder="123456789:ABCdef..."
+                  value={locketBotToken}
+                  onChange={(e) => setLocketBotToken(e.target.value)}
+                  className="w-full bg-slate-800 border border-slate-700 text-white rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-amber-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 mb-1">Storage Chat ID / Channel ID</label>
+                <input
+                  type="text"
+                  placeholder="-100123456789 hoặc Chat ID"
+                  value={locketChatId}
+                  onChange={(e) => setLocketChatId(e.target.value)}
+                  className="w-full bg-slate-800 border border-slate-700 text-white rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-amber-500"
+                />
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2">
+              <button
+                onClick={() => setShowSettingsModal(false)}
+                className="px-4 py-2 bg-slate-800 text-slate-300 text-xs font-medium rounded-xl hover:bg-slate-700"
+              >
+                Đóng
+              </button>
+              <button
+                onClick={saveBotSettings}
+                disabled={savingSettings}
+                className="px-4 py-2 bg-amber-500 text-slate-950 text-xs font-bold rounded-xl hover:bg-amber-400 flex items-center gap-1.5"
+              >
+                {savingSettings ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+                <span>Lưu Cấu Hình</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Preview Modal for Confirmation */}
       {previewUrl && (
@@ -657,7 +845,7 @@ const [activeTab, setActiveTab] = useState<'locket' | 'register' | 'salary' | 'n
 
 ```bash
 git add components/LocketTab.tsx app/page.tsx
-git commit -m "feat(locket): add LocketTab UI component and set as default active tab"
+git commit -m "feat(locket): add LocketTab UI component with Bot Settings Modal and set as default active tab"
 ```
 
 ---
