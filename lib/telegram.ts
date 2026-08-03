@@ -98,12 +98,32 @@ export function getUserChatIds(settings: any): string[] {
   return Array.from(chatIds);
 }
 
+export async function deleteTelegramMessage(
+  token: string,
+  chatId: string | number,
+  messageId: number
+): Promise<boolean> {
+  const cleanToken = sanitizeTelegramToken(token);
+  if (!cleanToken || !chatId || !messageId) return false;
+  const targetChatId = String(chatId).split(',')[0].trim();
+  const payload = { chat_id: targetChatId, message_id: messageId };
+
+  try {
+    const res = await postTelegramHttps(cleanToken, 'deleteMessage', payload);
+    if (res.ok) return true;
+  } catch (err: any) {
+    console.warn('deleteTelegramMessage HTTPS failed:', err.message);
+  }
+
+  return postTelegramCurl(cleanToken, 'deleteMessage', payload);
+}
+
 export async function sendTelegramMessage(
   text: string,
   customToken?: string,
   customChatId?: string | string[],
   replyMarkup?: any
-): Promise<{ success: boolean; error?: string }> {
+): Promise<{ success: boolean; message_id?: number; error?: string }> {
   const token = customToken || process.env.TELEGRAM_BOT_TOKEN;
   let rawChatId = customChatId || process.env.TELEGRAM_CHAT_ID;
 
@@ -123,7 +143,6 @@ export async function sendTelegramMessage(
       .filter(Boolean);
   }
 
-  // Deduplicate Chat IDs
   chatIds = Array.from(new Set(chatIds));
 
   if (chatIds.length === 0) {
@@ -132,6 +151,7 @@ export async function sendTelegramMessage(
 
   let overallSuccess = true;
   let lastError = '';
+  let lastMessageId: number | undefined = undefined;
 
   for (const chatId of chatIds) {
     const payloadMarkdown = {
@@ -154,11 +174,14 @@ export async function sendTelegramMessage(
       const res = await postTelegramHttps(token, 'sendMessage', payloadMarkdown);
       if (res.ok) {
         sent = true;
+        if (res.result?.message_id) lastMessageId = res.result.message_id;
       } else {
         console.warn(`Telegram Markdown failed for chat_id ${chatId}, retrying plain text:`, res.description);
         const retryRes = await postTelegramHttps(token, 'sendMessage', payloadPlain);
-        if (retryRes.ok) sent = true;
-        else lastError = retryRes.description || res.description || 'Gửi thất bại';
+        if (retryRes.ok) {
+          sent = true;
+          if (retryRes.result?.message_id) lastMessageId = retryRes.result.message_id;
+        } else lastError = retryRes.description || res.description || 'Gửi thất bại';
       }
     } catch (err: any) {
       console.warn(`Telegram HTTPS family 4 failed for chat_id ${chatId}, attempting curl fallback:`, err.message);
@@ -187,6 +210,7 @@ export async function sendTelegramMessage(
 
   return {
     success: overallSuccess,
+    ...(lastMessageId ? { message_id: lastMessageId } : {}),
     ...(overallSuccess ? {} : { error: lastError || 'Không thể gửi tin nhắn Telegram. Vui lòng kiểm tra lại Bot Token & Chat ID!' }),
   };
 }

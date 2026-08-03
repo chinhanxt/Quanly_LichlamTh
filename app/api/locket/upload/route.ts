@@ -75,25 +75,30 @@ export async function POST(request: Request) {
       );
     }
 
-    // Pick highest resolution photo file_id
+    // Pick highest resolution photo file_id & message_id
     const photos = teleRes.result.photo;
     const largestPhoto = photos[photos.length - 1];
     const fileId = largestPhoto.file_id;
+    const photoMessageId = teleRes.result.message_id;
+    const targetChatId = teleRes.result.chat?.id || chatId.split(',')[0].trim();
 
-    // 2. Save metadata record to DB
+    // 2. Send Telegram notification to partner via sendTelegramMessage
+    const notifyText = `📸 *${sender}* vừa đăng một khoảnh khắc mới trên Locket!${caption ? `\n💬 "${caption}"` : ''}`;
+    const notifyRes = await sendTelegramMessage(notifyText, token, chatId).catch(() => null);
+
+    // 3. Save metadata record to DB
     const photoRecord = {
       id: `loc_${Date.now()}`,
       sender,
       telegram_file_id: fileId,
+      photo_message_id: photoMessageId,
+      notify_message_id: notifyRes?.message_id,
+      chat_id: String(targetChatId),
       caption,
       created_at: new Date().toISOString(),
     };
 
     await saveLocketPhotoFirestore(photoRecord);
-
-    // 3. Send Telegram notification to partner via sendTelegramMessage
-    const notifyText = `📸 *${sender}* vừa đăng một khoảnh khắc mới trên Locket!${caption ? `\n💬 "${caption}"` : ''}`;
-    await sendTelegramMessage(notifyText, token, chatId).catch(console.error);
 
     return NextResponse.json({ success: true, photo: photoRecord });
   } catch (error: any) {
