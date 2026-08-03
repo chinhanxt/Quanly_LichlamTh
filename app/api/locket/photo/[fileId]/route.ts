@@ -4,7 +4,7 @@ import { getLocketBotSettingsFirestore } from '@/lib/firebase';
 
 export async function GET(
   request: Request,
-  { params }: { params: { fileId: string } | Promise<{ fileId: string }> }
+  props: { params: Promise<{ fileId: string }> }
 ) {
   try {
     const botConfig = await getLocketBotSettingsFirestore();
@@ -14,8 +14,8 @@ export async function GET(
       return new NextResponse('Bot Token Missing', { status: 500 });
     }
 
-    const resolvedParams = await params;
-    const fileId = resolvedParams?.fileId;
+    const params = await props.params;
+    const fileId = params?.fileId;
     if (!fileId) {
       return new NextResponse('File ID Missing', { status: 400 });
     }
