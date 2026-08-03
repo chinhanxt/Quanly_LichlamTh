@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Camera, Upload, Download, RefreshCw, Send, Image as ImageIcon, Settings, Save, X, FlipHorizontal, Eye, ChevronLeft, ChevronRight, Trash2, RotateCcw } from 'lucide-react';
+import { Camera, Upload, Download, RefreshCw, Send, Image as ImageIcon, Settings, Save, X, FlipHorizontal, Eye, ChevronLeft, ChevronRight, Trash2, RotateCcw, ArrowLeft, BookOpen } from 'lucide-react';
 import { useToast } from '@/components/ui/Toast';
 import { useAuth } from '@/components/AuthProvider';
 
@@ -24,6 +24,9 @@ export default function LocketTab() {
   const [hasMore, setHasMore] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [imgErrorMap, setImgErrorMap] = useState<Record<string, boolean>>({});
+
+  // Navigation View: 'main' (Clean Locket View) vs 'history' (Hidden Dedicated History Page)
+  const [subView, setSubView] = useState<'main' | 'history'>('main');
 
   // Hero Frame Index: -1 = Live Camera, 0 = Latest Photo, 1..N = Older Photos
   const [heroIndex, setHeroIndex] = useState<number>(-1);
@@ -252,9 +255,9 @@ export default function LocketTab() {
     fetchBotSettings();
   }, []);
 
-  // Auto start/stop camera based on heroIndex === -1 && !previewUrl
+  // Auto start/stop camera based on subView === 'main' && heroIndex === -1 && !previewUrl
   useEffect(() => {
-    if (heroIndex === -1 && !previewUrl) {
+    if (subView === 'main' && heroIndex === -1 && !previewUrl) {
       startCameraStream();
     } else {
       stopCameraStream();
@@ -262,7 +265,7 @@ export default function LocketTab() {
     return () => {
       stopCameraStream();
     };
-  }, [heroIndex, previewUrl]);
+  }, [subView, heroIndex, previewUrl]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -270,6 +273,7 @@ export default function LocketTab() {
       setSelectedFile(file);
       setPreviewUrl(URL.createObjectURL(file));
       setHeroIndex(-1);
+      setSubView('main');
     }
   };
 
@@ -327,6 +331,107 @@ export default function LocketTab() {
 
   const currentPhoto = heroIndex >= 0 ? photos[heroIndex] : null;
 
+  // Dedicated Hidden Sub-Page for History Gallery
+  if (subView === 'history') {
+    return (
+      <div className="max-w-md mx-auto p-4 space-y-6 pb-20 select-none">
+        {/* History Header Navigation Bar */}
+        <div className="flex items-center justify-between bg-slate-800/90 p-3 rounded-2xl border border-slate-700 shadow-lg sticky top-2 z-30 backdrop-blur-md">
+          <button
+            onClick={() => setSubView('main')}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-900 text-slate-300 hover:text-white rounded-xl border border-slate-700 text-xs font-bold transition-all cursor-pointer"
+          >
+            <ArrowLeft className="w-4 h-4 text-amber-400" />
+            <span>Trở lại Locket</span>
+          </button>
+
+          <div className="flex items-center gap-1.5 text-xs font-bold text-amber-400">
+            <BookOpen className="w-4 h-4" />
+            <span>Nhật Ký ({photos.length})</span>
+          </div>
+        </div>
+
+        {/* History Grid (10 items / page) */}
+        <div className="space-y-4">
+          <div className="grid grid-cols-2 gap-3">
+            {photos.map((photo, index) => (
+              <div
+                key={photo.id}
+                onClick={() => {
+                  discardCapturedPhoto();
+                  setHeroIndex(index);
+                  setSubView('main');
+                }}
+                className="relative aspect-square rounded-2xl overflow-hidden bg-slate-900 border border-slate-800 hover:border-amber-400/60 transition-all cursor-pointer group flex items-center justify-center shadow-lg"
+              >
+                {!imgErrorMap[photo.id] ? (
+                  <img
+                    src={`/api/locket/photo/${photo.telegram_file_id}`}
+                    alt="Moment"
+                    onError={() => setImgErrorMap((prev) => ({ ...prev, [photo.id]: true }))}
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                    loading="lazy"
+                  />
+                ) : (
+                  <div className="flex flex-col items-center justify-center p-2 text-slate-500 text-center">
+                    <ImageIcon className="w-6 h-6 mb-1 opacity-40" />
+                    <span className="text-[10px]">Ảnh đã xóa</span>
+                  </div>
+                )}
+
+                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/30 p-2 flex flex-col justify-between opacity-90">
+                  <span className="text-[10px] text-white font-semibold bg-black/50 backdrop-blur-md px-2 py-0.5 rounded-full w-fit border border-white/10">
+                    {photo.sender}
+                  </span>
+
+                  <div className="flex items-end justify-between gap-1">
+                    <p className="text-[11px] text-slate-200 truncate font-medium">{photo.caption || '...'}</p>
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={(e) => handleDeletePhoto(photo.id, e)}
+                        className="p-1 bg-black/60 text-rose-400 hover:bg-rose-500 hover:text-white rounded-lg transition-all"
+                        title="Xóa khoảnh khắc"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </button>
+                      {!imgErrorMap[photo.id] && (
+                        <a
+                          href={`/api/locket/photo/${photo.telegram_file_id}`}
+                          download={`locket_${photo.id}.jpg`}
+                          onClick={(e) => e.stopPropagation()}
+                          className="p-1 bg-black/60 text-white rounded-lg hover:bg-black"
+                          title="Tải ảnh HD"
+                        >
+                          <Download className="w-3 h-3" />
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Pagination / Load More */}
+          {hasMore && (
+            <button
+              onClick={() => {
+                const nextPage = page + 1;
+                setPage(nextPage);
+                fetchFeed(nextPage, true);
+              }}
+              disabled={loadingMore}
+              className="w-full bg-slate-900 border border-slate-800 text-slate-300 py-3 rounded-2xl text-xs font-semibold hover:bg-slate-800 transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 shadow-md"
+            >
+              {loadingMore ? <RefreshCw className="w-4 h-4 animate-spin" /> : 'Tải thêm 10 khoảnh khắc cũ'}
+            </button>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // Main Clean Locket View (NO BOTTOM GRID)
   return (
     <div className="max-w-md mx-auto p-4 space-y-6 pb-20 select-none">
       {/* Header Bar with Settings Icon */}
@@ -545,29 +650,17 @@ export default function LocketTab() {
           className="hidden"
         />
 
-        {/* View Mode Toggle Button */}
+        {/* View Mode Toggle Button -> Open Dedicated History Sub-Page */}
         <button
           onClick={() => {
             if (previewUrl) discardCapturedPhoto();
-            setHeroIndex(heroIndex === -1 ? 0 : -1);
+            setSubView('history');
           }}
-          className={`flex items-center gap-1.5 px-3 py-2.5 rounded-2xl text-xs font-semibold transition-all border cursor-pointer ${
-            heroIndex >= 0 && !previewUrl
-              ? 'bg-amber-500/20 text-amber-400 border-amber-500/40'
-              : 'bg-slate-800 text-slate-300 border-slate-700 hover:text-white'
-          }`}
+          className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-2xl text-xs font-semibold transition-all border border-slate-700 bg-slate-800 text-slate-300 hover:text-amber-400 hover:border-amber-500/40 cursor-pointer"
+          title="Mở Nhật Ký Tất Cả Khoảnh Khắc"
         >
-          {heroIndex === -1 && !previewUrl ? (
-            <>
-              <Eye className="w-4 h-4 text-amber-400" />
-              <span>Xem nhật ký</span>
-            </>
-          ) : (
-            <>
-              <Camera className="w-4 h-4 text-amber-400" />
-              <span>Mở Camera</span>
-            </>
-          )}
+          <BookOpen className="w-4 h-4 text-amber-400" />
+          <span>Xem nhật ký</span>
         </button>
 
         {/* Authentic Locket Round Shutter Button / Send Action */}
@@ -589,7 +682,7 @@ export default function LocketTab() {
         {/* Gallery Upload Button */}
         <button
           onClick={() => galleryInputRef.current?.click()}
-          className="flex items-center gap-1.5 bg-slate-800 text-slate-300 px-3 py-2.5 rounded-2xl font-semibold hover:bg-slate-700 transition-all border border-slate-700 text-xs cursor-pointer"
+          className="flex items-center gap-1.5 bg-slate-800 text-slate-300 px-3.5 py-2.5 rounded-2xl font-semibold hover:bg-slate-700 transition-all border border-slate-700 text-xs cursor-pointer"
         >
           <Upload className="w-4 h-4 text-slate-400" />
           <span>Thư viện</span>
@@ -656,87 +749,6 @@ export default function LocketTab() {
           </div>
         </div>
       )}
-
-      {/* History Grid (10 items / page) */}
-      <div className="space-y-3 pt-4 border-t border-slate-800">
-        <h3 className="text-sm font-semibold text-slate-400 flex items-center justify-between">
-          <span>Tất cả khoảnh khắc</span>
-          <span className="text-xs text-slate-500">{photos.length} ảnh</span>
-        </h3>
-
-        <div className="grid grid-cols-2 gap-3">
-          {photos.map((photo, index) => (
-            <div
-              key={photo.id}
-              onClick={() => {
-                discardCapturedPhoto();
-                setHeroIndex(index);
-              }}
-              className={`relative aspect-square rounded-2xl overflow-hidden bg-slate-900 border transition-all cursor-pointer group flex items-center justify-center ${
-                heroIndex === index && !previewUrl ? 'border-amber-400 ring-2 ring-amber-400/50 scale-[0.98]' : 'border-slate-800 hover:border-slate-700'
-              }`}
-            >
-              {!imgErrorMap[photo.id] ? (
-                <img
-                  src={`/api/locket/photo/${photo.telegram_file_id}`}
-                  alt="Moment"
-                  onError={() => setImgErrorMap((prev) => ({ ...prev, [photo.id]: true }))}
-                  className="w-full h-full object-cover"
-                  loading="lazy"
-                />
-              ) : (
-                <div className="flex flex-col items-center justify-center p-2 text-slate-500 text-center">
-                  <ImageIcon className="w-6 h-6 mb-1 opacity-40" />
-                  <span className="text-[10px]">Ảnh hết hạn</span>
-                </div>
-              )}
-              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/30 p-2 flex flex-col justify-between opacity-90">
-                <span className="text-[10px] text-white font-medium bg-black/40 px-2 py-0.5 rounded-full w-fit">
-                  {photo.sender}
-                </span>
-
-                <div className="flex items-end justify-between gap-1">
-                  <p className="text-[11px] text-slate-200 truncate">{photo.caption || '...'}</p>
-                  <div className="flex items-center gap-1">
-                    <button
-                      onClick={(e) => handleDeletePhoto(photo.id, e)}
-                      className="p-1 bg-black/60 text-rose-400 hover:bg-rose-500 hover:text-white rounded-lg transition-all"
-                      title="Xóa khoảnh khắc"
-                    >
-                      <Trash2 className="w-3 h-3" />
-                    </button>
-                    {!imgErrorMap[photo.id] && (
-                      <a
-                        href={`/api/locket/photo/${photo.telegram_file_id}`}
-                        download={`locket_${photo.id}.jpg`}
-                        onClick={(e) => e.stopPropagation()}
-                        className="p-1 bg-black/60 text-white rounded-lg hover:bg-black"
-                        title="Tải ảnh HD"
-                      >
-                        <Download className="w-3 h-3" />
-                      </a>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {hasMore && (
-          <button
-            onClick={() => {
-              const nextPage = page + 1;
-              setPage(nextPage);
-              fetchFeed(nextPage, true);
-            }}
-            disabled={loadingMore}
-            className="w-full bg-slate-900 border border-slate-800 text-slate-300 py-3 rounded-2xl text-xs font-semibold hover:bg-slate-800 transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
-          >
-            {loadingMore ? <RefreshCw className="w-4 h-4 animate-spin" /> : 'Tải thêm khoảnh khắc cũ'}
-          </button>
-        )}
-      </div>
     </div>
   );
 }
