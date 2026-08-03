@@ -7,6 +7,7 @@ const DATA_DIR = path.join(process.cwd(), 'data');
 const SCHEDULE_FILE = path.join(DATA_DIR, 'schedule.json');
 const SETTINGS_FILE = path.join(DATA_DIR, 'settings.json');
 const USERS_FILE = path.join(DATA_DIR, 'users.json');
+const LOCKET_PHOTOS_FILE = path.join(DATA_DIR, 'locket_photos.json');
 
 export const DEFAULT_USERS: User[] = [
   { username: 'thanhhuong', password: '1515', displayName: 'Thanh Hương' },
@@ -437,3 +438,86 @@ export function deleteExpenseItemForUserLocal(username: string, id: string): boo
   }
   return false;
 }
+
+// Locket Photos & Bot Settings Local Helpers
+export interface LocketPhoto {
+  id: string;
+  sender: string;
+  telegram_file_id: string;
+  caption?: string;
+  created_at: string;
+}
+
+export function getLocketPhotosLocal(page = 1, limit = 10): { photos: LocketPhoto[]; total: number; hasMore: boolean } {
+  try {
+    ensureDataDir();
+    if (!fs.existsSync(LOCKET_PHOTOS_FILE)) {
+      return { photos: [], total: 0, hasMore: false };
+    }
+    const raw = fs.readFileSync(LOCKET_PHOTOS_FILE, 'utf-8');
+    const list: LocketPhoto[] = JSON.parse(raw);
+    list.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    const total = list.length;
+    const start = (page - 1) * limit;
+    const photos = list.slice(start, start + limit);
+    return { photos, total, hasMore: start + limit < total };
+  } catch (err) {
+    console.error('Error reading locket photos local:', err);
+    return { photos: [], total: 0, hasMore: false };
+  }
+}
+
+export function saveLocketPhotoLocal(photo: LocketPhoto): boolean {
+  try {
+    ensureDataDir();
+    let list: LocketPhoto[] = [];
+    if (fs.existsSync(LOCKET_PHOTOS_FILE)) {
+      try {
+        const raw = fs.readFileSync(LOCKET_PHOTOS_FILE, 'utf-8');
+        list = JSON.parse(raw);
+      } catch {}
+    }
+    list.unshift(photo);
+    fs.writeFileSync(LOCKET_PHOTOS_FILE, JSON.stringify(list, null, 2), 'utf-8');
+    return true;
+  } catch (err) {
+    console.error('Error saving locket photo local:', err);
+    return false;
+  }
+}
+
+export function getLocketBotSettingsLocal(): { locketBotToken: string; locketChatId: string } {
+  try {
+    const settings = getSettingsForUserLocal('chinhan');
+    return {
+      locketBotToken: settings.locketBotToken || process.env.TELEGRAM_BOT_TOKEN || '',
+      locketChatId: settings.locketChatId || process.env.TELEGRAM_CHAT_ID || '',
+    };
+  } catch (err) {
+    return {
+      locketBotToken: process.env.TELEGRAM_BOT_TOKEN || '',
+      locketChatId: process.env.TELEGRAM_CHAT_ID || '',
+    };
+  }
+}
+
+export function saveLocketBotSettingsLocal(settings: { locketBotToken: string; locketChatId: string }): boolean {
+  try {
+    const currentSettings = getSettingsForUserLocal('chinhan');
+    saveSettingsForUserLocal('chinhan', {
+      ...currentSettings,
+      locketBotToken: settings.locketBotToken,
+      locketChatId: settings.locketChatId,
+    });
+    return true;
+  } catch (err) {
+    console.error('Error saving locket bot settings local:', err);
+    return false;
+  }
+}
+
+export const getLocketPhotos = getLocketPhotosLocal;
+export const saveLocketPhoto = saveLocketPhotoLocal;
+export const getLocketBotSettings = getLocketBotSettingsLocal;
+export const saveLocketBotSettings = saveLocketBotSettingsLocal;
+
