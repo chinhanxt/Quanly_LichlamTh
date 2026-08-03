@@ -73,7 +73,7 @@ export async function POST(request: Request) {
     // 1. Send photo with notification caption attached directly to photo
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
-    const notifyCaption = `📸 *${sender}* vừa đăng một khoảnh khắc mới trên Locket!${caption ? `\n💬 "${caption}"` : ''}`;
+    const notifyCaption = `📸 *${sender}* vừa đăng một khoảnh khắc mới!${caption ? `\n💬 "${caption}"` : ''}`;
 
     const teleRes = await sendPhotoTelegramCurl(token, chatId, buffer, notifyCaption);
 

@@ -18,3 +18,7 @@
 .env*.local
 .env
 .env*
+
+# user data and secrets
+data/*.json
+
