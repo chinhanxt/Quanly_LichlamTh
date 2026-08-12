@@ -3,6 +3,11 @@ import { getSettings } from '@/lib/firebase';
 
 export async function POST(request: Request) {
   try {
+    return NextResponse.json(
+      { success: false, error: 'Chức năng Telegram đang tạm thời bị vô hiệu hóa' },
+      { status: 503 }
+    );
+
     let token: string | undefined;
     let customWebhookUrl: string | undefined;
 

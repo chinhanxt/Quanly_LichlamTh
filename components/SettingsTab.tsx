@@ -263,7 +263,7 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({ settings, onSaveSettin
                 type="text"
                 value={form.telegramChatId || ''}
                 onChange={(e) => updateForm({ ...form, telegramChatId: e.target.value })}
-                placeholder="Ví dụ: CHAT_ID_REVOKED hoặc -100123456789"
+                placeholder="Ví dụ: 123456789 hoặc -100123456789"
                 className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono text-slate-800 focus:outline-none focus:border-brand-600"
               />
             </div>
@@ -315,7 +315,7 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({ settings, onSaveSettin
                           type="text"
                           value={item}
                           onChange={(e) => handleRowChange(idx, e.target.value)}
-                          placeholder="Ví dụ: CHAT_ID_REVOKED"
+                          placeholder="Ví dụ: 123456789"
                           className="flex-1 px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono text-slate-800 focus:outline-none focus:border-brand-600 transition-colors"
                         />
                         {list.length > 1 && (

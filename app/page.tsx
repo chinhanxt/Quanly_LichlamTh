@@ -37,8 +37,8 @@ export default function Home() {
     leadTimeMinutes: 30,
     enableMorning: true,
     enableLeadTime: true,
-    telegramBotToken: 'TELEGRAM_BOT_TOKEN_REVOKED',
-    telegramChatId: 'CHAT_ID_REVOKED',
+    telegramBotToken: '',
+    telegramChatId: '',
   });
 
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -81,8 +81,8 @@ export default function Home() {
       if (json.success && json.data) {
         setSettings({
           ...json.data,
-          telegramBotToken: json.data.telegramBotToken || 'TELEGRAM_BOT_TOKEN_REVOKED',
-          telegramChatId: json.data.telegramChatId || 'CHAT_ID_REVOKED',
+          telegramBotToken: json.data.telegramBotToken || '',
+          telegramChatId: json.data.telegramChatId || '',
         });
       }
     } catch (e) {

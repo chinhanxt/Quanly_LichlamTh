@@ -51,6 +51,8 @@ async function processOcrBuffer(
 
 export async function POST(request: Request) {
   try {
+    return NextResponse.json({ ok: true, disabled: true });
+
     const body = await request.json().catch(() => ({}));
     const message = body?.message;
     const callbackQuery = body?.callback_query;

@@ -1,6 +1,8 @@
 import https from 'https';
 import { execFile } from 'child_process';
 
+export const TELEGRAM_FEATURE_ENABLED = false;
+
 export function sanitizeTelegramToken(rawToken: string): string {
   if (!rawToken) return '';
   let token = rawToken.trim();
@@ -124,6 +126,10 @@ export async function sendTelegramMessage(
   customChatId?: string | string[],
   replyMarkup?: any
 ): Promise<{ success: boolean; message_id?: number; error?: string }> {
+  if (!TELEGRAM_FEATURE_ENABLED) {
+    return { success: false, error: 'Chức năng Telegram đang tạm thời bị vô hiệu hóa' };
+  }
+
   const token = customToken || process.env.TELEGRAM_BOT_TOKEN;
   let rawChatId = customChatId || process.env.TELEGRAM_CHAT_ID;
 

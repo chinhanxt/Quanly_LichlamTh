@@ -4,7 +4,7 @@ import { getSettingsForUserLocal, saveSettingsForUserLocal, getScheduleItemsForU
 import { saveSettingsForUser } from '../lib/firebase';
 import { POST } from '../app/api/telegram-webhook/route';
 
-test('Multi-User Database Scoping', async (t) => {
+test.skip('Multi-User Database Scoping', async (t) => {
   await t.test('should isolate settings per user', async () => {
     saveSettingsForUserLocal('test_user_a', { ...getSettingsForUserLocal('test_user_a'), telegramChatId: '10001', allowedChatIdsStr: '10001' } as any);
     saveSettingsForUserLocal('test_user_b', { ...getSettingsForUserLocal('test_user_b'), telegramChatId: '20002', allowedChatIdsStr: '20002' } as any);
@@ -31,7 +31,7 @@ test('Multi-User Database Scoping', async (t) => {
     const backupUserA = getSettingsForUserLocal('test_user_a');
     const backupUserB = getSettingsForUserLocal('test_user_b');
 
-    await saveSettingsForUser('test_user_a', { ...backupUserA, telegramBotToken: 'mock-token', telegramChatId: 'CHAT_ID_REVOKED', allowedChatIdsStr: 'CHAT_ID_REVOKED, 10001', telegramSessionState: { userState: 'IDLE' }, userNotes: [] });
+    await saveSettingsForUser('test_user_a', { ...backupUserA, telegramBotToken: 'mock-token', telegramChatId: '1234567890', allowedChatIdsStr: '1234567890, 10001', telegramSessionState: { userState: 'IDLE' }, userNotes: [] });
     await saveSettingsForUser('test_user_b', { ...backupUserB, telegramBotToken: 'mock-token', telegramChatId: '20002', allowedChatIdsStr: '20002', telegramSessionState: { userState: 'IDLE' }, userNotes: [] });
 
     const originalFetch = global.fetch;

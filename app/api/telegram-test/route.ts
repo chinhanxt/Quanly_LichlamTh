@@ -3,6 +3,11 @@ import { sendTelegramMessage } from '@/lib/telegram';
 
 export async function POST(request: Request) {
   try {
+    return NextResponse.json(
+      { success: false, error: 'Chức năng Telegram đang tạm thời bị vô hiệu hóa' },
+      { status: 503 }
+    );
+
     let botToken: string | undefined;
     let chatId: string | undefined;
     let customMessage: string | undefined;

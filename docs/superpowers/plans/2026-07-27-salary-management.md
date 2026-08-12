@@ -89,8 +89,8 @@ export function getLocalSettings(): ScheduleSettings {
         leadTimeMinutes: 30,
         enableMorning: true,
         enableLeadTime: true,
-        telegramBotToken: 'TELEGRAM_BOT_TOKEN_REVOKED',
-        telegramChatId: 'CHAT_ID_REVOKED',
+        telegramBotToken: 'TELEGRAM_BOT_TOKEN_PLACEHOLDER',
+        telegramChatId: 'CHAT_ID_REVOKED_PLACEHOLDER',
         employeeName: 'Thanh Hương',
         hourlyRate: 26000,
       };
@@ -107,8 +107,8 @@ export function getLocalSettings(): ScheduleSettings {
       leadTimeMinutes: 30,
       enableMorning: true,
       enableLeadTime: true,
-      telegramBotToken: 'TELEGRAM_BOT_TOKEN_REVOKED',
-      telegramChatId: 'CHAT_ID_REVOKED',
+      telegramBotToken: 'TELEGRAM_BOT_TOKEN_PLACEHOLDER',
+      telegramChatId: 'CHAT_ID_REVOKED_PLACEHOLDER',
       employeeName: 'Thanh Hương',
       hourlyRate: 26000,
     };
@@ -129,8 +129,8 @@ export async function getSettings(): Promise<ScheduleSettings> {
         leadTimeMinutes: Number(data.leadTimeMinutes) || 30,
         enableMorning: Boolean(data.enableMorning),
         enableLeadTime: Boolean(data.enableLeadTime),
-        telegramBotToken: data.telegramBotToken || 'TELEGRAM_BOT_TOKEN_REVOKED',
-        telegramChatId: data.telegramChatId || 'CHAT_ID_REVOKED',
+        telegramBotToken: data.telegramBotToken || 'TELEGRAM_BOT_TOKEN_PLACEHOLDER',
+        telegramChatId: data.telegramChatId || 'CHAT_ID_REVOKED_PLACEHOLDER',
         employeeName: data.employeeName || 'Thanh Hương',
         hourlyRate: typeof data.hourlyRate === 'number' ? data.hourlyRate : 26000,
       };

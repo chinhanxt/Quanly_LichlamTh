@@ -62,6 +62,8 @@ function normalizeTimeTo24H(timeStr: string): string {
 
 export async function GET(request: Request) {
   try {
+    return NextResponse.json({ ok: true, disabled: true, message: 'Chức năng Telegram tạm thời bị vô hiệu hóa' });
+
     const cronSecret = process.env.CRON_SECRET;
     if (cronSecret) {
       const authHeader = request.headers.get('authorization');

@@ -108,14 +108,11 @@ export async function getSettingsForUser(username: string): Promise<ScheduleSett
       const defaultRate = username === 'chinhan' ? 100000 : 26000;
       const rate = typeof data.hourlyRate === 'number' && data.hourlyRate !== 26000 ? data.hourlyRate : defaultRate;
 
-      if (!data.telegramBotToken || data.telegramBotToken === 'mock-token') {
-        data.telegramBotToken = 'TELEGRAM_BOT_TOKEN_REVOKED';
-      }
       if (!data.telegramChatId || data.telegramChatId === '20002') {
-        data.telegramChatId = 'CHAT_ID_REVOKED';
+        data.telegramChatId = '';
       }
       if (data.allowedChatIdsStr === '20002') {
-        data.allowedChatIdsStr = 'CHAT_ID_REVOKED';
+        data.allowedChatIdsStr = '';
       }
 
       if (username === 'chinhan') {
@@ -332,8 +329,8 @@ export async function getSettings(): Promise<ScheduleSettings> {
         leadTimeMinutes: Number(data.leadTimeMinutes) || 30,
         enableMorning: Boolean(data.enableMorning),
         enableLeadTime: Boolean(data.enableLeadTime),
-        telegramBotToken: data.telegramBotToken || 'TELEGRAM_BOT_TOKEN_REVOKED',
-        telegramChatId: data.telegramChatId || 'CHAT_ID_REVOKED',
+        telegramBotToken: data.telegramBotToken || '',
+        telegramChatId: data.telegramChatId || '',
         employeeName: data.employeeName || 'Thanh Hương',
         hourlyRate: typeof data.hourlyRate === 'number' ? data.hourlyRate : 26000,
         geminiApiKey: data.geminiApiKey || '',

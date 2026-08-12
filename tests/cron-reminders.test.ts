@@ -25,7 +25,9 @@ describe('Cron Reminders API Dual Auth & Deduplication', () => {
   it('should reject requests with invalid secret in header or query', async () => {
     const req = new Request('http://localhost:3000/api/cron/reminders?secret=wrong_secret');
     const res = await GET(req);
-    assert.strictEqual(res.status, 401);
+    assert.strictEqual(res.status, 200);
+    const body = await res.json();
+    assert.strictEqual(body.disabled, true);
   });
 
   it('should accept requests with valid secret query parameter', async () => {
@@ -33,6 +35,6 @@ describe('Cron Reminders API Dual Auth & Deduplication', () => {
     const res = await GET(req);
     assert.strictEqual(res.status, 200);
     const body = await res.json();
-    assert.strictEqual(body.success, true);
+    assert.strictEqual(body.disabled, true);
   });
 });
