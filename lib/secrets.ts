@@ -1,6 +1,5 @@
 export const SECRET_FIELDS = [
   'telegramBotToken',
-  'locketBotToken',
   'geminiApiKey',
   'groqApiKey',
   'expenseAppsScriptUrl',
