@@ -1,6 +1,6 @@
 'use client';
 import React, { useState, useEffect } from 'react';
-import { X, Sun, Sunset, Clock, MapPin, Tag } from 'lucide-react';
+import { X, Sun, Sunset, Clock, MapPin, Tag, Sparkles } from 'lucide-react';
 import { ScheduleItem } from '@/types/schedule';
 import { Button } from './ui/Button';
 
@@ -34,6 +34,8 @@ export const ScheduleFormModal: React.FC<Props> = ({
     location: string;
     note: string;
     reminderEnabled: boolean;
+    isHoliday?: boolean;
+    salaryMultiplier?: number;
   }>({
     dayOfWeek: currentDay as ScheduleItem['dayOfWeek'],
     date: currentDate || '',
@@ -43,12 +45,21 @@ export const ScheduleFormModal: React.FC<Props> = ({
     location: 'Viện Trí tuệ nhân tạo và Chuyển đổi số',
     note: 'Sáng',
     reminderEnabled: true,
+    isHoliday: false,
+    salaryMultiplier: 3,
   });
 
   useEffect(() => {
     if (initialData) {
       const isMorning = initialData.startTime?.startsWith('07') || initialData.startTime?.startsWith('08');
       setShiftType(isMorning ? 'SANG' : 'CHIEU');
+
+      // Auto-detect holiday multiplier from note/subject if not explicitly set
+      const noteText = `${initialData.note || ''} ${initialData.subject || ''}`;
+      const matchMultiplier = noteText.match(/(?:nhân|x)\s*([1-9](?:\.\d+)?)/i);
+      const detectedMultiplier = matchMultiplier ? parseFloat(matchMultiplier[1]) : (initialData.salaryMultiplier || 3);
+      const isHolidayDetected = Boolean(initialData.isHoliday || (initialData.salaryMultiplier && initialData.salaryMultiplier > 1) || matchMultiplier);
+
       setForm({
         dayOfWeek: initialData.dayOfWeek,
         date: initialData.date || '',
@@ -58,6 +69,8 @@ export const ScheduleFormModal: React.FC<Props> = ({
         location: initialData.location || (isChinhan ? 'Viện Trí tuệ nhân tạo và Chuyển đổi số' : ''),
         note: initialData.note || '',
         reminderEnabled: initialData.reminderEnabled,
+        isHoliday: isHolidayDetected,
+        salaryMultiplier: detectedMultiplier,
       });
     } else {
       setShiftType('SANG');
@@ -70,6 +83,8 @@ export const ScheduleFormModal: React.FC<Props> = ({
         location: isChinhan ? 'Viện Trí tuệ nhân tạo và Chuyển đổi số' : '',
         note: isChinhan ? 'Sáng' : '',
         reminderEnabled: true,
+        isHoliday: false,
+        salaryMultiplier: 3,
       });
     }
   }, [initialData, currentDay, currentDate, isChinhan]);
@@ -114,7 +129,11 @@ export const ScheduleFormModal: React.FC<Props> = ({
         <form
           onSubmit={(e) => {
             e.preventDefault();
-            onSave(form);
+            onSave({
+              ...form,
+              isHoliday: Boolean(form.isHoliday),
+              salaryMultiplier: form.isHoliday ? (form.salaryMultiplier || 3) : 1,
+            });
             onClose();
           }}
           className="space-y-4"
@@ -231,6 +250,71 @@ export const ScheduleFormModal: React.FC<Props> = ({
                   onChange={(e) => setForm({ ...form, note: e.target.value })}
                   className="w-full px-4 py-3 bg-slate-50 rounded-2xl border border-slate-200 focus:outline-none focus:border-brand-600"
                 />
+              </div>
+
+              {/* Ca làm ngày lễ / Nhân hệ số lương */}
+              <div className="bg-amber-50/70 border border-amber-200/90 rounded-2xl p-3.5 space-y-2.5 transition-all">
+                <div className="flex items-center justify-between">
+                  <label
+                    htmlFor="is-holiday-checkbox"
+                    className="flex items-center gap-2 cursor-pointer select-none"
+                  >
+                    <Sparkles className={`w-4 h-4 transition-colors ${form.isHoliday ? 'text-amber-600 fill-amber-500' : 'text-slate-400'}`} />
+                    <div>
+                      <span className="text-xs font-bold text-slate-800 block">
+                        Ca làm ngày lễ / Tết
+                      </span>
+                      <span className="text-[10px] text-slate-500 block">
+                        Tích chọn để nhân hệ số lương ngày lễ
+                      </span>
+                    </div>
+                  </label>
+                  <input
+                    id="is-holiday-checkbox"
+                    type="checkbox"
+                    checked={Boolean(form.isHoliday)}
+                    onChange={(e) => {
+                      const checked = e.target.checked;
+                      setForm((prev) => ({
+                        ...prev,
+                        isHoliday: checked,
+                        salaryMultiplier: checked ? (prev.salaryMultiplier && prev.salaryMultiplier > 1 ? prev.salaryMultiplier : 3) : 1,
+                      }));
+                    }}
+                    className="w-5 h-5 accent-amber-600 rounded cursor-pointer"
+                  />
+                </div>
+
+                {form.isHoliday && (
+                  <div className="pt-2 border-t border-amber-200/70 space-y-2 animate-in fade-in duration-200">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[11px] font-bold text-amber-900">Chọn mức nhân lương:</span>
+                      <span className="text-xs font-black text-amber-800 bg-amber-200/70 px-2.5 py-0.5 rounded-full shadow-2xs">
+                        x{form.salaryMultiplier || 3} Lương 🎉
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-4 gap-2">
+                      {[1.5, 2, 3, 4].map((mult) => {
+                        const isSelected = form.salaryMultiplier === mult;
+                        return (
+                          <button
+                            key={mult}
+                            type="button"
+                            onClick={() => setForm((prev) => ({ ...prev, salaryMultiplier: mult }))}
+                            className={`py-2 px-1 rounded-xl text-xs font-black transition-all cursor-pointer text-center ${
+                              isSelected
+                                ? 'bg-amber-600 text-white shadow-xs scale-102 ring-2 ring-amber-600/30'
+                                : 'bg-white text-slate-700 border border-amber-200/80 hover:bg-amber-100/50'
+                            }`}
+                          >
+                            x{mult}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
               </div>
             </>
           )}

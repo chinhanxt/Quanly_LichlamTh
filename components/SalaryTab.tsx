@@ -1,7 +1,7 @@
 'use client';
 import React, { useState, useEffect, useMemo } from 'react';
 import { ScheduleItem, ScheduleSettings } from '@/types/schedule';
-import { calculatePayrollBreakdown, formatLocalDateIso, DailyPayrollItem } from '@/lib/salary-calculator';
+import { calculatePayrollBreakdown, formatLocalDateIso, DailyPayrollItem, getShiftMultiplier } from '@/lib/salary-calculator';
 import { Card } from './ui/Card';
 import {
   Coins,
@@ -184,13 +184,16 @@ export const SalaryTab: React.FC<SalaryTabProps> = ({ items, settings, onSaveSet
             const dur = ((eh * 60 + em) - (sh * 60 + sm)) / 60;
             const rawCode = s.note || 'Làm';
             const cleanCode = rawCode.replace(/^ca\s+/i, '').trim();
+            const mult = getShiftMultiplier(s);
             return {
               shiftCode: cleanCode || rawCode,
               startTime: s.startTime,
               endTime: s.endTime,
               hours: dur,
-              earnings: Math.round(dur * hourlyRate),
+              earnings: Math.round(dur * hourlyRate * mult),
               subject: s.subject || 'Highlands Coffee',
+              multiplier: mult,
+              isHoliday: s.isHoliday || mult > 1,
             };
           });
 
@@ -504,6 +507,8 @@ export const SalaryTab: React.FC<SalaryTabProps> = ({ items, settings, onSaveSet
                   {group.days.map((day, dIdx) => {
                     const isDualShift = day.shifts.length >= 2;
                     const singleShift = day.shifts[0];
+                    const hasHolidayShift = day.shifts.some((s) => Boolean((s.multiplier && s.multiplier > 1) || s.isHoliday));
+                    const holidayMultiplier = day.shifts.find((s) => Boolean(s.multiplier && s.multiplier > 1))?.multiplier || 3;
                     const isSang = singleShift && (singleShift.startTime.startsWith('07') || singleShift.startTime.startsWith('08') || singleShift.subject.includes('Sáng'));
                     const isChieu = singleShift && (singleShift.startTime.startsWith('13') || singleShift.startTime.startsWith('12') || singleShift.subject.includes('Chiều'));
 
@@ -526,6 +531,8 @@ export const SalaryTab: React.FC<SalaryTabProps> = ({ items, settings, onSaveSet
                             ? 'bg-slate-100/60 border-slate-200/40 text-slate-400 opacity-45 cursor-not-allowed'
                             : day.isOff
                             ? 'bg-slate-50 border-slate-100 text-slate-400'
+                            : hasHolidayShift
+                            ? 'bg-amber-50/90 border-amber-300 text-slate-800 shadow-2xs'
                             : 'bg-brand-50/70 border-brand-200/80 text-slate-800 shadow-2xs'
                         }`}
                       >
@@ -545,13 +552,15 @@ export const SalaryTab: React.FC<SalaryTabProps> = ({ items, settings, onSaveSet
                               className={`text-[9px] font-extrabold px-1 py-0.5 rounded-md leading-tight block w-full whitespace-nowrap overflow-hidden text-ellipsis text-center ${
                                 day.isOutsideMonth
                                   ? 'bg-slate-200 text-slate-500'
+                                  : hasHolidayShift
+                                  ? 'bg-amber-600 text-white shadow-2xs ring-1 ring-amber-400'
                                   : isDualShift
                                   ? 'bg-brand-700 text-white shadow-2xs'
                                   : 'bg-brand-600 text-white shadow-2xs'
                               }`}
-                              title={day.shifts.map((s) => `${s.subject} (${s.startTime}-${s.endTime})`).join('\n')}
+                              title={day.shifts.map((s) => `${s.subject} (${s.startTime}-${s.endTime})${s.multiplier && s.multiplier > 1 ? ` [x${s.multiplier}]` : ''}`).join('\n')}
                             >
-                              {badgeText}
+                              {hasHolidayShift && !day.isOutsideMonth ? `🎉 ${badgeText}` : badgeText}
                             </span>
                           </div>
                         )}
@@ -641,8 +650,13 @@ export const SalaryTab: React.FC<SalaryTabProps> = ({ items, settings, onSaveSet
                         className="flex items-center justify-between bg-slate-50 px-3 py-2 rounded-xl text-xs"
                       >
                         <div className="flex items-center gap-2">
-                          <div className="w-2 h-2 rounded-full bg-brand-500" />
+                          <div className={`w-2 h-2 rounded-full ${shift.multiplier && shift.multiplier > 1 ? 'bg-amber-500' : 'bg-brand-500'}`} />
                           <span className="font-bold text-slate-700">{shift.shiftCode}</span>
+                          {shift.multiplier && shift.multiplier > 1 && (
+                            <span className="bg-amber-100 text-amber-800 text-[10px] font-black px-1.5 py-0.5 rounded-md border border-amber-300 shadow-2xs">
+                              x{shift.multiplier} 🎉
+                            </span>
+                          )}
                           <span className="text-slate-400">•</span>
                           <span className="text-slate-600 font-medium">
                             {shift.startTime} - {shift.endTime}

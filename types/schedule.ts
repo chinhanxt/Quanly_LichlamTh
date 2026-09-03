@@ -9,6 +9,8 @@ export interface ScheduleItem {
   note: string;      // "B18"
   reminderEnabled: boolean;
   username?: string;
+  isHoliday?: boolean;       // Ca làm ngày lễ
+  salaryMultiplier?: number; // Hệ số nhân lương (vd: 3 cho ngày lễ, hoặc 2, 1.5)
 }
 
 export type CustomNotificationTimingMode = 'before_shift' | 'after_shift' | 'fixed_time';

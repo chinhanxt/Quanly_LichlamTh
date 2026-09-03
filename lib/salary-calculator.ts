@@ -13,6 +13,8 @@ export interface DailyPayrollItem {
     hours: number;
     earnings: number;
     subject: string;
+    multiplier?: number;
+    isHoliday?: boolean;
   }>;
   totalHours: number;
   totalEarnings: number;
@@ -52,6 +54,25 @@ export function formatLocalDateIso(d: Date): string {
   const month = String(d.getMonth() + 1).padStart(2, '0');
   const day = String(d.getDate()).padStart(2, '0');
   return `${year}-${month}-${day}`;
+}
+
+export function getShiftMultiplier(s: ScheduleItem): number {
+  if (typeof s.salaryMultiplier === 'number' && s.salaryMultiplier > 0) {
+    return s.salaryMultiplier;
+  }
+  if (s.isHoliday) {
+    return 3;
+  }
+  // Auto-detect multiplier from note or subject (e.g. "nhân 3", "x3", "nhân 2", "x2")
+  const textToCheck = `${s.note || ''} ${s.subject || ''}`;
+  const match = textToCheck.match(/(?:nhân|x)\s*([1-9](?:\.\d+)?)/i);
+  if (match) {
+    const val = parseFloat(match[1]);
+    if (!isNaN(val) && val > 0) {
+      return val;
+    }
+  }
+  return 1;
 }
 
 export function calculatePayrollBreakdown(
@@ -112,7 +133,9 @@ export function calculatePayrollBreakdown(
           s.subject?.includes('CTV') ||
           hourlyRate >= 100000;
         const shiftRate = hourlyRate >= 100000 ? hourlyRate : 100000;
-        const e = isPerShift ? shiftRate : Math.round(h * hourlyRate);
+        const mult = getShiftMultiplier(s);
+        const baseEarnings = isPerShift ? shiftRate : Math.round(h * hourlyRate);
+        const e = Math.round(baseEarnings * mult);
         dayHours += h;
         dayEarnings += e;
         const rawCode = s.note || 'Làm';
@@ -124,6 +147,8 @@ export function calculatePayrollBreakdown(
           hours: h,
           earnings: e,
           subject: s.subject || 'Công việc',
+          multiplier: mult,
+          isHoliday: s.isHoliday || mult > 1,
         };
       });
 

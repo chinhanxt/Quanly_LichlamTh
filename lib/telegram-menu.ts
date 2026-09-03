@@ -1,5 +1,5 @@
 import { ScheduleItem } from '../types/schedule';
-import { calculateShiftHours } from './salary-calculator';
+import { calculateShiftHours, getShiftMultiplier } from './salary-calculator';
 
 export function getMainMenuKeyboard() {
   return {
@@ -44,10 +44,13 @@ export function getOcrConfirmationKeyboard(pendingId: string) {
 
 export function formatWeeklySalaryMessage(shifts: ScheduleItem[], hourlyRate: number = 26000): string {
   let totalHours = 0;
+  let totalSalary = 0;
   shifts.forEach((s) => {
-    totalHours += calculateShiftHours(s.startTime, s.endTime);
+    const h = calculateShiftHours(s.startTime, s.endTime);
+    totalHours += h;
+    const mult = getShiftMultiplier(s);
+    totalSalary += Math.round(h * hourlyRate * mult);
   });
-  const totalSalary = Math.round(totalHours * hourlyRate);
 
   return (
     `📊 *THỐNG KÊ LƯƠNG TUẦN NÀY*\n\n` +
@@ -60,10 +63,13 @@ export function formatWeeklySalaryMessage(shifts: ScheduleItem[], hourlyRate: nu
 
 export function formatMonthlySalaryMessage(shifts: ScheduleItem[], hourlyRate: number = 26000): string {
   let totalHours = 0;
+  let totalSalary = 0;
   shifts.forEach((s) => {
-    totalHours += calculateShiftHours(s.startTime, s.endTime);
+    const h = calculateShiftHours(s.startTime, s.endTime);
+    totalHours += h;
+    const mult = getShiftMultiplier(s);
+    totalSalary += Math.round(h * hourlyRate * mult);
   });
-  const totalSalary = Math.round(totalHours * hourlyRate);
 
   return (
     `🗓️ *THỐNG KÊ LƯƠNG THÁNG NÀY*\n\n` +

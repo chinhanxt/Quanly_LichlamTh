@@ -1,10 +1,11 @@
 'use client';
 import React from 'react';
-import { Clock, MapPin, Edit3, Trash2, Bell, BellOff, Tag } from 'lucide-react';
+import { Clock, MapPin, Edit3, Trash2, Bell, BellOff, Tag, Sparkles } from 'lucide-react';
 import { ScheduleItem } from '@/types/schedule';
 import { Card } from './ui/Card';
 import { format24hRange } from '@/lib/time-formatter';
 import { getCleanShiftCodeName } from '@/lib/ocr-parser';
+import { getShiftMultiplier } from '@/lib/salary-calculator';
 
 interface ScheduleCardProps {
   item: ScheduleItem;
@@ -19,17 +20,26 @@ export const ScheduleCard: React.FC<ScheduleCardProps> = ({ item, onEdit, onDele
 
   // Check if displayNote just duplicates time range (e.g. "Ca 07:30-11:30")
   const isTimeDuplicate = displayNote && displayNote.toLowerCase().includes(item.startTime);
+  const multiplier = getShiftMultiplier(item);
+  const isHolidayShift = Boolean(item.isHoliday || multiplier > 1);
 
   return (
     <Card className="p-3.5 mb-2.5 relative overflow-hidden group hover:border-brand-500/30 transition-all shadow-xs rounded-2xl">
       <div className="flex items-start justify-between gap-2">
         <div className="flex-1 min-w-0">
-          {/* Header Row: Time Range Badge + Telegram Status Pill */}
+          {/* Header Row: Time Range Badge + Telegram Status Pill + Holiday Multiplier Badge */}
           <div className="flex items-center gap-1.5 mb-1.5 flex-wrap">
             <span className="bg-brand-600 text-white font-black text-[11px] px-2.5 py-0.5 rounded-full flex items-center gap-1 shadow-2xs shrink-0">
               <Clock className="w-3 h-3" />
               {format24hRange(item.startTime, item.endTime)}
             </span>
+
+            {isHolidayShift && (
+              <span className="bg-amber-100 text-amber-900 border border-amber-300 text-[10px] font-black px-2 py-0.5 rounded-full flex items-center gap-1 shadow-2xs shrink-0 animate-in fade-in">
+                <Sparkles className="w-3 h-3 text-amber-600 fill-amber-500" />
+                Lễ x{multiplier}
+              </span>
+            )}
 
             {item.reminderEnabled ? (
               <span className="text-emerald-700 bg-emerald-50 border border-emerald-200/80 text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1 shrink-0">
