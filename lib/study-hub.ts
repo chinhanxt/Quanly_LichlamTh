@@ -1,18 +1,27 @@
 import fs from 'fs';
 import path from 'path';
 import { StudyScheduleData, StudyClassItem } from '@/types/study';
+import { HUB_TKB_SEED } from './hub-tkb-seed';
 
 const DATA_DIR = path.join(process.cwd(), 'data');
 const HUB_TKB_APP_DATA = '/home/chinhan/hub-tkb-app/data.js';
 
 function ensureDataDir() {
-  if (!fs.existsSync(DATA_DIR)) {
-    fs.mkdirSync(DATA_DIR, { recursive: true });
+  try {
+    if (!fs.existsSync(DATA_DIR)) {
+      fs.mkdirSync(DATA_DIR, { recursive: true });
+    }
+  } catch {
+    // Ignore read-only filesystem errors on Vercel
   }
 }
 
 function getStudyFilePath(username: string): string {
   return path.join(DATA_DIR, `study_${username}.json`);
+}
+
+function getTmpStudyFilePath(username: string): string {
+  return path.join('/tmp', `study_${username}.json`);
 }
 
 export function dmyToIso(dmy: string): string {
@@ -72,7 +81,7 @@ export function parseHubTkbData(rawJs: string): StudyScheduleData {
 }
 
 /**
- * Loads study data for user. If not existing yet for thanhhuong, seeds from hub-tkb-app/data.js
+ * Loads study data for user. Supports local disk, /tmp, and built-in HUB_TKB_SEED fallback.
  */
 export function getStudyDataForUser(username: string): StudyScheduleData | null {
   try {
@@ -84,31 +93,55 @@ export function getStudyDataForUser(username: string): StudyScheduleData | null 
       return JSON.parse(raw);
     }
 
-    // Auto-seed for thanhhuong from hub-tkb-app if available
+    const tmpPath = getTmpStudyFilePath(username);
+    if (fs.existsSync(tmpPath)) {
+      const raw = fs.readFileSync(tmpPath, 'utf-8');
+      return JSON.parse(raw);
+    }
+
+    // Auto-seed from hub-tkb-app if running on local machine
     if (username === 'thanhhuong' && fs.existsSync(HUB_TKB_APP_DATA)) {
-      const rawHubJs = fs.readFileSync(HUB_TKB_APP_DATA, 'utf-8');
-      const data = parseHubTkbData(rawHubJs);
-      saveStudyDataForUser(username, data);
-      return data;
+      try {
+        const rawHubJs = fs.readFileSync(HUB_TKB_APP_DATA, 'utf-8');
+        const data = parseHubTkbData(rawHubJs);
+        saveStudyDataForUser(username, data);
+        return data;
+      } catch (e) {
+        console.warn('Error reading from local HUB_TKB_APP_DATA, using bundled seed:', e);
+      }
+    }
+
+    // Default fallback for thanhhuong (especially on Vercel production)
+    if (username === 'thanhhuong') {
+      return HUB_TKB_SEED;
     }
 
     return null;
   } catch (err) {
     console.error(`Error reading study data for user ${username}:`, err);
+    if (username === 'thanhhuong') {
+      return HUB_TKB_SEED;
+    }
     return null;
   }
 }
 
 /**
- * Persists study data for user
+ * Persists study data for user (handles read-only production filesystems via /tmp)
  */
 export function saveStudyDataForUser(username: string, data: StudyScheduleData): void {
   try {
     ensureDataDir();
     const filePath = getStudyFilePath(username);
     fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf-8');
-  } catch (err) {
-    console.error(`Error saving study data for user ${username}:`, err);
+  } catch {
+    // If running in read-only environment like Vercel Lambda, save to /tmp
+    try {
+      const tmpPath = getTmpStudyFilePath(username);
+      fs.writeFileSync(tmpPath, JSON.stringify(data, null, 2), 'utf-8');
+    } catch (tmpErr) {
+      console.error('Error saving study data to /tmp:', tmpErr);
+    }
   }
 }
 

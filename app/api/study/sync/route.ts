@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import fs from 'fs';
 import { parseHubTkbData, saveStudyDataForUser } from '@/lib/study-hub';
+import { HUB_TKB_SEED } from '@/lib/hub-tkb-seed';
 
 const HUB_TKB_APP_DATA = '/home/chinhan/hub-tkb-app/data.js';
 
@@ -14,17 +15,19 @@ export async function POST(req: NextRequest) {
       // Empty body is allowed
     }
 
-    if (!fs.existsSync(HUB_TKB_APP_DATA)) {
-      return NextResponse.json({
-        success: false,
-        error: 'Không tìm thấy nguồn dữ liệu hub-tkb-app tại /home/chinhan/hub-tkb-app/data.js',
-      }, { status: 400 });
+    let parsedData = HUB_TKB_SEED;
+
+    // If running in local dev with access to local filesystem
+    if (fs.existsSync(HUB_TKB_APP_DATA)) {
+      try {
+        const raw = fs.readFileSync(HUB_TKB_APP_DATA, 'utf-8');
+        parsedData = parseHubTkbData(raw);
+      } catch (err) {
+        console.warn('Cannot read local file, using bundled seed data:', err);
+      }
     }
 
-    const raw = fs.readFileSync(HUB_TKB_APP_DATA, 'utf-8');
-    const parsedData = parseHubTkbData(raw);
-
-    // Save for the user
+    // Save for the user (in /tmp or data/)
     saveStudyDataForUser(username, parsedData);
 
     return NextResponse.json({
