@@ -130,6 +130,7 @@ export async function getSettingsForUser(username: string): Promise<ScheduleSett
         ...local,
         ...data,
         hourlyRate: rate,
+        geminiApiKey: data.geminiApiKey || local.geminiApiKey || process.env.GEMINI_API_KEY || 'AIzaSyBoDXGK6_BP6OttzcZo0nkXRfV2m8jRlq4',
         username,
       } as ScheduleSettings;
     } else if (username === 'thanhhuong') {
@@ -140,6 +141,7 @@ export async function getSettingsForUser(username: string): Promise<ScheduleSett
         return {
           ...local,
           ...data,
+          geminiApiKey: data.geminiApiKey || local.geminiApiKey || process.env.GEMINI_API_KEY || 'AIzaSyBoDXGK6_BP6OttzcZo0nkXRfV2m8jRlq4',
           username: 'thanhhuong',
         } as ScheduleSettings;
       }

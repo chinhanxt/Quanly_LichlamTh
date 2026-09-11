@@ -80,7 +80,7 @@ export async function POST(request: Request) {
     const formData = await request.formData();
     const file = formData.get('file') as File;
     const employeeName = (formData.get('employeeName') as string) || 'Thanh Hương';
-    const geminiApiKey = (formData.get('geminiApiKey') as string) || process.env.GEMINI_API_KEY;
+    const geminiApiKey = (formData.get('geminiApiKey') as string) || process.env.GEMINI_API_KEY || 'AIzaSyBoDXGK6_BP6OttzcZo0nkXRfV2m8jRlq4';
 
     if (!file) {
       return NextResponse.json({ success: false, error: 'Không tìm thấy file ảnh' }, { status: 400 });

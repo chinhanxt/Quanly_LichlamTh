@@ -7,6 +7,7 @@ interface DaySelectorProps {
   selectedDate: string;
   onSelectDay: (dayKey: string, fullDateIso: string) => void;
   onWeekChange?: (weekDays: Array<{ key: string; fullDateIso: string }>) => void;
+  title?: string;
 }
 
 export function formatLocalDateIso(d: Date): string {
@@ -58,6 +59,7 @@ export const DaySelector: React.FC<DaySelectorProps> = ({
   selectedDate,
   onSelectDay,
   onWeekChange,
+  title,
 }) => {
   const [weekOffset, setWeekOffset] = useState<number>(0);
 
@@ -96,7 +98,9 @@ export const DaySelector: React.FC<DaySelectorProps> = ({
             <CalendarIcon className="w-4 h-4" />
           </div>
           <div className="min-w-0">
-            <h3 className="font-bold text-surface-textPrimary text-sm uppercase tracking-wide truncate">Lịch Làm Việc</h3>
+            <h3 className="font-bold text-surface-textPrimary text-sm uppercase tracking-wide truncate">
+              {title || 'Lịch Làm Việc'}
+            </h3>
             <p className="text-[11px] text-surface-textSecondary font-medium whitespace-nowrap">
               Từ {firstDateStr} đến {lastDateStr}
             </p>
