@@ -21,12 +21,13 @@ import { parseScheduleImage, ParsedShiftResult } from '@/lib/ocr-parser';
 import { useToast } from '@/components/ui/Toast';
 import { ConfirmModal } from '@/components/ui/ConfirmModal';
 import { useAuth } from '@/components/AuthProvider';
+import { StudyTab } from '@/components/StudyTab';
 
 export default function Home() {
   const { user } = useAuth();
   const isChinhan = user?.username === 'chinhan';
   const { showToast } = useToast();
-  const [activeTab, setActiveTab] = useState<'schedule' | 'salary' | 'notes' | 'expense' | 'notifications' | 'settings'>('schedule');
+  const [activeTab, setActiveTab] = useState<'schedule' | 'study' | 'salary' | 'notes' | 'expense' | 'notifications' | 'settings'>('schedule');
   const [selectedDay, setSelectedDay] = useState<string>(() => getTodayInfo().dayKey);
   const [selectedDate, setSelectedDate] = useState<string>(() => getTodayInfo().dateIso);
   const [activeWeekDays, setActiveWeekDays] = useState<Array<{ key: string; fullDateIso: string }>>([]);
@@ -455,6 +456,12 @@ export default function Home() {
               )}
             </div>
           </>
+        ) : activeTab === 'study' ? (
+          <StudyTab
+            selectedDay={selectedDay}
+            selectedDate={selectedDate}
+            onSelectDay={handleSelectDay}
+          />
         ) : activeTab === 'salary' ? (
           <SalaryTab items={items} settings={settings} onSaveSettings={handleSaveSettings} />
         ) : activeTab === 'notes' ? (
