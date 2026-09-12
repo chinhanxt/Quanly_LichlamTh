@@ -241,7 +241,7 @@ const DEFAULT_SETTINGS: ScheduleSettings = {
   customWebhookUrl: 'https://schedule-telegram-app.vercel.app/api/telegram-webhook',
   sentRemindersLog: {},
   allowedChatIdsStr: '',
-  geminiApiKey: process.env.GEMINI_API_KEY || 'AIzaSyBoDXGK6_BP6OttzcZo0nkXRfV2m8jRlq4',
+  geminiApiKey: process.env.GEMINI_API_KEY || '',
 };
 
 export function getLocalSettings(): ScheduleSettings {
@@ -261,7 +261,7 @@ export function getLocalSettings(): ScheduleSettings {
       telegramChatId: parsed.telegramChatId || '',
       employeeName: parsed.employeeName || 'Thanh Hương',
       hourlyRate: typeof parsed.hourlyRate === 'number' ? parsed.hourlyRate : 26000,
-      geminiApiKey: parsed.geminiApiKey || process.env.GEMINI_API_KEY || 'AIzaSyBoDXGK6_BP6OttzcZo0nkXRfV2m8jRlq4',
+      geminiApiKey: parsed.geminiApiKey || process.env.GEMINI_API_KEY || '',
       customWebhookUrl: parsed.customWebhookUrl || 'https://schedule-telegram-app.vercel.app/api/telegram-webhook',
       enableShiftReminder: parsed.enableShiftReminder ?? true,
       shiftReminderLeadMinutes: parsed.shiftReminderLeadMinutes !== undefined ? Number(parsed.shiftReminderLeadMinutes) : 30,
