@@ -6,9 +6,20 @@ import {
   getScheduleItemsForUser,
 } from '../lib/firebase';
 import { ScheduleItem } from '../types/schedule';
+import { db } from '../lib/firebase';
+import { collection, getDocs, deleteDoc } from 'firebase/firestore';
+import fs from 'fs';
+import path from 'path';
 
 test('Schedule User-Scoped CRUD & Smart Import Merge', async (t) => {
   const TEST_USER = 'test_user_merge_123';
+
+  // Dọn dữ liệu tài khoản test (Firestore + file local) sau khi chạy xong
+  t.after(async () => {
+    const snap = await getDocs(collection(db, `schedules_${TEST_USER}`));
+    await Promise.all(snap.docs.map((d) => deleteDoc(d.ref)));
+    fs.rmSync(path.join(process.cwd(), 'data', `schedule_${TEST_USER}.json`), { force: true });
+  });
 
   await t.test('should correctly update shift hours for a user', async () => {
     const initialItem: ScheduleItem = {
