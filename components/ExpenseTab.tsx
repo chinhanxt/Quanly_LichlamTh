@@ -7,11 +7,10 @@ import {
   Download,
   Upload,
   ClipboardPaste,
-  Sparkles,
+  SendHorizontal,
   Settings2,
   Trash2,
   Loader2,
-  Plus,
   X,
   ShieldCheck,
 } from 'lucide-react';
@@ -20,11 +19,10 @@ import { useToast } from '@/components/ui/Toast';
 import { Card } from './ui/Card';
 import { isSecretMasked } from '@/lib/secrets';
 import {
-  EXPENSE_CATEGORIES,
   ExpenseDraft,
-  ExpenseType,
+  DEFAULT_GROQ_MODEL,
+  GROQ_MODELS,
   formatVnd,
-  parseAmount,
   parseExpenseTable,
   toCsv,
 } from '@/lib/expense-io';
@@ -58,18 +56,11 @@ export const ExpenseTab: React.FC<ExpenseTabProps> = ({ username, settings, onSa
   const [loading, setLoading] = useState(true);
   const [monthOffset, setMonthOffset] = useState(0);
 
-  // Quick add form
-  const [type, setType] = useState<ExpenseType>('Chi');
-  const [amountInput, setAmountInput] = useState('');
-  const [category, setCategory] = useState(EXPENSE_CATEGORIES.Chi[0]);
-  const [description, setDescription] = useState('');
-  const [date, setDate] = useState(todayIso());
-  const [saving, setSaving] = useState(false);
-  const amountRef = useRef<HTMLInputElement>(null);
-
-  // AI natural language
-  const [aiText, setAiText] = useState('');
-  const [aiParsing, setAiParsing] = useState(false);
+  // Khung chat AI
+  const [chatText, setChatText] = useState('');
+  const [sending, setSending] = useState(false);
+  const [lastReply, setLastReply] = useState<{ text: string; saved: ExpenseItem[]; error?: boolean } | null>(null);
+  const chatRef = useRef<HTMLTextAreaElement>(null);
 
   // Import / settings panels
   const [panel, setPanel] = useState<'none' | 'paste' | 'ai-settings'>('none');
@@ -78,12 +69,12 @@ export const ExpenseTab: React.FC<ExpenseTabProps> = ({ username, settings, onSa
   const fileRef = useRef<HTMLInputElement>(null);
 
   const [groqKey, setGroqKey] = useState(settings.groqApiKey || '');
-  const [groqModel, setGroqModel] = useState(settings.groqModel || 'llama-3.3-70b-versatile');
+  const [groqModel, setGroqModel] = useState(settings.groqModel || DEFAULT_GROQ_MODEL);
   const [testingKey, setTestingKey] = useState(false);
 
   useEffect(() => {
     setGroqKey(settings.groqApiKey || '');
-    setGroqModel(settings.groqModel || 'llama-3.3-70b-versatile');
+    setGroqModel(settings.groqModel || DEFAULT_GROQ_MODEL);
   }, [settings.groqApiKey, settings.groqModel]);
 
   const headers = { 'Content-Type': 'application/json', 'x-username': username };
@@ -130,46 +121,29 @@ export const ExpenseTab: React.FC<ExpenseTabProps> = ({ username, settings, onSa
     return json;
   };
 
-  // ---- Quick add ----
-  const amountPreview = parseAmount(amountInput);
-
-  const handleTypeChange = (t: ExpenseType) => {
-    setType(t);
-    setCategory(EXPENSE_CATEGORIES[t][0]);
-  };
-
-  const handleQuickAdd = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!amountPreview) {
-      showToast({ type: 'error', message: 'Nhập số tiền, vd: 45 hoặc 45k, 1tr5' });
-      amountRef.current?.focus();
-      return;
-    }
-    setSaving(true);
+  // ---- Chat AI ----
+  const handleSend = async () => {
+    const text = chatText.trim();
+    if (!text || sending) return;
+    setSending(true);
     try {
-      await saveDrafts([{ date, type, category, amount: amountPreview, description: description.trim() || category }]);
-      setAmountInput('');
-      setDescription('');
-      amountRef.current?.focus();
-      showToast({ type: 'success', message: `Đã lưu ${type === 'Thu' ? '+' : '-'}${formatVnd(amountPreview)}` });
+      const json = await saveDrafts(null, { rawText: text, clientDate: todayIso() });
+      const saved: ExpenseItem[] = json.data || [];
+      setChatText('');
+      if (chatRef.current) chatRef.current.style.height = '';
+      setLastReply({ text, saved });
+      const newest = saved[0]?.date;
+      if (newest && !newest.startsWith(monthKey(monthOffset))) {
+        const [ly, lm] = newest.split('-').map(Number);
+        const now = new Date();
+        setMonthOffset((ly - now.getFullYear()) * 12 + (lm - 1 - now.getMonth()));
+      }
     } catch (err: any) {
+      setLastReply({ text, saved: [], error: true });
       showToast({ type: 'error', message: err.message });
     } finally {
-      setSaving(false);
-    }
-  };
-
-  const handleAiParse = async () => {
-    if (!aiText.trim()) return;
-    setAiParsing(true);
-    try {
-      const json = await saveDrafts(null, { rawText: aiText, clientDate: todayIso() });
-      setAiText('');
-      showToast({ type: 'success', message: json.message || 'Đã lưu' });
-    } catch (err: any) {
-      showToast({ type: 'error', message: err.message });
-    } finally {
-      setAiParsing(false);
+      setSending(false);
+      chatRef.current?.focus();
     }
   };
 
@@ -290,6 +264,65 @@ export const ExpenseTab: React.FC<ExpenseTabProps> = ({ username, settings, onSa
 
   return (
     <div className="space-y-3 pb-12">
+      {/* Khung chat AI — nhập thu chi bằng câu tự nhiên */}
+      <Card className="p-3 space-y-2.5">
+        {lastReply && (
+          <div className="space-y-1.5">
+            <div className="flex justify-end">
+              <p className="max-w-[85%] px-3 py-2 bg-purple-600 text-white text-xs rounded-2xl rounded-br-md whitespace-pre-wrap">{lastReply.text}</p>
+            </div>
+            <div className="flex">
+              <div className={`max-w-[85%] px-3 py-2 text-xs rounded-2xl rounded-bl-md ${lastReply.error ? 'bg-rose-50 text-rose-700' : 'bg-slate-100 text-slate-700'}`}>
+                {lastReply.error ? (
+                  'Chưa lưu được, thử viết lại rõ hơn nhé.'
+                ) : (
+                  <>
+                    <p className="font-bold mb-1">Đã lưu {lastReply.saved.length} giao dịch:</p>
+                    {lastReply.saved.map((i) => (
+                      <p key={i.id} className="flex justify-between gap-3">
+                        <span className="truncate">{i.description || i.category} <span className="text-slate-400">· {i.category}{i.date !== todayIso() ? ` · ${formatDayLabel(i.date)}` : ''}</span></span>
+                        <span className={`font-bold shrink-0 ${i.type === 'Thu' ? 'text-emerald-600' : 'text-rose-600'}`}>
+                          {i.type === 'Thu' ? '+' : '-'}{formatVnd(i.amount)}
+                        </span>
+                      </p>
+                    ))}
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        <div className="flex items-end gap-2 p-1.5 bg-slate-50 border border-slate-200 rounded-3xl focus-within:border-purple-400 focus-within:bg-white transition-colors">
+          <textarea
+            ref={chatRef}
+            value={chatText}
+            onChange={(e) => {
+              setChatText(e.target.value);
+              e.target.style.height = 'auto';
+              e.target.style.height = `${Math.max(40, Math.min(e.target.scrollHeight, 120))}px`;
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                handleSend();
+              }
+            }}
+            rows={1}
+            placeholder="Vd: ăn phở 45, đổ xăng 50k"
+            className="flex-1 min-w-0 h-10 max-h-[120px] resize-none overflow-y-auto bg-transparent px-3 py-2.5 text-sm leading-5 text-slate-900 placeholder:text-slate-400 focus:outline-none [scrollbar-width:none]"
+          />
+          <button
+            onClick={handleSend}
+            disabled={sending || !chatText.trim()}
+            className="w-10 h-10 shrink-0 rounded-full bg-gradient-to-br from-purple-600 to-indigo-600 text-white flex items-center justify-center active:scale-95 transition-all cursor-pointer disabled:opacity-40"
+            aria-label="Gửi"
+          >
+            {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <SendHorizontal className="w-4 h-4" />}
+          </button>
+        </div>
+      </Card>
+
       {/* Month summary */}
       <Card className="p-4 space-y-3">
         <div className="flex items-center justify-between">
@@ -332,107 +365,6 @@ export const ExpenseTab: React.FC<ExpenseTabProps> = ({ username, settings, onSa
             ))}
           </div>
         )}
-      </Card>
-
-      {/* Quick add */}
-      <Card className="p-4">
-        <form onSubmit={handleQuickAdd} className="space-y-3">
-          <div className="flex gap-2">
-            <div className="flex p-1 bg-slate-100 rounded-2xl shrink-0">
-              {(['Chi', 'Thu'] as ExpenseType[]).map((t) => (
-                <button
-                  key={t}
-                  type="button"
-                  onClick={() => handleTypeChange(t)}
-                  className={`px-3.5 py-2 rounded-xl text-xs font-extrabold transition-all cursor-pointer ${
-                    type === t ? (t === 'Chi' ? 'bg-rose-500 text-white shadow-sm' : 'bg-emerald-500 text-white shadow-sm') : 'text-slate-500'
-                  }`}
-                >
-                  {t}
-                </button>
-              ))}
-            </div>
-            <div className="relative flex-1">
-              <input
-                ref={amountRef}
-                value={amountInput}
-                onChange={(e) => setAmountInput(e.target.value)}
-                inputMode="decimal"
-                placeholder="Số tiền: 45, 45k, 1tr5"
-                className="w-full h-full px-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold text-slate-900 focus:outline-none focus:border-purple-500 focus:bg-white"
-              />
-              {amountPreview > 0 && (
-                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[11px] font-bold text-slate-400 pointer-events-none">
-                  {formatVnd(amountPreview)}
-                </span>
-              )}
-            </div>
-          </div>
-
-          <div className="flex flex-wrap gap-1.5">
-            {EXPENSE_CATEGORIES[type].map((c) => (
-              <button
-                key={c}
-                type="button"
-                onClick={() => setCategory(c)}
-                className={`px-3 py-1.5 rounded-full text-[11px] font-bold border transition-all cursor-pointer ${
-                  category === c ? 'bg-purple-600 border-purple-600 text-white' : 'bg-white border-slate-200 text-slate-600 hover:border-purple-300'
-                }`}
-              >
-                {c}
-              </button>
-            ))}
-          </div>
-
-          <div className="flex gap-2">
-            <input
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="Ghi chú (tuỳ chọn)"
-              className="flex-1 min-w-0 px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-xs text-slate-800 focus:outline-none focus:border-purple-500 focus:bg-white"
-            />
-            <input
-              type="date"
-              value={date}
-              max={todayIso()}
-              onChange={(e) => setDate(e.target.value || todayIso())}
-              className="w-[8.5rem] px-2 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-xs text-slate-700 focus:outline-none focus:border-purple-500"
-            />
-            <button
-              type="submit"
-              disabled={saving}
-              className="px-4 bg-purple-600 hover:bg-purple-700 text-white rounded-2xl font-bold text-xs flex items-center gap-1 active:scale-95 transition-all cursor-pointer disabled:opacity-60 shrink-0"
-            >
-              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
-              Lưu
-            </button>
-          </div>
-        </form>
-
-        {/* AI natural language */}
-        <div className="mt-3 pt-3 border-t border-slate-100 flex gap-2">
-          <input
-            value={aiText}
-            onChange={(e) => setAiText(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                e.preventDefault();
-                handleAiParse();
-              }
-            }}
-            placeholder="Hoặc gõ tự nhiên: ăn phở 45, đổ xăng 50k hôm qua"
-            className="flex-1 min-w-0 px-3 py-2.5 bg-indigo-50/50 border border-indigo-100 rounded-2xl text-xs text-slate-800 focus:outline-none focus:border-indigo-400 focus:bg-white"
-          />
-          <button
-            onClick={handleAiParse}
-            disabled={aiParsing || !aiText.trim()}
-            className="px-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl font-bold text-xs flex items-center gap-1 active:scale-95 transition-all cursor-pointer disabled:opacity-50 shrink-0"
-            title="Bóc tách bằng AI (Groq)"
-          >
-            {aiParsing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
-            AI
-          </button>
-        </div>
       </Card>
 
       {/* Toolbar */}
@@ -506,8 +438,9 @@ export const ExpenseTab: React.FC<ExpenseTabProps> = ({ username, settings, onSa
               onChange={(e) => setGroqModel(e.target.value)}
               className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none"
             >
-              <option value="llama-3.3-70b-versatile">llama-3.3-70b-versatile</option>
-              <option value="llama-3.1-8b-instant">llama-3.1-8b-instant (nhanh)</option>
+              {GROQ_MODELS.map((m) => (
+                <option key={m.id} value={m.id}>{m.label}</option>
+              ))}
             </select>
           </div>
           <div className="flex gap-2">

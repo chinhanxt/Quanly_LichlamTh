@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getAuthSessionUser } from '@/lib/auth-session';
+import { DEFAULT_GROQ_MODEL } from '@/lib/expense-io';
 import {
   getSettingsForUser,
   getExpenseItemsForUser,
@@ -40,11 +41,16 @@ export async function GET(request: Request) {
 
 async function parseWithGroq(username: string, rawText: string, autoAddK: boolean, clientDate?: string) {
   const userSettings = await getSettingsForUser(username);
-  const groqKey = userSettings.groqApiKey || process.env.GROQ_API_KEY || '';
-  if (!groqKey) {
-    throw new Error('Chưa có Groq API Key — vào ⚙️ Cài đặt AI trong tab Thu chi để nhập, hoặc dùng nhập nhanh.');
+  // Tài khoản chưa có key riêng thì dùng chung key Groq của tài khoản còn lại
+  let groqKey = userSettings.groqApiKey || process.env.GROQ_API_KEY || '';
+  for (const other of ['chinhan', 'thanhhuong']) {
+    if (groqKey) break;
+    if (other !== username) groqKey = (await getSettingsForUser(other)).groqApiKey || '';
   }
-  const groqModel = userSettings.groqModel || 'llama-3.3-70b-versatile';
+  if (!groqKey) {
+    throw new Error('Chưa có Groq API Key — vào Cài đặt AI trong tab Thu chi để nhập.');
+  }
+  const savedModel = userSettings.groqModel || DEFAULT_GROQ_MODEL;
   const todayStr = clientDate && /^\d{4}-\d{2}-\d{2}$/.test(clientDate) ? clientDate : vnToday();
   const dayNames = ['Chủ Nhật', 'Thứ Hai', 'Thứ Ba', 'Thứ Tư', 'Thứ Năm', 'Thứ Sáu', 'Thứ Bảy'];
   const dayOfWeek = dayNames[new Date(todayStr + 'T12:00:00').getDay()];
@@ -92,19 +98,28 @@ CẤU TRÚC JSON CHUẨN NẾU HỢP LỆ:
   ]
 }`;
 
-  const groqRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${groqKey}` },
-    body: JSON.stringify({
-      model: groqModel,
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: rawText },
-      ],
-      temperature: 0.1,
-      response_format: { type: 'json_object' },
-    }),
-  });
+  const callGroqOnce = (model: string) =>
+    fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${groqKey}` },
+      body: JSON.stringify({
+        model,
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: rawText },
+        ],
+        temperature: 0.1,
+        response_format: { type: 'json_object' },
+      }),
+    });
+  // Lỗi mạng chập chờn (ETIMEDOUT) → thử lại 1 lần
+  const callGroq = (model: string) => callGroqOnce(model).catch(() => callGroqOnce(model));
+
+  let groqRes = await callGroq(savedModel);
+  // Model đã lưu bị Groq gỡ (vd llama-3.3-70b-versatile) → dùng model mặc định
+  if (groqRes.status === 404 && savedModel !== DEFAULT_GROQ_MODEL) {
+    groqRes = await callGroq(DEFAULT_GROQ_MODEL);
+  }
   if (!groqRes.ok) {
     throw new Error(`Groq API Lỗi (${groqRes.status}): ${await groqRes.text()}`);
   }

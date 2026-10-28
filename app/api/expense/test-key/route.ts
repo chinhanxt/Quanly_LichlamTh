@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { DEFAULT_GROQ_MODEL } from '@/lib/expense-io';
 import { getSettingsForUser } from '@/lib/firebase';
 import { getAuthSessionUser } from '@/lib/auth-session';
 import { isSecretMasked } from '@/lib/secrets';
@@ -16,7 +17,7 @@ export async function POST(request: Request) {
       const username = getAuthSessionUser(request)?.username || 'chinhan';
       keyToTest = (await getSettingsForUser(username)).groqApiKey || process.env.GROQ_API_KEY || '';
     }
-    const modelToTest = model || 'llama-3.3-70b-versatile';
+    const modelToTest = model || DEFAULT_GROQ_MODEL;
 
     const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',

@@ -2,6 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import { ScheduleItem, ScheduleSettings } from '@/types/schedule';
 import { getDefaultRate } from './salary-calculator';
+import { DEFAULT_GROQ_MODEL } from './expense-io';
 import { User } from '@/types/user';
 
 const DATA_DIR = path.join(process.cwd(), 'data');
@@ -271,7 +272,7 @@ export function getSettingsForUserLocal(username: string): ScheduleSettings {
       hourlyRate: typeof parsed.hourlyRate === 'number' && parsed.hourlyRate > 0 ? parsed.hourlyRate : getDefaultRate(username),
       geminiApiKey: parsed.geminiApiKey || process.env.GEMINI_API_KEY || '',
       groqApiKey: parsed.groqApiKey || process.env.GROQ_API_KEY || '',
-      groqModel: parsed.groqModel || 'llama-3.3-70b-versatile',
+      groqModel: parsed.groqModel || DEFAULT_GROQ_MODEL,
       username,
     });
   } catch (err) {
