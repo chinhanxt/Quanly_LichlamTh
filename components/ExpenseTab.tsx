@@ -54,7 +54,7 @@ export const ExpenseTab: React.FC<ExpenseTabProps> = ({ username, settings, onSa
   // Khung chat AI
   const [chatText, setChatText] = useState('');
   const [sending, setSending] = useState(false);
-  const [lastReply, setLastReply] = useState<{ text: string; saved: ExpenseItem[]; error?: boolean } | null>(null);
+  const [lastReply, setLastReply] = useState<{ text: string; saved: ExpenseItem[]; error?: string } | null>(null);
   const chatRef = useRef<HTMLTextAreaElement>(null);
 
   // Import / settings panels
@@ -132,8 +132,7 @@ export const ExpenseTab: React.FC<ExpenseTabProps> = ({ username, settings, onSa
         setMonthOffset((ly - now.getFullYear()) * 12 + (lm - 1 - now.getMonth()));
       }
     } catch (err: any) {
-      setLastReply({ text, saved: [], error: true });
-      showToast({ type: 'error', message: err.message });
+      setLastReply({ text, saved: [], error: err.message || 'Chưa lưu được, thử lại nhé.' });
     } finally {
       setSending(false);
       chatRef.current?.focus();
@@ -230,62 +229,7 @@ export const ExpenseTab: React.FC<ExpenseTabProps> = ({ username, settings, onSa
   const [y, m] = currentMonth.split('-');
 
   return (
-    <div className="space-y-3 pb-12">
-      {/* Khung chat AI — nhập thu chi bằng câu tự nhiên */}
-      <Card className="p-3 space-y-2.5">
-        {lastReply && (
-          <div className="space-y-1.5">
-            <div className="flex justify-end">
-              <p className="max-w-[85%] px-3 py-2 bg-purple-600 text-white text-xs rounded-2xl rounded-br-md whitespace-pre-wrap">{lastReply.text}</p>
-            </div>
-            <div className="flex">
-              <div className={`max-w-[85%] px-3 py-2 text-xs rounded-2xl rounded-bl-md ${lastReply.error ? 'bg-rose-50 text-rose-700' : 'bg-slate-100 text-slate-700'}`}>
-                {lastReply.error ? (
-                  'Chưa lưu được, thử viết lại rõ hơn nhé.'
-                ) : (
-                  <>
-                    <p className="font-bold mb-1">Đã lưu {lastReply.saved.length} giao dịch:</p>
-                    {lastReply.saved.map((i) => (
-                      <p key={i.id} className="flex justify-between gap-3">
-                        <span className="truncate">{i.description || i.category} <span className="text-slate-400">· {i.category}{i.date !== todayIso() ? ` · ${formatDayLabel(i.date)}` : ''}</span></span>
-                        <span className={`font-bold shrink-0 ${i.type === 'Thu' ? 'text-emerald-600' : 'text-rose-600'}`}>
-                          {i.type === 'Thu' ? '+' : '-'}{formatVnd(i.amount)}
-                        </span>
-                      </p>
-                    ))}
-                  </>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
-
-        <div className="flex items-end gap-2 p-1.5 bg-slate-50 border border-slate-200 rounded-3xl focus-within:border-purple-400 focus-within:bg-white transition-colors">
-          <textarea
-            ref={chatRef}
-            value={chatText}
-            onChange={(e) => setChatText(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                handleSend();
-              }
-            }}
-            rows={1}
-            placeholder="Vd: ăn phở 45, đổ xăng 50k"
-            className="flex-1 min-w-0 resize-none overflow-hidden bg-transparent px-3 py-2.5 text-sm leading-5 text-slate-900 placeholder:text-slate-400 focus:outline-none"
-          />
-          <button
-            onClick={handleSend}
-            disabled={sending || !chatText.trim()}
-            className="w-10 h-10 shrink-0 rounded-full bg-gradient-to-br from-purple-600 to-indigo-600 text-white flex items-center justify-center active:scale-95 transition-all cursor-pointer disabled:opacity-40"
-            aria-label="Gửi"
-          >
-            {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <SendHorizontal className="w-4 h-4" />}
-          </button>
-        </div>
-      </Card>
-
+    <div className={`space-y-3 ${lastReply ? 'pb-72' : 'pb-28'}`}>
       {/* Month summary */}
       <Card className="p-4 space-y-3">
         <div className="flex items-center justify-between">
@@ -414,6 +358,70 @@ export const ExpenseTab: React.FC<ExpenseTabProps> = ({ username, settings, onSa
           </div>
         ))
       )}
+
+      {/* Khung chat AI cố định phía dưới, ngay trên thanh tab */}
+      <div className="fixed left-0 right-0 bottom-[65px] z-30 px-4 pb-2 pt-6 bg-gradient-to-t from-surface-bg via-surface-bg/95 to-transparent">
+        <div className="max-w-md mx-auto space-y-2">
+          {lastReply && (
+            <div className="relative bg-white rounded-3xl border border-slate-200/80 shadow-lg p-3 pr-9 space-y-1.5 max-h-56 overflow-y-auto">
+              <button
+                onClick={() => setLastReply(null)}
+                className="absolute top-2 right-2 p-1 text-slate-300 hover:text-slate-500 cursor-pointer"
+                aria-label="Đóng"
+              >
+                <X className="w-4 h-4" />
+              </button>
+              <div className="flex justify-end">
+                <p className="max-w-[85%] px-3 py-2 bg-purple-600 text-white text-xs rounded-2xl rounded-br-md whitespace-pre-wrap">{lastReply.text}</p>
+              </div>
+              <div className="flex">
+                <div className={`max-w-[90%] px-3 py-2 text-xs rounded-2xl rounded-bl-md ${lastReply.error ? 'bg-rose-50 text-rose-700' : 'bg-slate-100 text-slate-700'}`}>
+                  {lastReply.error ? (
+                    lastReply.error
+                  ) : (
+                    <>
+                      <p className="font-bold mb-1">Đã lưu {lastReply.saved.length} giao dịch:</p>
+                      {lastReply.saved.map((i) => (
+                        <p key={i.id} className="flex justify-between gap-3">
+                          <span className="truncate">{i.description || i.category} <span className="text-slate-400">· {i.category}{i.date !== todayIso() ? ` · ${formatDayLabel(i.date)}` : ''}</span></span>
+                          <span className={`font-bold shrink-0 ${i.type === 'Thu' ? 'text-emerald-600' : 'text-rose-600'}`}>
+                            {i.type === 'Thu' ? '+' : '-'}{formatVnd(i.amount)}
+                          </span>
+                        </p>
+                      ))}
+                    </>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div className="flex items-end gap-2 p-1.5 bg-white border border-slate-200 rounded-3xl shadow-lg focus-within:border-purple-400 transition-colors">
+            <textarea
+              ref={chatRef}
+              value={chatText}
+              onChange={(e) => setChatText(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  handleSend();
+                }
+              }}
+              rows={1}
+              placeholder="Vd: ăn phở 45, đổ xăng 50k"
+              className="flex-1 min-w-0 max-h-40 resize-none overflow-y-auto [scrollbar-width:none] bg-transparent px-3 py-2.5 text-sm leading-5 text-slate-900 placeholder:text-slate-400 focus:outline-none"
+            />
+            <button
+              onClick={handleSend}
+              disabled={sending || !chatText.trim()}
+              className="w-10 h-10 shrink-0 rounded-full bg-gradient-to-br from-purple-600 to-indigo-600 text-white flex items-center justify-center active:scale-95 transition-all cursor-pointer disabled:opacity-40"
+              aria-label="Gửi"
+            >
+              {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <SendHorizontal className="w-4 h-4" />}
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   );
 };

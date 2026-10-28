@@ -6,6 +6,8 @@ import { generateGemini, parseJsonText } from '@/lib/gemini';
 import { createWorker } from 'tesseract.js';
 import { matchEmployeeLine, parseScheduleLine } from '@/lib/ocr-parser';
 
+export const maxDuration = 60;
+
 async function parseWithGemini(inputBuffer: Buffer, employeeName: string, apiKey: string) {
   const base64Data = inputBuffer.toString('base64');
   const currentYear = new Date().getFullYear();
@@ -39,6 +41,7 @@ Quy tắc mã ca:
   const text = await generateGemini({
     apiKey,
     json: true,
+    timeoutMs: 30_000,
     parts: [
       { inlineData: { mimeType: 'image/jpeg', data: base64Data } },
       { text: prompt },

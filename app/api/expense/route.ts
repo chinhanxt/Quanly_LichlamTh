@@ -11,6 +11,7 @@ import {
 } from '@/lib/firebase';
 
 export const dynamic = 'force-dynamic';
+export const maxDuration = 60;
 export const revalidate = 0;
 
 function resolveUsername(request: Request): string {
