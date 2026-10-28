@@ -1,91 +1,53 @@
 import { NextResponse } from 'next/server';
 import { getAuthSessionUser } from '@/lib/auth-session';
-import { getSettingsForUser } from '@/lib/firebase';
+import {
+  getSettingsForUser,
+  getExpenseItemsForUser,
+  addExpenseItemsForUser,
+  updateExpenseItemForUser,
+  deleteExpenseItemForUser,
+  NewExpense,
+} from '@/lib/firebase';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
+function resolveUsername(request: Request): string {
+  return getAuthSessionUser(request)?.username || 'thanhhuong';
+}
+
+function vnToday(): string {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Ho_Chi_Minh',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(new Date());
+}
+
+const dedupeKey = (i: { date: string; type: string; amount: number; description: string }) =>
+  `${i.date}|${i.type}|${Math.round(Number(i.amount) || 0)}|${(i.description || '').trim().toLowerCase()}`;
+
 export async function GET(request: Request) {
   try {
-    const sessionUser = getAuthSessionUser(request);
-    const username = sessionUser?.username || request.headers.get('x-username') || 'chinhan';
-    
-    // Only chinhan is allowed for expense feature
-    if (username !== 'chinhan') {
-      return NextResponse.json({ success: true, data: [] });
-    }
-
-    const userSettings = await getSettingsForUser(username);
-    const appsScriptUrl = userSettings.expenseAppsScriptUrl;
-
-    if (!appsScriptUrl || !appsScriptUrl.startsWith('http')) {
-      return NextResponse.json({ 
-        success: true, 
-        data: [], 
-        warning: 'Chưa cài đặt Apps Script Webhook URL trong Cài Đặt!' 
-      });
-    }
-
-    // Read directly from Google Sheet via Apps Script doGet
-    const res = await fetch(appsScriptUrl, { cache: 'no-store' });
-    if (!res.ok) {
-      return NextResponse.json({ success: true, data: [] });
-    }
-
-    const json = await res.json();
-    return NextResponse.json({ success: true, data: json.items || [] });
+    const username = resolveUsername(request);
+    const items = await getExpenseItemsForUser(username);
+    return NextResponse.json({ success: true, data: items });
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }
 }
 
-export async function POST(request: Request) {
-  try {
-    const sessionUser = getAuthSessionUser(request);
-    const username = sessionUser?.username || request.headers.get('x-username') || 'chinhan';
-
-    if (username !== 'chinhan') {
-      return NextResponse.json({ success: false, error: 'Chức năng chi tiêu chỉ áp dụng cho tài khoản Chí Nhân!' }, { status: 403 });
-    }
-
-    const body = await request.json();
-    const { rawText, autoAddK = true, clientDate } = body;
-
-    if (!rawText || typeof rawText !== 'string' || !rawText.trim()) {
-      return NextResponse.json({ success: false, error: 'Vui lòng nhập nội dung thu/chi!' }, { status: 400 });
-    }
-
-    const userSettings = await getSettingsForUser(username);
-    const appsScriptUrl = userSettings.expenseAppsScriptUrl;
-
-    if (!appsScriptUrl || !appsScriptUrl.startsWith('http')) {
-      return NextResponse.json({ 
-        success: false, 
-        error: 'Chưa dán Apps Script Webhook URL trong Cài Đặt! Vui lòng làm theo hướng dẫn 2 bước để liên kết Google Sheet làm Database.' 
-      }, { status: 400 });
-    }
-
-    const groqKey = userSettings.groqApiKey || process.env.GROQ_API_KEY || '';
-    const groqModel = userSettings.groqModel || 'llama-3.3-70b-versatile';
-
-    // Calculate exact Vietnam Date (UTC+7)
-    const now = new Date();
-    const vnFormatter = new Intl.DateTimeFormat('en-CA', {
-      timeZone: 'Asia/Ho_Chi_Minh',
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-    });
-    const vnDateParts = vnFormatter.formatToParts(now);
-    const vnYear = vnDateParts.find(p => p.type === 'year')?.value;
-    const vnMonth = vnDateParts.find(p => p.type === 'month')?.value;
-    const vnDay = vnDateParts.find(p => p.type === 'day')?.value;
-    const serverVnTodayStr = `${vnYear}-${vnMonth}-${vnDay}`;
-
-    const todayStr = (clientDate && /^\d{4}-\d{2}-\d{2}$/.test(clientDate)) ? clientDate : serverVnTodayStr;
-
-    const dayNames = ['Chủ Nhật', 'Thứ Hai', 'Thứ Ba', 'Thứ Tư', 'Thứ Năm', 'Thứ Sáu', 'Thứ Bảy'];
-    const dayOfWeek = dayNames[now.getDay()];
+async function parseWithGroq(username: string, rawText: string, autoAddK: boolean, clientDate?: string) {
+  const userSettings = await getSettingsForUser(username);
+  const groqKey = userSettings.groqApiKey || process.env.GROQ_API_KEY || '';
+  if (!groqKey) {
+    throw new Error('Chưa có Groq API Key — vào ⚙️ Cài đặt AI trong tab Thu chi để nhập, hoặc dùng nhập nhanh.');
+  }
+  const groqModel = userSettings.groqModel || 'llama-3.3-70b-versatile';
+  const todayStr = clientDate && /^\d{4}-\d{2}-\d{2}$/.test(clientDate) ? clientDate : vnToday();
+  const dayNames = ['Chủ Nhật', 'Thứ Hai', 'Thứ Ba', 'Thứ Tư', 'Thứ Năm', 'Thứ Sáu', 'Thứ Bảy'];
+  const dayOfWeek = dayNames[new Date(todayStr + 'T12:00:00').getDay()];
 
     const systemPrompt = `Bạn là trợ lý tài chính cá nhân bằng tiếng Việt siêu thông minh.
 Nhiệm vụ: Phân tích câu nhập liệu thu/chi chứa tiếng lóng, viết tắt, tiền tệ VNĐ thành mảng JSON chuẩn.
@@ -130,128 +92,115 @@ CẤU TRÚC JSON CHUẨN NẾU HỢP LỆ:
   ]
 }`;
 
-    const groqRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${groqKey}`,
-      },
-      body: JSON.stringify({
-        model: groqModel,
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: rawText },
-        ],
-        temperature: 0.1,
-        response_format: { type: 'json_object' },
-      }),
-    });
+  const groqRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${groqKey}` },
+    body: JSON.stringify({
+      model: groqModel,
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: rawText },
+      ],
+      temperature: 0.1,
+      response_format: { type: 'json_object' },
+    }),
+  });
+  if (!groqRes.ok) {
+    throw new Error(`Groq API Lỗi (${groqRes.status}): ${await groqRes.text()}`);
+  }
+  const groqData = await groqRes.json();
+  const parsedObj = JSON.parse(groqData.choices?.[0]?.message?.content || '{}');
+  if (parsedObj.isFuture) {
+    throw new Error(parsedObj.futureError || 'Không thể ghi nhận thu/chi trong tương lai!');
+  }
+  if (!Array.isArray(parsedObj.items) || parsedObj.items.length === 0) {
+    throw new Error('AI không tìm thấy thông tin thu/chi nào trong đoạn văn trên.');
+  }
+  const hasDateKeyword = /hôm qua|hôm kia|ngày \d|\d{1,2}\/\d{1,2}|thứ \d/i.test(rawText);
+  return parsedObj.items.map((item: any): NewExpense => {
+    const date = !hasDateKeyword || !item.date || item.date > todayStr ? todayStr : item.date;
+    return {
+      date,
+      type: item.type === 'Thu' ? 'Thu' : 'Chi',
+      category: item.category || 'Khác',
+      amount: Number(item.amount) || 0,
+      description: item.description || rawText,
+      rawText,
+    };
+  });
+}
 
-    if (!groqRes.ok) {
-      const errText = await groqRes.text();
-      return NextResponse.json({ success: false, error: `Groq API Lỗi (${groqRes.status}): ${errText}` }, { status: 500 });
+export async function POST(request: Request) {
+  try {
+    const username = resolveUsername(request);
+    const body = await request.json();
+
+    let toSave: NewExpense[];
+    if (Array.isArray(body.items)) {
+      toSave = body.items
+        .map((i: any): NewExpense => ({
+          date: /^\d{4}-\d{2}-\d{2}$/.test(i.date) ? i.date : vnToday(),
+          type: i.type === 'Thu' ? 'Thu' : 'Chi',
+          category: i.category || 'Khác',
+          amount: Number(i.amount) || 0,
+          description: String(i.description || '').trim(),
+          rawText: i.rawText || '',
+        }))
+        .filter((i: NewExpense) => i.amount > 0);
+    } else if (typeof body.rawText === 'string' && body.rawText.trim()) {
+      toSave = await parseWithGroq(username, body.rawText.trim(), body.autoAddK !== false, body.clientDate);
+    } else {
+      return NextResponse.json({ success: false, error: 'Vui lòng nhập nội dung thu/chi!' }, { status: 400 });
     }
 
-    const groqData = await groqRes.json();
-    const parsedText = groqData.choices?.[0]?.message?.content || '{}';
-    const parsedObj = JSON.parse(parsedText);
-
-    if (parsedObj.isFuture) {
-      return NextResponse.json({
-        success: false,
-        error: parsedObj.futureError || 'Không thể ghi nhận thu/chi trong tương lai! Vui lòng chỉ nhập thu/chi đã diễn ra.',
-      }, { status: 400 });
+    let skipped = 0;
+    if (body.dedupe) {
+      const existing = new Set((await getExpenseItemsForUser(username)).map(dedupeKey));
+      const before = toSave.length;
+      toSave = toSave.filter((i) => {
+        const k = dedupeKey(i);
+        if (existing.has(k)) return false;
+        existing.add(k);
+        return true;
+      });
+      skipped = before - toSave.length;
     }
 
-    if (!parsedObj.items || !Array.isArray(parsedObj.items) || parsedObj.items.length === 0) {
-      return NextResponse.json({ success: false, error: 'AI không tìm thấy thông tin thu/chi nào trong đoạn văn trên.' }, { status: 400 });
+    if (toSave.length === 0) {
+      return NextResponse.json({ success: true, data: [], skipped, message: skipped ? `Không có giao dịch mới (bỏ qua ${skipped} dòng trùng)` : 'Không có giao dịch hợp lệ' });
     }
 
-    // Check if rawText mentions explicit past date keywords
-    const hasRelativeDateKeyword = /hôm qua|hôm kia|ngày \d|\d{1,2}\/\d{1,2}|thứ \d/i.test(rawText);
-
-    // If no past date keyword was explicitly typed, force date to todayStr
-    for (const item of parsedObj.items) {
-      if (!hasRelativeDateKeyword) {
-        item.date = todayStr;
-      } else if (item.date && item.date > todayStr) {
-        return NextResponse.json({
-          success: false,
-          error: `Không thể ghi nhận giao dịch cho ngày tương lai (${item.date})!`,
-        }, { status: 400 });
-      }
-    }
-
-    // Send parsed items directly to Google Sheet Web App
-    const sheetRes = await fetch(appsScriptUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        action: 'append_expenses',
-        items: parsedObj.items.map((item: any) => ({
-          date: item.date || todayStr,
-          type: item.type === 'Thu' ? 'Thu' : 'Chi',
-          category: item.category || 'Khác',
-          amount: Number(item.amount) || 0,
-          description: item.description || rawText,
-          rawText: rawText,
-        })),
-      }),
-    });
-
-    if (!sheetRes.ok) {
-      const errText = await sheetRes.text();
-      return NextResponse.json({ success: false, error: `Google Sheet Lỗi (${sheetRes.status}): ${errText}` }, { status: 500 });
-    }
-
-    const sheetJson = await sheetRes.json();
-    if (!sheetJson.success) {
-      return NextResponse.json({ success: false, error: sheetJson.error || 'Lỗi lưu vào Google Sheet' }, { status: 500 });
-    }
-
+    const saved = await addExpenseItemsForUser(username, toSave);
     return NextResponse.json({
       success: true,
-      message: `Đã bóc tách & lưu trực tiếp ${sheetJson.count || parsedObj.items.length} giao dịch vào Google Sheet!`,
-      data: sheetJson.items || parsedObj.items,
+      data: saved,
+      skipped,
+      message: `Đã lưu ${saved.length} giao dịch${skipped ? `, bỏ qua ${skipped} dòng trùng` : ''}`,
     });
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message || 'Lỗi xử lý API' }, { status: 500 });
   }
 }
 
+export async function PATCH(request: Request) {
+  try {
+    const username = resolveUsername(request);
+    const id = new URL(request.url).searchParams.get('id');
+    if (!id) return NextResponse.json({ success: false, error: 'Thiếu id giao dịch' }, { status: 400 });
+    await updateExpenseItemForUser(username, id, await request.json());
+    return NextResponse.json({ success: true });
+  } catch (error: any) {
+    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+  }
+}
+
 export async function DELETE(request: Request) {
   try {
-    const sessionUser = getAuthSessionUser(request);
-    const username = sessionUser?.username || request.headers.get('x-username') || 'chinhan';
-    const { searchParams } = new URL(request.url);
-    const id = searchParams.get('id');
-
-    if (username !== 'chinhan') {
-      return NextResponse.json({ success: false, error: 'Chỉ hỗ trợ tài khoản Chí Nhân' }, { status: 403 });
-    }
-
-    if (!id) {
-      return NextResponse.json({ success: false, error: 'Thiếu id giao dịch' }, { status: 400 });
-    }
-
-    const userSettings = await getSettingsForUser(username);
-    const appsScriptUrl = userSettings.expenseAppsScriptUrl;
-
-    if (!appsScriptUrl || !appsScriptUrl.startsWith('http')) {
-      return NextResponse.json({ success: false, error: 'Chưa cài đặt Webhook Apps Script URL' }, { status: 400 });
-    }
-
-    const res = await fetch(appsScriptUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        action: 'delete_expense',
-        id: id,
-      }),
-    });
-
-    const json = await res.json();
-    return NextResponse.json(json);
+    const username = resolveUsername(request);
+    const id = new URL(request.url).searchParams.get('id');
+    if (!id) return NextResponse.json({ success: false, error: 'Thiếu id giao dịch' }, { status: 400 });
+    await deleteExpenseItemForUser(username, id);
+    return NextResponse.json({ success: true });
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
   }

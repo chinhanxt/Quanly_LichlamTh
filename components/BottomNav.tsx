@@ -1,10 +1,10 @@
 'use client';
 import React from 'react';
-import { Calendar, GraduationCap, Wallet, StickyNote, Receipt } from 'lucide-react';
+import { Calendar, GraduationCap, Wallet, Receipt } from 'lucide-react';
 
 interface BottomNavProps {
-  activeTab: 'schedule' | 'study' | 'salary' | 'notes' | 'expense' | 'settings';
-  onChangeTab: (tab: 'schedule' | 'study' | 'salary' | 'notes' | 'expense' | 'settings') => void;
+  activeTab: 'schedule' | 'study' | 'salary' | 'expense' | 'settings';
+  onChangeTab: (tab: 'schedule' | 'study' | 'salary' | 'expense' | 'settings') => void;
   isChinhan?: boolean;
 }
 
@@ -26,7 +26,8 @@ export const BottomNav: React.FC<BottomNavProps> = ({ activeTab, onChangeTab, is
           <span className="text-xs">Lịch làm</span>
         </button>
 
-        {/* Tab 2: Lịch học (Đứng kế Tab 1 Lịch làm) */}
+        {/* Tab 2: Lịch học (chỉ Thanh Hương) */}
+        {!isChinhan && (
         <button
           onClick={() => onChangeTab('study')}
           className={`flex flex-col items-center gap-1 py-1 px-2.5 rounded-2xl transition-all duration-200 cursor-pointer ${
@@ -38,6 +39,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({ activeTab, onChangeTab, is
           <GraduationCap className="w-5 h-5" />
           <span className="text-xs">Lịch học</span>
         </button>
+        )}
 
         {/* Tab 3: Bảng lương */}
         <button
@@ -52,33 +54,18 @@ export const BottomNav: React.FC<BottomNavProps> = ({ activeTab, onChangeTab, is
           <span className="text-xs">Bảng lương</span>
         </button>
 
-        {/* Tab 4: Ghi chú */}
+        {/* Tab 4: Thu chi */}
         <button
-          onClick={() => onChangeTab('notes')}
+          onClick={() => onChangeTab('expense')}
           className={`flex flex-col items-center gap-1 py-1 px-2.5 rounded-2xl transition-all duration-200 cursor-pointer ${
-            activeTab === 'notes'
+            activeTab === 'expense'
               ? 'text-brand-600 font-bold scale-105'
               : 'text-surface-textSecondary hover:text-brand-500 font-medium'
           }`}
         >
-          <StickyNote className="w-5 h-5" />
-          <span className="text-xs">Ghi chú</span>
+          <Receipt className="w-5 h-5" />
+          <span className="text-xs">Thu chi</span>
         </button>
-
-        {/* Tab 5 (Optional for Chinhan): Chi tiêu */}
-        {isChinhan && (
-          <button
-            onClick={() => onChangeTab('expense')}
-            className={`flex flex-col items-center gap-1 py-1 px-2.5 rounded-2xl transition-all duration-200 cursor-pointer ${
-              activeTab === 'expense'
-                ? 'text-brand-600 font-bold scale-105'
-                : 'text-surface-textSecondary hover:text-brand-500 font-medium'
-            }`}
-          >
-            <Receipt className="w-5 h-5" />
-            <span className="text-xs">Chi tiêu</span>
-          </button>
-        )}
       </div>
     </div>
   );

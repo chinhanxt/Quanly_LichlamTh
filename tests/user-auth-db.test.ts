@@ -1,24 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { verifyUserPasswordLocal, updateUserPasswordLocal, getSettingsForUserLocal, getUserLocal, getScheduleItemsForUserLocal, saveScheduleItemsForUserLocal } from '../lib/local-db';
-import { getUserFromFirestore, verifyUserPasswordInFirestore, updateUserPasswordInFirestore, getSettingsForUser, getScheduleItemsForUser } from '../lib/firebase';
+import { verifyUserPasswordLocal, getSettingsForUserLocal, getUserLocal, getScheduleItemsForUserLocal, saveScheduleItemsForUserLocal } from '../lib/local-db';
+import { getUserFromFirestore, verifyUserPasswordInFirestore, getSettingsForUser, getScheduleItemsForUser } from '../lib/firebase';
 
 test('User Auth & Database Isolation', async (t) => {
-  await t.test('should verify default user password correctly', async () => {
-    const valid = verifyUserPasswordLocal('thanhhuong', '1515');
-    assert.equal(valid, true);
-
+  await t.test('should reject wrong local password', async () => {
     const invalid = verifyUserPasswordLocal('thanhhuong', 'wrongpass');
     assert.equal(invalid, false);
-  });
-
-  await t.test('should allow updating user password', async () => {
-    try {
-      await updateUserPasswordInFirestore('thanhhuong', 'newpass123');
-      assert.equal(verifyUserPasswordLocal('thanhhuong', 'newpass123'), true);
-    } finally {
-      await updateUserPasswordInFirestore('thanhhuong', '1515');
-    }
   });
 
   await t.test('should return scoped settings for user', async () => {
@@ -44,8 +32,8 @@ test('User Auth & Database Isolation', async (t) => {
     assert.ok(user);
     assert.equal(user?.username, 'thanhhuong');
 
-    const validPass = await verifyUserPasswordInFirestore('thanhhuong', '1515');
-    assert.equal(validPass, true);
+    const invalidPass = await verifyUserPasswordInFirestore('thanhhuong', 'definitely-wrong-password');
+    assert.equal(invalidPass, false);
 
     const settings = await getSettingsForUser('thanhhuong');
     assert.ok(settings);

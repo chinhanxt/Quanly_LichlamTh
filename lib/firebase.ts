@@ -10,17 +10,18 @@ import {
   getDoc, 
   setDoc,
   query,
-  orderBy
+  orderBy,
+  writeBatch
 } from 'firebase/firestore';
 import { ScheduleItem, ScheduleSettings } from '@/types/schedule';
 import { User } from '@/types/user';
+import { getDefaultRate } from './salary-calculator';
 import {
   getLocalScheduleItems,
   addLocalScheduleItem,
   updateLocalScheduleItem,
   deleteLocalScheduleItem,
-  getLocalSettings,
-  saveLocalSettings,
+  stripRemovedSettings,
   getUserLocal,
   updateUserPasswordLocal,
   getSettingsForUserLocal,
@@ -91,70 +92,22 @@ export async function updateUserPasswordInFirestore(username: string, newPass: s
 }
 
 // User-scoped settings functions
-const REMOVED_TELEGRAM_FIELDS = [
-  'telegramBotToken',
-  'telegramChatId',
-  'customWebhookUrl',
-  'allowedChatIds',
-  'allowedChatIdsStr',
-  'telegramSessionState',
-  'locketBotToken',
-  'locketChatId',
-];
-
 export async function getSettingsForUser(username: string): Promise<ScheduleSettings> {
-  const settings: Record<string, any> = await loadSettingsForUser(username);
-  for (const key of REMOVED_TELEGRAM_FIELDS) delete settings[key];
-  return settings as ScheduleSettings;
-}
-
-async function loadSettingsForUser(username: string): Promise<ScheduleSettings> {
   const local = getSettingsForUserLocal(username);
   try {
-    const docRef = doc(db, 'settings', username);
-    const docSnap = await getDoc(docRef);
-    if (docSnap.exists()) {
-      const data = docSnap.data();
-      const defaultRate = username === 'chinhan' ? 100000 : 26000;
-      const rate = typeof data.hourlyRate === 'number' && data.hourlyRate !== 26000 ? data.hourlyRate : defaultRate;
-
-      if (username === 'chinhan') {
-        if (!data.shiftReminderTemplate || data.shiftReminderTemplate.includes('🏃‍♂️') || data.shiftReminderTemplate.includes('Dậy đi làm cha ơi')) {
-          data.shiftReminderTemplate = local.shiftReminderTemplate;
-        }
-        if (!data.checkInTemplate || data.checkInTemplate.includes('🚨') || data.checkInTemplate.includes('tới đít rồi nè')) {
-          data.checkInTemplate = local.checkInTemplate;
-        }
-        if (!data.checkOutTemplate || data.checkOutTemplate.includes('🏃‍♀️') || data.checkOutTemplate.includes('Hết ca rồi lượn lẹ')) {
-          data.checkOutTemplate = local.checkOutTemplate;
-        }
-        if (!data.notesTemplate || data.notesTemplate.includes('📝') || data.notesTemplate.includes('ăn chửi')) {
-          data.notesTemplate = local.notesTemplate;
-        }
-        if (!data.morningSummaryTemplate || data.morningSummaryTemplate.includes('☀️') || data.morningSummaryTemplate.includes('Dậy đi cày')) {
-          data.morningSummaryTemplate = local.morningSummaryTemplate;
-        }
-      }
-
-      return {
+    let snap = await getDoc(doc(db, 'settings', username));
+    if (!snap.exists() && username === 'thanhhuong') {
+      snap = await getDoc(doc(db, 'settings', 'config'));
+    }
+    if (snap.exists()) {
+      const data = snap.data();
+      return stripRemovedSettings({
         ...local,
         ...data,
-        hourlyRate: rate,
+        hourlyRate: typeof data.hourlyRate === 'number' && data.hourlyRate > 0 ? data.hourlyRate : getDefaultRate(username),
         geminiApiKey: data.geminiApiKey || local.geminiApiKey || process.env.GEMINI_API_KEY || '',
         username,
-      } as ScheduleSettings;
-    } else if (username === 'thanhhuong') {
-      const legacyDocRef = doc(db, 'settings', 'config');
-      const legacySnap = await getDoc(legacyDocRef);
-      if (legacySnap.exists()) {
-        const data = legacySnap.data();
-        return {
-          ...local,
-          ...data,
-          geminiApiKey: data.geminiApiKey || local.geminiApiKey || process.env.GEMINI_API_KEY || '',
-          username: 'thanhhuong',
-        } as ScheduleSettings;
-      }
+      }) as ScheduleSettings;
     }
   } catch (error) {
     console.warn(`Firebase getSettingsForUser failed for ${username}, using local settings fallback:`, error);
@@ -322,55 +275,6 @@ export async function deleteScheduleItem(id: string): Promise<boolean> {
   return deleteScheduleItemForUser('thanhhuong', id);
 }
 
-// CRUD for Settings with local fallback (legacy)
-export async function getSettings(): Promise<ScheduleSettings> {
-  try {
-    const docRef = doc(db, 'settings', 'config');
-    const docSnap = await getDoc(docRef);
-    if (docSnap.exists()) {
-      const data = docSnap.data();
-      return {
-        morningTime: data.morningTime || '07:00',
-        leadTimeMinutes: Number(data.leadTimeMinutes) || 30,
-        enableMorning: Boolean(data.enableMorning),
-        enableLeadTime: Boolean(data.enableLeadTime),
-        employeeName: data.employeeName || 'Thanh Hương',
-        hourlyRate: typeof data.hourlyRate === 'number' ? data.hourlyRate : 26000,
-        geminiApiKey: data.geminiApiKey || '',
-        enableShiftReminder: data.enableShiftReminder ?? true,
-        shiftReminderLeadMinutes: data.shiftReminderLeadMinutes !== undefined ? Number(data.shiftReminderLeadMinutes) : 30,
-        shiftReminderTemplate: data.shiftReminderTemplate || '🏃‍♂️ Dậy đi làm cha ơi! Ca {Ca} ({ThờiGian}) ở {ĐịaĐiểm} nè. Đứng dậy sửa soạn lẹ không trễ giờ chừ!',
-        enableCheckInReminder: data.enableCheckInReminder ?? true,
-        checkInLeadMinutes: data.checkInLeadMinutes !== undefined ? Number(data.checkInLeadMinutes) : 15,
-        checkInTemplate: data.checkInTemplate || '🚨 Alo alo! Ca {Ca} tới đít rồi nè! Check-in lẹ không là bị trừ lương sấp mặt bây giờ 💸',
-        enableCheckOutReminder: data.enableCheckOutReminder ?? true,
-        checkOutLagMinutes: data.checkOutLagMinutes !== undefined ? Number(data.checkOutLagMinutes) : 10,
-        checkOutTemplate: data.checkOutTemplate || '🏃‍♀️ Hết ca rồi lượn lẹ! Ca {Ca} xong rồi nè. Bấm Check-out rồi vọt về thôi 🥳',
-        enableNotesReminder: data.enableNotesReminder ?? true,
-        notesLeadMinutes: data.notesLeadMinutes !== undefined ? Number(data.notesLeadMinutes) : 15,
-        notesTemplate: data.notesTemplate || '📝 Note ca {Ca} nè: {GhiChú}. Quên cái này là ăn chửi ráng chịu nha! ⚡',
-        notesTimingMode: data.notesTimingMode || 'before_shift',
-        notesFixedTime: data.notesFixedTime || '08:00',
-        userNotes: Array.isArray(data.userNotes) ? data.userNotes : [],
-        enableMorningSummary: data.enableMorningSummary ?? true,
-        morningSummaryTime: data.morningSummaryTime || '07:00',
-        morningSummaryTemplate: data.morningSummaryTemplate || '☀️ Dậy đi cày em ơi! Hôm nay cày ca {Ca} ({ThờiGian}) ở {ĐịaĐiểm} nè. Chúc cày cuốc vui vẻ không bị ăn chửi nhé 🔥',
-        customNotifications: Array.isArray(data.customNotifications) ? data.customNotifications : [],
-        sentRemindersLog: typeof data.sentRemindersLog === 'object' && data.sentRemindersLog !== null ? data.sentRemindersLog : {},
-      };
-    }
-  } catch (error) {
-    console.warn('Firebase getSettings failed, using local settings fallback:', error);
-  }
-
-  return getLocalSettings();
-}
-
-export async function updateSettings(settings: ScheduleSettings): Promise<ScheduleSettings> {
-  const username = settings.username || 'thanhhuong';
-  return saveSettingsForUser(username, settings);
-}
-
 export async function saveScheduleItemsForWeek(newItems: ScheduleItem[]): Promise<void> {
   const currentShifts = await getScheduleItems();
 
@@ -394,69 +298,54 @@ export async function saveScheduleItemsForWeek(newItems: ScheduleItem[]): Promis
   }
 }
 
-// Expense storage functions with Firestore + local fallback
+// Expense storage (Firestore only — local file fallback is ephemeral on Vercel)
 import { ExpenseItem } from '@/types/schedule';
-import {
-  getExpenseItemsForUserLocal,
-  addExpenseItemForUserLocal,
-  deleteExpenseItemForUserLocal
-} from './local-db';
+
+export type NewExpense = Omit<ExpenseItem, 'id' | 'username'> & { id?: string };
+
+function normalizeExpense(username: string, data: any): Omit<ExpenseItem, 'id'> {
+  return {
+    date: data.date || new Date().toISOString().split('T')[0],
+    type: data.type === 'Thu' ? 'Thu' : 'Chi',
+    category: data.category || 'Khác',
+    amount: Math.round(Number(data.amount) || 0),
+    description: data.description || '',
+    rawText: data.rawText || '',
+    createdAt: data.createdAt || new Date().toISOString(),
+    username,
+  };
+}
 
 export async function getExpenseItemsForUser(username: string): Promise<ExpenseItem[]> {
-  try {
-    const colRef = collection(db, `expenses_${username}`);
-    const querySnapshot = await getDocs(colRef);
-    const items: ExpenseItem[] = [];
-    querySnapshot.forEach((docSnap) => {
-      const data = docSnap.data();
-      items.push({
-        id: docSnap.id,
-        date: data.date || '',
-        type: data.type || 'Chi',
-        category: data.category || 'Khác',
-        amount: Number(data.amount) || 0,
-        description: data.description || '',
-        rawText: data.rawText || '',
-        createdAt: data.createdAt || new Date().toISOString(),
-        username,
-      });
-    });
-
-    items.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
-    if (items.length > 0) return items;
-  } catch (error) {
-    console.warn(`Firebase getExpenseItemsForUser failed for ${username}, falling back to local:`, error);
-  }
-  return getExpenseItemsForUserLocal(username);
+  const querySnapshot = await getDocs(collection(db, `expenses_${username}`));
+  const items: ExpenseItem[] = [];
+  querySnapshot.forEach((docSnap) => {
+    items.push({ id: docSnap.id, ...normalizeExpense(username, docSnap.data()) });
+  });
+  items.sort((a, b) => b.date.localeCompare(a.date) || (b.createdAt || '').localeCompare(a.createdAt || ''));
+  return items;
 }
 
-export async function addExpenseItemForUser(username: string, item: Omit<ExpenseItem, 'id'> & { id?: string }): Promise<ExpenseItem> {
-  const localItem = addExpenseItemForUserLocal(username, item);
-  try {
-    const colRef = collection(db, `expenses_${username}`);
-    const docData = {
-      date: item.date || new Date().toISOString().split('T')[0],
-      type: item.type || 'Chi',
-      category: item.category || 'Khác',
-      amount: Number(item.amount) || 0,
-      description: item.description || '',
-      rawText: item.rawText || '',
-      createdAt: localItem.createdAt || new Date().toISOString(),
-      username,
-    };
-    const docRef = await addDoc(colRef, docData);
-    return { ...localItem, id: docRef.id };
-  } catch (error) {
-    console.warn(`Firebase addExpenseItemForUser failed for ${username}, saved locally:`, error);
+export async function addExpenseItemsForUser(username: string, newItems: NewExpense[]): Promise<ExpenseItem[]> {
+  const colRef = collection(db, `expenses_${username}`);
+  const batch = writeBatch(db);
+  const saved: ExpenseItem[] = [];
+  for (const item of newItems) {
+    const ref = item.id ? doc(colRef, item.id) : doc(colRef);
+    const data = normalizeExpense(username, item);
+    batch.set(ref, data);
+    saved.push({ id: ref.id, ...data });
   }
-  return localItem;
+  await batch.commit();
+  return saved;
 }
 
-export async function deleteExpenseItemForUser(username: string, id: string): Promise<boolean> {
-  try {
-    await deleteDoc(doc(db, `expenses_${username}`, id));
-  } catch (error) {
-    console.warn(`Firebase deleteExpenseItemForUser failed for ${username}, deleting local:`, error);
-  }
-  return deleteExpenseItemForUserLocal(username, id);
+export async function updateExpenseItemForUser(username: string, id: string, patch: Partial<ExpenseItem>): Promise<void> {
+  const { id: _id, username: _u, ...rest } = patch;
+  if (rest.amount !== undefined) rest.amount = Math.round(Number(rest.amount) || 0);
+  await setDoc(doc(db, `expenses_${username}`, id), rest, { merge: true });
+}
+
+export async function deleteExpenseItemForUser(username: string, id: string): Promise<void> {
+  await deleteDoc(doc(db, `expenses_${username}`, id));
 }

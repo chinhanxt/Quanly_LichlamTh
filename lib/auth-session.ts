@@ -1,6 +1,24 @@
 import { AuthSessionUser } from '@/types/user';
 
+import type { NextResponse } from 'next/server';
+
 const SESSION_COOKIE_NAME = 'app_session';
+
+export const ACCOUNT_USERNAMES = ['thanhhuong', 'chinhan'];
+
+export const ACCOUNT_LABELS: Record<string, string> = {
+  thanhhuong: 'Thanh Hương',
+  chinhan: 'Chí Nhân',
+};
+
+export function setSessionCookie(response: NextResponse, token: string) {
+  response.cookies.set(SESSION_COOKIE_NAME, token, {
+    path: '/',
+    httpOnly: true,
+    sameSite: 'lax',
+    maxAge: 30 * 24 * 60 * 60, // 30 days
+  });
+}
 
 export function createSessionToken(user: AuthSessionUser): string {
   const payload = {

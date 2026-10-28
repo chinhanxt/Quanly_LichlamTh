@@ -8,7 +8,6 @@ import { ScheduleFormModal } from '@/components/ScheduleFormModal';
 import { BottomNav } from '@/components/BottomNav';
 import { SettingsTab } from '@/components/SettingsTab';
 import { SalaryTab } from '@/components/SalaryTab';
-import { NotesTab } from '@/components/NotesTab';
 import { ExpenseTab } from '@/components/ExpenseTab';
 import { OcrPreviewModal } from '@/components/OcrPreviewModal';
 import { OcrLoadingModal } from '@/components/OcrLoadingModal';
@@ -25,17 +24,15 @@ export default function Home() {
   const { user } = useAuth();
   const isChinhan = user?.username === 'chinhan';
   const { showToast } = useToast();
-  const [activeTab, setActiveTab] = useState<'schedule' | 'study' | 'salary' | 'notes' | 'expense' | 'settings'>('schedule');
+  const [activeTab, setActiveTab] = useState<'schedule' | 'study' | 'salary' | 'expense' | 'settings'>('schedule');
   const [selectedDay, setSelectedDay] = useState<string>(() => getTodayInfo().dayKey);
   const [selectedDate, setSelectedDate] = useState<string>(() => getTodayInfo().dateIso);
   const [activeWeekDays, setActiveWeekDays] = useState<Array<{ key: string; fullDateIso: string }>>([]);
   const [items, setItems] = useState<ScheduleItem[]>([]);
-  const [settings, setSettings] = useState<ScheduleSettings>({
-    morningTime: '07:00',
-    leadTimeMinutes: 30,
-    enableMorning: true,
-    enableLeadTime: true,
-  });
+  const [settings, setSettings] = useState<ScheduleSettings>({});
+  // Tài khoản đang hiển thị — dùng để bỏ qua response/lưu trễ của tài khoản trước khi đổi
+  const activeUserRef = useRef(user?.username);
+  activeUserRef.current = user?.username;
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<ScheduleItem | null>(null);
@@ -48,18 +45,26 @@ export default function Home() {
   const [isOcrPreviewOpen, setIsOcrPreviewOpen] = useState(false);
 
   useEffect(() => {
+    if (!user?.username) return;
+    setItems([]);
+    setSettings({});
+    if (user.username === 'chinhan') {
+      setActiveTab((tab) => (tab === 'study' ? 'schedule' : tab));
+    }
     fetchItems();
     fetchSettings();
   }, [user?.username]);
 
   const fetchItems = async () => {
+    const username = user?.username;
+    if (!username) return;
     try {
       setLoading(true);
       const res = await fetch('/api/schedule', {
-        headers: { 'x-username': user?.username || 'chinhan' },
+        headers: { 'x-username': username },
       });
       const json = await res.json();
-      if (json.success) setItems(json.data);
+      if (json.success && activeUserRef.current === username) setItems(json.data);
     } catch (e) {
       console.error(e);
     } finally {
@@ -68,13 +73,15 @@ export default function Home() {
   };
 
   const fetchSettings = async () => {
+    const username = user?.username;
+    if (!username) return;
     try {
       const res = await fetch('/api/settings', {
-        headers: { 'x-username': user?.username || 'chinhan' },
+        headers: { 'x-username': username },
       });
       const json = await res.json();
-      if (json.success && json.data) {
-        setSettings(json.data);
+      if (json.success && json.data && activeUserRef.current === username) {
+        setSettings({ ...json.data, username });
       }
     } catch (e) {
       console.error(e);
@@ -193,10 +200,13 @@ export default function Home() {
   };
 
   const handleSaveSettings = async (newSettings: ScheduleSettings) => {
+    const username = activeUserRef.current;
+    // Chỉ lưu khi settings thuộc đúng tài khoản đang mở (tránh ghi đè chéo sau khi đổi tài khoản)
+    if (!username || newSettings.username !== username) return;
     setSettings(newSettings);
     await fetch('/api/settings', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-username': user?.username || 'chinhan' },
+      headers: { 'Content-Type': 'application/json', 'x-username': username },
       body: JSON.stringify(newSettings),
     });
   };
@@ -446,20 +456,18 @@ export default function Home() {
               )}
             </div>
           </>
-        ) : activeTab === 'study' ? (
+        ) : activeTab === 'study' && !isChinhan ? (
           <StudyTab
             selectedDay={selectedDay}
             selectedDate={selectedDate}
             onSelectDay={handleSelectDay}
           />
         ) : activeTab === 'salary' ? (
-          <SalaryTab items={items} settings={settings} onSaveSettings={handleSaveSettings} />
-        ) : activeTab === 'notes' ? (
-          <NotesTab settings={settings} onSaveSettings={handleSaveSettings} items={items} />
+          <SalaryTab key={user?.username} items={items} settings={settings} onSaveSettings={handleSaveSettings} payMode={isChinhan ? 'perShift' : 'hourly'} />
         ) : activeTab === 'expense' ? (
-          <ExpenseTab settings={settings} onSaveSettings={handleSaveSettings} />
+          <ExpenseTab key={user?.username} username={user?.username || ''} settings={settings} onSaveSettings={handleSaveSettings} />
         ) : (
-          <SettingsTab settings={settings} onSaveSettings={handleSaveSettings} />
+          <SettingsTab key={user?.username} settings={settings} onSaveSettings={handleSaveSettings} />
         )}
       </div>
 

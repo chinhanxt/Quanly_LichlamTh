@@ -1,6 +1,6 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert';
-import { calculatePayrollBreakdown } from '../lib/salary-calculator';
+import { calculatePayrollBreakdown, getDefaultRate, getPayMode } from '../lib/salary-calculator';
 import { ScheduleItem } from '../types/schedule';
 
 describe('Holiday Salary Multiplier', () => {
@@ -65,5 +65,17 @@ describe('Holiday Salary Multiplier', () => {
     const result = calculatePayrollBreakdown(items, '2026-09-03', '2026-09-03', 26000);
     assert.strictEqual(result.totalSalary, 312000);
     assert.strictEqual(result.dailyBreakdown[0].shifts[0].multiplier, 3);
+  });
+
+  it('thanhhuong: tính theo giờ (27k/h), chinhan: tính theo buổi', () => {
+    const items: ScheduleItem[] = [
+      { id: 'a', date: '2026-10-05', dayOfWeek: 'Thu2', startTime: '18:00', endTime: '22:30', subject: 'Highlands', location: '', note: '', reminderEnabled: true },
+    ];
+    const hourly = calculatePayrollBreakdown(items, '2026-10-05', '2026-10-05', getDefaultRate('thanhhuong'), getPayMode('thanhhuong'));
+    assert.strictEqual(hourly.totalSalary, 121500); // 4.5h × 27.000
+    const perShift = calculatePayrollBreakdown(items, '2026-10-05', '2026-10-05', getDefaultRate('chinhan'), getPayMode('chinhan'));
+    assert.strictEqual(perShift.totalSalary, 100000);
+    // Đơn giá lớn vẫn tính theo giờ nếu là tài khoản tính giờ
+    assert.strictEqual(calculatePayrollBreakdown(items, '2026-10-05', '2026-10-05', 100000, 'hourly').totalSalary, 450000);
   });
 });

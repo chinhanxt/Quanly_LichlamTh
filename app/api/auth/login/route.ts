@@ -1,45 +1,37 @@
 import { NextResponse } from 'next/server';
 import { verifyUserPasswordInFirestore, getUserFromFirestore } from '@/lib/firebase';
-import { createSessionToken } from '@/lib/auth-session';
+import { createSessionToken, ACCOUNT_USERNAMES, setSessionCookie } from '@/lib/auth-session';
 
 export async function POST(request: Request) {
   try {
     const body = await request.json().catch(() => ({}));
-    const username = (body.username || '').trim().toLowerCase();
     const password = body.password || '';
+    const hint = (body.hint || '').trim().toLowerCase();
 
-    if (!username || !password) {
-      return NextResponse.json(
-        { success: false, error: 'Vui lòng nhập tên đăng nhập và mật khẩu' },
-        { status: 400 }
-      );
+    if (!password) {
+      return NextResponse.json({ success: false, error: 'Vui lòng nhập mật khẩu' }, { status: 400 });
     }
 
-    const isValid = await verifyUserPasswordInFirestore(username, password);
-    if (!isValid) {
-      return NextResponse.json(
-        { success: false, error: 'Tên đăng nhập hoặc mật khẩu không đúng' },
-        { status: 401 }
-      );
+    // Không cần chọn tài khoản: thử lần lượt, ưu tiên tài khoản dùng lần trước
+    const candidates = [hint, ...ACCOUNT_USERNAMES].filter(
+      (u, i, arr) => ACCOUNT_USERNAMES.includes(u) && arr.indexOf(u) === i
+    );
+    let username = '';
+    for (const candidate of candidates) {
+      if (await verifyUserPasswordInFirestore(candidate, password)) {
+        username = candidate;
+        break;
+      }
+    }
+
+    if (!username) {
+      return NextResponse.json({ success: false, error: 'Mật khẩu không đúng' }, { status: 401 });
     }
 
     const userProfile = await getUserFromFirestore(username);
-    const displayName = userProfile?.displayName || username;
-
-    const token = createSessionToken({ username, displayName });
-
-    const response = NextResponse.json({
-      success: true,
-      user: { username, displayName },
-    });
-
-    response.cookies.set('app_session', token, {
-      path: '/',
-      httpOnly: true,
-      sameSite: 'lax',
-      maxAge: 30 * 24 * 60 * 60, // 30 days
-    });
-
+    const user = { username, displayName: userProfile?.displayName || username };
+    const response = NextResponse.json({ success: true, user });
+    setSessionCookie(response, createSessionToken(user));
     return response;
   } catch (err: any) {
     return NextResponse.json(

@@ -1,6 +1,6 @@
 'use client';
-import React from 'react';
-import { Settings, LogOut } from 'lucide-react';
+import React, { useState } from 'react';
+import { Settings, LogOut, ArrowLeftRight, Loader2 } from 'lucide-react';
 import { useAuth } from '@/components/AuthProvider';
 
 interface HeaderProps {
@@ -8,7 +8,20 @@ interface HeaderProps {
 }
 
 export const Header: React.FC<HeaderProps> = ({ onOpenSettings }) => {
-  const { user, logout } = useAuth();
+  const { user, logout, switchAccount } = useAuth();
+  const [switching, setSwitching] = useState(false);
+  const otherAccount = user?.username === 'chinhan'
+    ? { username: 'thanhhuong', label: 'Thanh Hương' }
+    : { username: 'chinhan', label: 'Chí Nhân' };
+
+  const handleSwitch = async () => {
+    setSwitching(true);
+    try {
+      await switchAccount(otherAccount.username);
+    } finally {
+      setSwitching(false);
+    }
+  };
 
   return (
     <header className="flex flex-row items-center justify-between py-4 px-1 mb-2 gap-2">
@@ -23,6 +36,15 @@ export const Header: React.FC<HeaderProps> = ({ onOpenSettings }) => {
           <h1 className="text-lg sm:text-xl font-black text-purple-600 leading-tight truncate">
             {user?.displayName || (user?.username === 'chinhan' ? 'Nguyễn Chí Nhân' : 'Thanh Hương')}
           </h1>
+          <button
+            onClick={handleSwitch}
+            disabled={switching}
+            className="mt-1 inline-flex items-center gap-1 px-2 py-0.5 bg-purple-50 hover:bg-purple-100 border border-purple-200 text-purple-700 text-[11px] font-bold rounded-full active:scale-95 transition-all cursor-pointer disabled:opacity-60"
+            title={`Đổi sang ${otherAccount.label}`}
+          >
+            {switching ? <Loader2 className="w-3 h-3 animate-spin" /> : <ArrowLeftRight className="w-3 h-3" />}
+            Đổi sang {otherAccount.label}
+          </button>
         </div>
       </div>
 

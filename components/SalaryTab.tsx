@@ -1,7 +1,7 @@
 'use client';
 import React, { useState, useEffect, useMemo } from 'react';
 import { ScheduleItem, ScheduleSettings } from '@/types/schedule';
-import { calculatePayrollBreakdown, formatLocalDateIso, DailyPayrollItem, getShiftMultiplier } from '@/lib/salary-calculator';
+import { calculatePayrollBreakdown, formatLocalDateIso, DailyPayrollItem, getShiftMultiplier, getDefaultRate, PayMode } from '@/lib/salary-calculator';
 import { Card } from './ui/Card';
 import {
   Coins,
@@ -22,6 +22,7 @@ interface SalaryTabProps {
   items: ScheduleItem[];
   settings: ScheduleSettings;
   onSaveSettings: (newSettings: ScheduleSettings) => Promise<void>;
+  payMode: PayMode;
 }
 
 type ViewMode = 'table' | 'list';
@@ -35,17 +36,17 @@ export interface WeeklyGridGroup {
   totalEarnings: number;
 }
 
-export const SalaryTab: React.FC<SalaryTabProps> = ({ items, settings, onSaveSettings }) => {
+export const SalaryTab: React.FC<SalaryTabProps> = ({ items, settings, onSaveSettings, payMode }) => {
   // 1. Hourly rate state & inline edit
-  const defaultRateForUser = (settings.username === 'chinhan' || settings.employeeName?.includes('Nhân')) ? 100000 : 26000;
-  const currentRate = (settings.hourlyRate && settings.hourlyRate !== 26000) ? settings.hourlyRate : defaultRateForUser;
+  const defaultRateForUser = payMode === 'perShift' ? getDefaultRate('chinhan') : getDefaultRate('thanhhuong');
+  const currentRate = settings.hourlyRate && settings.hourlyRate > 0 ? settings.hourlyRate : defaultRateForUser;
   const [hourlyRate, setHourlyRate] = useState<number>(currentRate);
   const [isEditingRate, setIsEditingRate] = useState<boolean>(false);
   const [rateInput, setRateInput] = useState<string>(currentRate.toString());
   const [viewMode, setViewMode] = useState<ViewMode>('table');
 
   useEffect(() => {
-    const rate = (settings.hourlyRate && settings.hourlyRate !== 26000) ? settings.hourlyRate : defaultRateForUser;
+    const rate = settings.hourlyRate && settings.hourlyRate > 0 ? settings.hourlyRate : defaultRateForUser;
     setHourlyRate(rate);
     setRateInput(rate.toString());
   }, [settings.hourlyRate, defaultRateForUser]);
@@ -131,7 +132,7 @@ export const SalaryTab: React.FC<SalaryTabProps> = ({ items, settings, onSaveSet
   };
 
   // 3. Payroll calculation
-  const rawPayroll = calculatePayrollBreakdown(items, fromDate, toDate, hourlyRate);
+  const rawPayroll = calculatePayrollBreakdown(items, fromDate, toDate, hourlyRate, payMode);
 
   // Group days into Monday-Sunday calendar weeks for the Weekly Table View
   const weeklyGroups = useMemo(() => {
@@ -190,7 +191,7 @@ export const SalaryTab: React.FC<SalaryTabProps> = ({ items, settings, onSaveSet
               startTime: s.startTime,
               endTime: s.endTime,
               hours: dur,
-              earnings: Math.round(dur * hourlyRate * mult),
+              earnings: Math.round((payMode === 'perShift' ? hourlyRate : dur * hourlyRate) * mult),
               subject: s.subject || 'Highlands Coffee',
               multiplier: mult,
               isHoliday: s.isHoliday || mult > 1,
@@ -243,9 +244,9 @@ export const SalaryTab: React.FC<SalaryTabProps> = ({ items, settings, onSaveSet
     }
 
     return groups;
-  }, [fromDate, toDate, items, hourlyRate, rawPayroll]);
+  }, [fromDate, toDate, items, hourlyRate, payMode, rawPayroll]);
 
-  const isCtvMode = settings.username === 'chinhan' || hourlyRate >= 100000;
+  const isCtvMode = payMode === 'perShift';
   const totalShiftsCount = useMemo(() => {
     return rawPayroll.dailyBreakdown.reduce((acc, curr) => acc + curr.shifts.length, 0);
   }, [rawPayroll]);

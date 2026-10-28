@@ -1,5 +1,16 @@
 import { ScheduleItem } from '@/types/schedule';
 
+// chinhan (CTV Viện AI) tính theo buổi, thanhhuong tính theo giờ
+export type PayMode = 'hourly' | 'perShift';
+
+export function getPayMode(username?: string): PayMode {
+  return username === 'chinhan' ? 'perShift' : 'hourly';
+}
+
+export function getDefaultRate(username?: string): number {
+  return username === 'chinhan' ? 100000 : 27000;
+}
+
 export interface DailyPayrollItem {
   dateIso: string;          // "YYYY-MM-DD" e.g. "2026-07-15"
   dateFormatted: string;    // "15/07"
@@ -79,7 +90,8 @@ export function calculatePayrollBreakdown(
   items: ScheduleItem[],
   fromDateStr: string,
   toDateStr: string,
-  hourlyRate: number = 26000
+  hourlyRate: number = 27000,
+  payMode: PayMode = 'hourly'
 ): PayrollSummary {
   const start = new Date(fromDateStr + 'T00:00:00');
   const end = new Date(toDateStr + 'T00:00:00');
@@ -126,15 +138,8 @@ export function calculatePayrollBreakdown(
 
       const shiftsDetails = dayShifts.map((s) => {
         const h = calculateShiftHours(s.startTime, s.endTime);
-        const isPerShift =
-          s.note?.includes('100.000') ||
-          s.note?.includes('CTV') ||
-          s.subject?.includes('Viện AI') ||
-          s.subject?.includes('CTV') ||
-          hourlyRate >= 100000;
-        const shiftRate = hourlyRate >= 100000 ? hourlyRate : 100000;
         const mult = getShiftMultiplier(s);
-        const baseEarnings = isPerShift ? shiftRate : Math.round(h * hourlyRate);
+        const baseEarnings = payMode === 'perShift' ? hourlyRate : Math.round(h * hourlyRate);
         const e = Math.round(baseEarnings * mult);
         dayHours += h;
         dayEarnings += e;

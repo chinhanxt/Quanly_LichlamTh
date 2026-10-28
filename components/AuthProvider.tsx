@@ -5,10 +5,13 @@ import { AuthSessionUser } from '@/types/user';
 interface AuthContextType {
   user: AuthSessionUser | null;
   loading: boolean;
-  login: (username: string, password: string) => Promise<void>;
+  login: (password: string) => Promise<void>;
+  switchAccount: (username: string) => Promise<void>;
   logout: () => Promise<void>;
   changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
 }
+
+const LAST_USER_KEY = 'last_username';
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
@@ -36,16 +39,32 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     fetchSession();
   }, []);
 
-  const login = async (username: string, password: string) => {
+  const login = async (password: string) => {
+    const hint = typeof window !== 'undefined' ? localStorage.getItem(LAST_USER_KEY) || '' : '';
     const res = await fetch('/api/auth/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username, password }),
+      body: JSON.stringify({ password, hint }),
     });
     const data = await res.json();
     if (!data.success) {
       throw new Error(data.error || 'Đăng nhập thất bại');
     }
+    localStorage.setItem(LAST_USER_KEY, data.user.username);
+    setUser(data.user);
+  };
+
+  const switchAccount = async (username: string) => {
+    const res = await fetch('/api/auth/switch', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username }),
+    });
+    const data = await res.json();
+    if (!data.success) {
+      throw new Error(data.error || 'Không đổi được tài khoản');
+    }
+    localStorage.setItem(LAST_USER_KEY, data.user.username);
     setUser(data.user);
   };
 
@@ -67,7 +86,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout, changePassword }}>
+    <AuthContext.Provider value={{ user, loading, login, switchAccount, logout, changePassword }}>
       {children}
     </AuthContext.Provider>
   );
