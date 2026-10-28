@@ -12,11 +12,12 @@ test('User Auth & Database Isolation', async (t) => {
   await t.test('should return scoped settings for user', async () => {
     const settings = getSettingsForUserLocal('thanhhuong');
     assert.ok(settings);
-    assert.equal(settings.employeeName, 'Thanh Hương');
+    assert.equal(settings.username, 'thanhhuong');
 
     const chinhanSettings = getSettingsForUserLocal('chinhan');
     assert.ok(chinhanSettings);
-    assert.equal(chinhanSettings.employeeName, 'Chí Nhân');
+    assert.equal(chinhanSettings.username, 'chinhan');
+    assert.equal(chinhanSettings.hourlyRate, 100000);
   });
 
   await t.test('should handle user schedule item isolation', async () => {

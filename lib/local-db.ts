@@ -222,6 +222,7 @@ export const REMOVED_SETTINGS_FIELDS = [
   'enableNotesReminder', 'notesLeadMinutes', 'notesTemplate', 'notesTimingMode', 'notesFixedTime',
   'enableMorningSummary', 'morningSummaryTime', 'morningSummaryTemplate',
   'customNotifications', 'sentRemindersLog',
+  'employeeName', 'googleSheetUrl', 'expenseGoogleSheetUrl',
 ];
 
 export function stripRemovedSettings<T extends Record<string, any>>(data: T): T {
@@ -244,7 +245,6 @@ export function getLocalSettings(): ScheduleSettings {
   const parsed = readJson(SETTINGS_FILE) || {};
   return stripRemovedSettings({
     ...parsed,
-    employeeName: parsed.employeeName || 'Thanh Hương',
     hourlyRate: typeof parsed.hourlyRate === 'number' ? parsed.hourlyRate : getDefaultRate('thanhhuong'),
     geminiApiKey: parsed.geminiApiKey || process.env.GEMINI_API_KEY || '',
   });
@@ -266,14 +266,8 @@ export function getSettingsForUserLocal(username: string): ScheduleSettings {
     const parsed = readJson(path.join(DATA_DIR, `settings_${username}.json`))
       || (username === 'thanhhuong' ? readJson(SETTINGS_FILE) : null)
       || {};
-    const user = getUserLocal(username);
-    const defaultEmpName = user ? user.displayName : (username === 'chinhan' ? 'Nguyễn Chí Nhân' : username);
-    const empName = (username !== 'thanhhuong' && (!parsed.employeeName || parsed.employeeName === 'Thanh Hương'))
-      ? defaultEmpName
-      : (parsed.employeeName || defaultEmpName);
     return stripRemovedSettings({
       ...parsed,
-      employeeName: empName,
       hourlyRate: typeof parsed.hourlyRate === 'number' && parsed.hourlyRate > 0 ? parsed.hourlyRate : getDefaultRate(username),
       geminiApiKey: parsed.geminiApiKey || process.env.GEMINI_API_KEY || '',
       groqApiKey: parsed.groqApiKey || process.env.GROQ_API_KEY || '',
@@ -281,7 +275,7 @@ export function getSettingsForUserLocal(username: string): ScheduleSettings {
       username,
     });
   } catch (err) {
-    return { employeeName: username, hourlyRate: getDefaultRate(username), username };
+    return { hourlyRate: getDefaultRate(username), username };
   }
 }
 

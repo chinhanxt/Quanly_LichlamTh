@@ -133,7 +133,7 @@ export async function POST(request: Request) {
     if (!matchedLine) {
       return NextResponse.json({
         success: false,
-        error: `Không tìm thấy hàng tên "${employeeName}" trong ảnh lịch. Vui lòng kiểm tra lại tên trong trang Cấu hình.`
+        error: `Không tìm thấy hàng tên "${employeeName}" trong ảnh lịch. Hãy chụp rõ dòng tên trong bảng phân ca.`
       });
     }
 

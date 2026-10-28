@@ -149,27 +149,14 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({ settings, onSaveSettin
             </div>
             <div>
               <h3 className="font-bold text-sm text-surface-textPrimary">Cấu hình AI & Hệ thống</h3>
-              <p className="text-xs text-surface-textSecondary">Tên nhân viên, Gemini API Key và Google Sheet</p>
+              <p className="text-xs text-surface-textSecondary">Gemini API Key cho Import Ảnh lịch làm</p>
             </div>
           </div>
 
           <div className="space-y-3 pt-2 border-t border-slate-100">
             <div>
               <label className="block text-xs font-semibold text-slate-700 mb-1">
-                1. Tên nhân viên trên bảng lịch (dùng cho OCR)
-              </label>
-              <input
-                type="text"
-                value={form.employeeName || ''}
-                onChange={(e) => updateForm({ ...form, employeeName: e.target.value })}
-                placeholder="Ví dụ: Thanh Hương"
-                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:outline-none focus:border-brand-600"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">
-                2. Google Gemini API Key (Model 2.5 Flash OCR chuẩn 100%)
+                Google Gemini API Key (đọc ảnh lịch làm)
               </label>
               <input
                 type="password"
@@ -194,21 +181,6 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({ settings, onSaveSettin
               </div>
             </div>
 
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">
-                3. Google Sheet Link Đồng Bộ Lịch (cho Chí Nhân / CTV Viện AI)
-              </label>
-              <input
-                type="text"
-                value={form.googleSheetUrl || ''}
-                onChange={(e) => updateForm({ ...form, googleSheetUrl: e.target.value })}
-                placeholder="https://docs.google.com/spreadsheets/d/1UnBM5lf3RNOtY7ACJ5soHDgOTz2rPZqr/edit?gid=229272214#gid=229272214"
-                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono text-slate-800 focus:outline-none focus:border-brand-600"
-              />
-              <p className="text-[10px] text-slate-400 mt-1">
-                Đường dẫn Google Sheet bảng phân công lịch trực công nhật CTV Viện AI.
-              </p>
-            </div>
           </div>
         </Card>
 
