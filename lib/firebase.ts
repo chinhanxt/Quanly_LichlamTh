@@ -103,6 +103,12 @@ const REMOVED_TELEGRAM_FIELDS = [
 ];
 
 export async function getSettingsForUser(username: string): Promise<ScheduleSettings> {
+  const settings: Record<string, any> = await loadSettingsForUser(username);
+  for (const key of REMOVED_TELEGRAM_FIELDS) delete settings[key];
+  return settings as ScheduleSettings;
+}
+
+async function loadSettingsForUser(username: string): Promise<ScheduleSettings> {
   const local = getSettingsForUserLocal(username);
   try {
     const docRef = doc(db, 'settings', username);
@@ -111,8 +117,6 @@ export async function getSettingsForUser(username: string): Promise<ScheduleSett
       const data = docSnap.data();
       const defaultRate = username === 'chinhan' ? 100000 : 26000;
       const rate = typeof data.hourlyRate === 'number' && data.hourlyRate !== 26000 ? data.hourlyRate : defaultRate;
-
-      for (const key of REMOVED_TELEGRAM_FIELDS) delete data[key];
 
       if (username === 'chinhan') {
         if (!data.shiftReminderTemplate || data.shiftReminderTemplate.includes('🏃‍♂️') || data.shiftReminderTemplate.includes('Dậy đi làm cha ơi')) {
@@ -144,7 +148,6 @@ export async function getSettingsForUser(username: string): Promise<ScheduleSett
       const legacySnap = await getDoc(legacyDocRef);
       if (legacySnap.exists()) {
         const data = legacySnap.data();
-        for (const key of REMOVED_TELEGRAM_FIELDS) delete data[key];
         return {
           ...local,
           ...data,
