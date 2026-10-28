@@ -1,6 +1,6 @@
 'use client';
 import React from 'react';
-import { Clock, MapPin, Edit3, Trash2, Bell, BellOff, Tag, Sparkles } from 'lucide-react';
+import { Clock, MapPin, Edit3, Trash2, Tag, Sparkles } from 'lucide-react';
 import { ScheduleItem } from '@/types/schedule';
 import { Card } from './ui/Card';
 import { format24hRange } from '@/lib/time-formatter';
@@ -27,7 +27,7 @@ export const ScheduleCard: React.FC<ScheduleCardProps> = ({ item, onEdit, onDele
     <Card className="p-3.5 mb-2.5 relative overflow-hidden group hover:border-brand-500/30 transition-all shadow-xs rounded-2xl">
       <div className="flex items-start justify-between gap-2">
         <div className="flex-1 min-w-0">
-          {/* Header Row: Time Range Badge + Telegram Status Pill + Holiday Multiplier Badge */}
+          {/* Header Row: Time Range Badge + Holiday Multiplier Badge */}
           <div className="flex items-center gap-1.5 mb-1.5 flex-wrap">
             <span className="bg-brand-600 text-white font-black text-[11px] px-2.5 py-0.5 rounded-full flex items-center gap-1 shadow-2xs shrink-0">
               <Clock className="w-3 h-3" />
@@ -41,15 +41,6 @@ export const ScheduleCard: React.FC<ScheduleCardProps> = ({ item, onEdit, onDele
               </span>
             )}
 
-            {item.reminderEnabled ? (
-              <span className="text-emerald-700 bg-emerald-50 border border-emerald-200/80 text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1 shrink-0">
-                <Bell className="w-3 h-3 text-emerald-600" /> Tự động báo Telegram
-              </span>
-            ) : (
-              <span className="text-slate-500 bg-slate-100 border border-slate-200 text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1 shrink-0">
-                <BellOff className="w-3 h-3 text-slate-400" /> Tắt thông báo
-              </span>
-            )}
           </div>
 
           {/* Shift Subject Title */}

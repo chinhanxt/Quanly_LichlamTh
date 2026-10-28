@@ -90,8 +90,6 @@ export interface ScheduleSettings extends NotificationSettings {
   leadTimeMinutes: number;   // 30
   enableMorning: boolean;    // true
   enableLeadTime: boolean;   // true
-  telegramBotToken?: string; // Token Bot Telegram
-  telegramChatId?: string;   // Chat ID nhận tin nhắn
   employeeName?: string;     // Tên nhân viên trên lịch
   geminiApiKey?: string;     // Google Gemini API Key cho AI OCR
   groqApiKey?: string;       // Groq API Key cho AI Chi Tiêu
@@ -100,12 +98,4 @@ export interface ScheduleSettings extends NotificationSettings {
   expenseAppsScriptUrl?: string;  // Webhook Apps Script nhận dữ liệu Chi Tiêu
   hourlyRate?: number;       // Lương theo giờ (default 26000 VND)
   googleSheetUrl?: string;   // Link Google Sheet đồng bộ lịch (cho CTV/Chí Nhân)
-  customWebhookUrl?: string; // Webhook URL công khai tùy chỉnh
-  allowedChatIds?: string[]; // Danh sách Chat ID được phép tương tác
-  allowedChatIdsStr?: string; // Chuỗi Chat ID phân cách bằng dấu phẩy
-  telegramSessionState?: {
-    userState: 'IDLE' | 'AWAITING_NOTE' | 'AWAITING_OCR_CONFIRM';
-    pendingScheduleData?: ScheduleItem[];
-    pendingId?: string;
-  };
 }

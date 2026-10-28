@@ -1,4 +1,7 @@
 import { NextResponse } from 'next/server';
+import { getSettingsForUser } from '@/lib/firebase';
+import { getAuthSessionUser } from '@/lib/auth-session';
+import { isSecretMasked } from '@/lib/secrets';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -8,7 +11,11 @@ export async function POST(request: Request) {
     const body = await request.json();
     const { apiKey, model } = body;
 
-    const keyToTest = apiKey || process.env.GROQ_API_KEY || '';
+    let keyToTest = apiKey;
+    if (isSecretMasked(keyToTest)) {
+      const username = getAuthSessionUser(request)?.username || 'chinhan';
+      keyToTest = (await getSettingsForUser(username)).groqApiKey || process.env.GROQ_API_KEY || '';
+    }
     const modelToTest = model || 'llama-3.3-70b-versatile';
 
     const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {

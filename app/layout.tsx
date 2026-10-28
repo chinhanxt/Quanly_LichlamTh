@@ -6,7 +6,7 @@ import { LoginModal } from "@/components/LoginModal";
 
 export const metadata: Metadata = {
   title: "Quản lý Lịch học & Lịch làm việc",
-  description: "Quản lý lịch học và nhắc nhở qua Telegram Bot",
+  description: "Quản lý lịch làm, lịch học và lương",
   icons: {
     icon: "/avatar.png",
     shortcut: "/avatar.png",

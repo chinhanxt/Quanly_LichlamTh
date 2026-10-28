@@ -22,3 +22,6 @@
 # user data and secrets
 data/*.json
 
+
+# build cache
+*.tsbuildinfo

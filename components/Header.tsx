@@ -1,14 +1,13 @@
 'use client';
 import React from 'react';
-import { Bell, Settings, LogOut } from 'lucide-react';
+import { Settings, LogOut } from 'lucide-react';
 import { useAuth } from '@/components/AuthProvider';
 
 interface HeaderProps {
-  onOpenNotifications?: () => void;
   onOpenSettings: () => void;
 }
 
-export const Header: React.FC<HeaderProps> = ({ onOpenNotifications, onOpenSettings }) => {
+export const Header: React.FC<HeaderProps> = ({ onOpenSettings }) => {
   const { user, logout } = useAuth();
 
   return (
@@ -27,19 +26,8 @@ export const Header: React.FC<HeaderProps> = ({ onOpenNotifications, onOpenSetti
         </div>
       </div>
 
-      {/* 3 Icon Action Bar (Icon-only, clean, no text wrapping) */}
+      {/* Icon Action Bar (Icon-only, clean, no text wrapping) */}
       <div className="flex items-center gap-1.5 shrink-0">
-        {/* Notification Bell Icon */}
-        <button
-          onClick={onOpenNotifications}
-          className="p-2.5 bg-white hover:bg-purple-50 rounded-2xl shadow-sm border border-purple-100 text-purple-600 active:scale-95 transition-all cursor-pointer relative"
-          aria-label="Thông báo"
-          title="Thông báo"
-        >
-          <Bell className="w-5 h-5 text-purple-600" />
-          <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-emerald-500 rounded-full animate-pulse ring-2 ring-white" />
-        </button>
-
         {/* Settings Gear Icon */}
         <button
           onClick={onOpenSettings}

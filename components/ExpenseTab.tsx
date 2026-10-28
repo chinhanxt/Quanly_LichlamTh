@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { ExpenseItem, ScheduleSettings } from '@/types/schedule';
 import { useToast } from '@/components/ui/Toast';
+import { isSecretMasked } from '@/lib/secrets';
 
 function formatYmd(d: Date): string {
   const y = d.getFullYear();
@@ -224,6 +225,7 @@ export const ExpenseTab: React.FC<ExpenseTabProps> = ({ settings, onSaveSettings
     try {
       setIsSavingSettings(true);
       await onSaveSettings({
+        ...settings,
         groqApiKey: groqKey,
         groqModel,
         expenseGoogleSheetUrl: sheetUrl,
@@ -296,9 +298,9 @@ export const ExpenseTab: React.FC<ExpenseTabProps> = ({ settings, onSaveSettings
             <label className="block text-xs font-semibold text-gray-700 mb-1">Groq API Key</label>
             <input
               type="password"
-              value={groqKey}
-              onChange={(e) => setGroqKey(e.target.value)}
-              placeholder="gsk_..."
+              value={isSecretMasked(groqKey) ? '' : groqKey}
+              onChange={(e) => setGroqKey(e.target.value.trim() || settings.groqApiKey || '')}
+              placeholder={settings.groqApiKey ? `Đã lưu key ${settings.groqApiKey} — dán key mới để thay` : 'gsk_...'}
               className="w-full text-xs p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand-500 focus:border-brand-500 font-mono"
             />
           </div>
@@ -330,9 +332,9 @@ export const ExpenseTab: React.FC<ExpenseTabProps> = ({ settings, onSaveSettings
             <label className="block text-xs font-semibold text-gray-700 mb-1">Apps Script Webhook URL (Liên kết Google Sheet)</label>
             <input
               type="text"
-              value={appsScriptUrl}
-              onChange={(e) => setAppsScriptUrl(e.target.value)}
-              placeholder="https://script.google.com/macros/s/.../exec"
+              value={isSecretMasked(appsScriptUrl) ? '' : appsScriptUrl}
+              onChange={(e) => setAppsScriptUrl(e.target.value.trim() || settings.expenseAppsScriptUrl || '')}
+              placeholder={settings.expenseAppsScriptUrl ? `Đã lưu URL ${settings.expenseAppsScriptUrl} — dán URL mới để thay` : 'https://script.google.com/macros/s/.../exec'}
               className="w-full text-xs p-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-brand-500 text-gray-600"
             />
           </div>

@@ -1,7 +1,6 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert';
 import { calculatePayrollBreakdown } from '../lib/salary-calculator';
-import { formatWeeklySalaryMessage } from '../lib/telegram-menu';
 import { ScheduleItem } from '../types/schedule';
 
 describe('Holiday Salary Multiplier', () => {
@@ -66,25 +65,5 @@ describe('Holiday Salary Multiplier', () => {
     const result = calculatePayrollBreakdown(items, '2026-09-03', '2026-09-03', 26000);
     assert.strictEqual(result.totalSalary, 312000);
     assert.strictEqual(result.dailyBreakdown[0].shifts[0].multiplier, 3);
-  });
-
-  it('should calculate Telegram weekly salary message with 3x multiplier', () => {
-    const items: ScheduleItem[] = [
-      {
-        id: '4',
-        date: '2026-09-02',
-        dayOfWeek: 'Thu4',
-        startTime: '18:00',
-        endTime: '22:00',
-        subject: '2len',
-        location: '',
-        note: '',
-        reminderEnabled: true,
-        salaryMultiplier: 3,
-      },
-    ];
-
-    const msg = formatWeeklySalaryMessage(items, 26000);
-    assert.ok(msg.includes('312.000') || msg.includes('312,000'));
   });
 });

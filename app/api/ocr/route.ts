@@ -1,8 +1,11 @@
+import { getSettingsForUser } from '@/lib/firebase';
+import { getAuthSessionUser } from '@/lib/auth-session';
+import { isSecretMasked } from '@/lib/secrets';
 import { NextResponse } from 'next/server';
 import { createWorker } from 'tesseract.js';
 import { matchEmployeeLine, parseScheduleLine } from '@/lib/ocr-parser';
 
-export async function parseWithGemini(inputBuffer: Buffer, employeeName: string, apiKey: string) {
+async function parseWithGemini(inputBuffer: Buffer, employeeName: string, apiKey: string) {
   const base64Data = inputBuffer.toString('base64');
   const currentYear = new Date().getFullYear();
 
@@ -80,7 +83,11 @@ export async function POST(request: Request) {
     const formData = await request.formData();
     const file = formData.get('file') as File;
     const employeeName = (formData.get('employeeName') as string) || 'Thanh Hương';
-    const geminiApiKey = (formData.get('geminiApiKey') as string) || process.env.GEMINI_API_KEY || '';
+    let geminiApiKey = (formData.get('geminiApiKey') as string) || '';
+    if (isSecretMasked(geminiApiKey)) {
+      const username = getAuthSessionUser(request)?.username || 'thanhhuong';
+      geminiApiKey = (await getSettingsForUser(username)).geminiApiKey || process.env.GEMINI_API_KEY || '';
+    }
 
     if (!file) {
       return NextResponse.json({ success: false, error: 'Không tìm thấy file ảnh' }, { status: 400 });

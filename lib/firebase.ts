@@ -91,6 +91,17 @@ export async function updateUserPasswordInFirestore(username: string, newPass: s
 }
 
 // User-scoped settings functions
+const REMOVED_TELEGRAM_FIELDS = [
+  'telegramBotToken',
+  'telegramChatId',
+  'customWebhookUrl',
+  'allowedChatIds',
+  'allowedChatIdsStr',
+  'telegramSessionState',
+  'locketBotToken',
+  'locketChatId',
+];
+
 export async function getSettingsForUser(username: string): Promise<ScheduleSettings> {
   const local = getSettingsForUserLocal(username);
   try {
@@ -101,12 +112,7 @@ export async function getSettingsForUser(username: string): Promise<ScheduleSett
       const defaultRate = username === 'chinhan' ? 100000 : 26000;
       const rate = typeof data.hourlyRate === 'number' && data.hourlyRate !== 26000 ? data.hourlyRate : defaultRate;
 
-      if (!data.telegramChatId || data.telegramChatId === '20002') {
-        data.telegramChatId = '';
-      }
-      if (data.allowedChatIdsStr === '20002') {
-        data.allowedChatIdsStr = '';
-      }
+      for (const key of REMOVED_TELEGRAM_FIELDS) delete data[key];
 
       if (username === 'chinhan') {
         if (!data.shiftReminderTemplate || data.shiftReminderTemplate.includes('🏃‍♂️') || data.shiftReminderTemplate.includes('Dậy đi làm cha ơi')) {
@@ -138,6 +144,7 @@ export async function getSettingsForUser(username: string): Promise<ScheduleSett
       const legacySnap = await getDoc(legacyDocRef);
       if (legacySnap.exists()) {
         const data = legacySnap.data();
+        for (const key of REMOVED_TELEGRAM_FIELDS) delete data[key];
         return {
           ...local,
           ...data,
@@ -324,8 +331,6 @@ export async function getSettings(): Promise<ScheduleSettings> {
         leadTimeMinutes: Number(data.leadTimeMinutes) || 30,
         enableMorning: Boolean(data.enableMorning),
         enableLeadTime: Boolean(data.enableLeadTime),
-        telegramBotToken: data.telegramBotToken || '',
-        telegramChatId: data.telegramChatId || '',
         employeeName: data.employeeName || 'Thanh Hương',
         hourlyRate: typeof data.hourlyRate === 'number' ? data.hourlyRate : 26000,
         geminiApiKey: data.geminiApiKey || '',
@@ -347,11 +352,8 @@ export async function getSettings(): Promise<ScheduleSettings> {
         enableMorningSummary: data.enableMorningSummary ?? true,
         morningSummaryTime: data.morningSummaryTime || '07:00',
         morningSummaryTemplate: data.morningSummaryTemplate || '☀️ Dậy đi cày em ơi! Hôm nay cày ca {Ca} ({ThờiGian}) ở {ĐịaĐiểm} nè. Chúc cày cuốc vui vẻ không bị ăn chửi nhé 🔥',
-        telegramSessionState: data.telegramSessionState || { userState: 'IDLE' },
         customNotifications: Array.isArray(data.customNotifications) ? data.customNotifications : [],
         sentRemindersLog: typeof data.sentRemindersLog === 'object' && data.sentRemindersLog !== null ? data.sentRemindersLog : {},
-        allowedChatIdsStr: data.allowedChatIdsStr || '',
-        allowedChatIds: Array.isArray(data.allowedChatIds) ? data.allowedChatIds : [],
       };
     }
   } catch (error) {

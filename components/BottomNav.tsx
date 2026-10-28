@@ -3,8 +3,8 @@ import React from 'react';
 import { Calendar, GraduationCap, Wallet, StickyNote, Receipt } from 'lucide-react';
 
 interface BottomNavProps {
-  activeTab: 'schedule' | 'study' | 'salary' | 'notes' | 'expense' | 'notifications' | 'settings';
-  onChangeTab: (tab: 'schedule' | 'study' | 'salary' | 'notes' | 'expense' | 'notifications' | 'settings') => void;
+  activeTab: 'schedule' | 'study' | 'salary' | 'notes' | 'expense' | 'settings';
+  onChangeTab: (tab: 'schedule' | 'study' | 'salary' | 'notes' | 'expense' | 'settings') => void;
   isChinhan?: boolean;
 }
 

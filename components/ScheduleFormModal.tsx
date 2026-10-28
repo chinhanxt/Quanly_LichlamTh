@@ -319,17 +319,6 @@ export const ScheduleFormModal: React.FC<Props> = ({
             </>
           )}
 
-          {/* Telegram Reminder Checkbox */}
-          <div className="flex items-center justify-between p-3.5 bg-slate-50 rounded-2xl border border-slate-200/80">
-            <span className="text-xs font-bold text-slate-700">Tự động gửi Telegram báo ca</span>
-            <input
-              type="checkbox"
-              checked={form.reminderEnabled}
-              onChange={(e) => setForm({ ...form, reminderEnabled: e.target.checked })}
-              className="w-5 h-5 accent-brand-600 rounded cursor-pointer"
-            />
-          </div>
-
           <Button type="submit" fullWidth className="mt-4 py-3.5 text-sm font-black rounded-2xl">
             {initialData ? 'Lưu thay đổi' : 'Tạo ca làm mới'}
           </Button>
