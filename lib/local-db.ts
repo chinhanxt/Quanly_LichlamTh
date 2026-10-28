@@ -2,7 +2,6 @@ import fs from 'fs';
 import path from 'path';
 import { ScheduleItem, ScheduleSettings } from '@/types/schedule';
 import { getDefaultRate } from './salary-calculator';
-import { DEFAULT_GROQ_MODEL } from './expense-io';
 import { User } from '@/types/user';
 
 const DATA_DIR = path.join(process.cwd(), 'data');
@@ -223,7 +222,7 @@ export const REMOVED_SETTINGS_FIELDS = [
   'enableNotesReminder', 'notesLeadMinutes', 'notesTemplate', 'notesTimingMode', 'notesFixedTime',
   'enableMorningSummary', 'morningSummaryTime', 'morningSummaryTemplate',
   'customNotifications', 'sentRemindersLog',
-  'employeeName', 'googleSheetUrl', 'expenseGoogleSheetUrl',
+  'employeeName', 'googleSheetUrl', 'expenseGoogleSheetUrl', 'groqApiKey', 'groqModel',
 ];
 
 export function stripRemovedSettings<T extends Record<string, any>>(data: T): T {
@@ -247,7 +246,7 @@ export function getLocalSettings(): ScheduleSettings {
   return stripRemovedSettings({
     ...parsed,
     hourlyRate: typeof parsed.hourlyRate === 'number' ? parsed.hourlyRate : getDefaultRate('thanhhuong'),
-    geminiApiKey: parsed.geminiApiKey || process.env.GEMINI_API_KEY || '',
+    geminiApiKey: parsed.geminiApiKey || '',
   });
 }
 
@@ -270,9 +269,7 @@ export function getSettingsForUserLocal(username: string): ScheduleSettings {
     return stripRemovedSettings({
       ...parsed,
       hourlyRate: typeof parsed.hourlyRate === 'number' && parsed.hourlyRate > 0 ? parsed.hourlyRate : getDefaultRate(username),
-      geminiApiKey: parsed.geminiApiKey || process.env.GEMINI_API_KEY || '',
-      groqApiKey: parsed.groqApiKey || process.env.GROQ_API_KEY || '',
-      groqModel: parsed.groqModel || DEFAULT_GROQ_MODEL,
+      geminiApiKey: parsed.geminiApiKey || '',
       username,
     });
   } catch (err) {

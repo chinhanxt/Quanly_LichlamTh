@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import {
   ChevronLeft,
   ChevronRight,
@@ -8,20 +8,15 @@ import {
   Upload,
   ClipboardPaste,
   SendHorizontal,
-  Settings2,
   Trash2,
   Loader2,
   X,
-  ShieldCheck,
 } from 'lucide-react';
 import { ExpenseItem, ScheduleSettings } from '@/types/schedule';
 import { useToast } from '@/components/ui/Toast';
 import { Card } from './ui/Card';
-import { isSecretMasked } from '@/lib/secrets';
 import {
   ExpenseDraft,
-  DEFAULT_GROQ_MODEL,
-  GROQ_MODELS,
   formatVnd,
   parseExpenseTable,
   toCsv,
@@ -63,19 +58,10 @@ export const ExpenseTab: React.FC<ExpenseTabProps> = ({ username, settings, onSa
   const chatRef = useRef<HTMLTextAreaElement>(null);
 
   // Import / settings panels
-  const [panel, setPanel] = useState<'none' | 'paste' | 'ai-settings'>('none');
+  const [panel, setPanel] = useState<'none' | 'paste'>('none');
   const [pasteText, setPasteText] = useState('');
   const [importing, setImporting] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
-
-  const [groqKey, setGroqKey] = useState(settings.groqApiKey || '');
-  const [groqModel, setGroqModel] = useState(settings.groqModel || DEFAULT_GROQ_MODEL);
-  const [testingKey, setTestingKey] = useState(false);
-
-  useEffect(() => {
-    setGroqKey(settings.groqApiKey || '');
-    setGroqModel(settings.groqModel || DEFAULT_GROQ_MODEL);
-  }, [settings.groqApiKey, settings.groqModel]);
 
   const headers = { 'Content-Type': 'application/json', 'x-username': username };
 
@@ -106,6 +92,14 @@ export const ExpenseTab: React.FC<ExpenseTabProps> = ({ username, settings, onSa
     if (username) fetchItems();
   }, [username]);
 
+  // Ô chat tự giãn theo nội dung (không cuộn bên trong)
+  useLayoutEffect(() => {
+    const el = chatRef.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = `${el.scrollHeight}px`;
+  }, [chatText]);
+
   const sortItems = (list: ExpenseItem[]) =>
     [...list].sort((a, b) => b.date.localeCompare(a.date) || (b.createdAt || '').localeCompare(a.createdAt || ''));
 
@@ -130,7 +124,6 @@ export const ExpenseTab: React.FC<ExpenseTabProps> = ({ username, settings, onSa
       const json = await saveDrafts(null, { rawText: text, clientDate: todayIso() });
       const saved: ExpenseItem[] = json.data || [];
       setChatText('');
-      if (chatRef.current) chatRef.current.style.height = '';
       setLastReply({ text, saved });
       const newest = saved[0]?.date;
       if (newest && !newest.startsWith(monthKey(monthOffset))) {
@@ -202,32 +195,6 @@ export const ExpenseTab: React.FC<ExpenseTabProps> = ({ username, settings, onSa
     URL.revokeObjectURL(url);
   };
 
-  // ---- AI settings ----
-  const handleSaveAiSettings = async () => {
-    await onSaveSettings({ ...settings, groqApiKey: groqKey, groqModel });
-    showToast({ type: 'success', message: 'Đã lưu cài đặt AI' });
-    setPanel('none');
-  };
-
-  const handleTestKey = async () => {
-    setTestingKey(true);
-    try {
-      const res = await fetch('/api/expense/test-key', {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({ apiKey: groqKey, model: groqModel }),
-      });
-      const json = await res.json();
-      showToast(json.success
-        ? { type: 'success', message: 'Groq API Key hoạt động!' }
-        : { type: 'error', message: 'Key lỗi: ' + json.error });
-    } catch {
-      showToast({ type: 'error', message: 'Lỗi kết nối Groq API' });
-    } finally {
-      setTestingKey(false);
-    }
-  };
-
   // ---- Derived data ----
   const currentMonth = monthKey(monthOffset);
   const monthItems = useMemo(() => items.filter((i) => i.date.startsWith(currentMonth)), [items, currentMonth]);
@@ -297,11 +264,7 @@ export const ExpenseTab: React.FC<ExpenseTabProps> = ({ username, settings, onSa
           <textarea
             ref={chatRef}
             value={chatText}
-            onChange={(e) => {
-              setChatText(e.target.value);
-              e.target.style.height = 'auto';
-              e.target.style.height = `${Math.max(40, Math.min(e.target.scrollHeight, 120))}px`;
-            }}
+            onChange={(e) => setChatText(e.target.value)}
             onKeyDown={(e) => {
               if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault();
@@ -310,7 +273,7 @@ export const ExpenseTab: React.FC<ExpenseTabProps> = ({ username, settings, onSa
             }}
             rows={1}
             placeholder="Vd: ăn phở 45, đổ xăng 50k"
-            className="flex-1 min-w-0 h-10 max-h-[120px] resize-none overflow-y-auto bg-transparent px-3 py-2.5 text-sm leading-5 text-slate-900 placeholder:text-slate-400 focus:outline-none [scrollbar-width:none]"
+            className="flex-1 min-w-0 resize-none overflow-hidden bg-transparent px-3 py-2.5 text-sm leading-5 text-slate-900 placeholder:text-slate-400 focus:outline-none"
           />
           <button
             onClick={handleSend}
@@ -411,48 +374,7 @@ export const ExpenseTab: React.FC<ExpenseTabProps> = ({ username, settings, onSa
       {/* Transactions list */}
       <div className="flex items-center justify-between px-1 pt-1">
         <h3 className="text-sm font-extrabold text-slate-800">Giao dịch ({monthItems.length})</h3>
-        <button
-          onClick={() => setPanel(panel === 'ai-settings' ? 'none' : 'ai-settings')}
-          className="flex items-center gap-1 text-[11px] font-bold text-slate-500 hover:text-purple-600 cursor-pointer"
-        >
-          <Settings2 className="w-3.5 h-3.5" /> Cài đặt AI
-        </button>
       </div>
-
-      {panel === 'ai-settings' && (
-        <Card className="p-4 space-y-3">
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">Groq API Key</label>
-            <input
-              type="password"
-              value={isSecretMasked(groqKey) ? '' : groqKey}
-              onChange={(e) => setGroqKey(e.target.value.trim() || settings.groqApiKey || '')}
-              placeholder={settings.groqApiKey ? `Đã lưu key ${settings.groqApiKey} — dán key mới để thay` : 'gsk_...'}
-              className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono text-slate-800 focus:outline-none focus:border-purple-500"
-            />
-          </div>
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">Model</label>
-            <select
-              value={groqModel}
-              onChange={(e) => setGroqModel(e.target.value)}
-              className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none"
-            >
-              {GROQ_MODELS.map((m) => (
-                <option key={m.id} value={m.id}>{m.label}</option>
-              ))}
-            </select>
-          </div>
-          <div className="flex gap-2">
-            <button onClick={handleTestKey} disabled={testingKey} className="flex-1 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold flex items-center justify-center gap-1 cursor-pointer">
-              <ShieldCheck className="w-3.5 h-3.5" /> {testingKey ? 'Đang test...' : 'Test key'}
-            </button>
-            <button onClick={handleSaveAiSettings} className="flex-1 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-bold cursor-pointer">
-              Lưu
-            </button>
-          </div>
-        </Card>
-      )}
 
       {loading ? (
         <div className="text-center py-10 text-slate-400 text-xs flex items-center justify-center gap-2">

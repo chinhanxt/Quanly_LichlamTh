@@ -27,8 +27,6 @@ export interface ExpenseItem {
 
 export interface ScheduleSettings {
   username?: string;
-  geminiApiKey?: string;     // Google Gemini API Key cho AI OCR
-  groqApiKey?: string;       // Groq API Key cho AI Thu chi
-  groqModel?: string;        // Model Groq (default: llama-3.3-70b-versatile)
+  geminiApiKey?: string;     // Google Gemini API Key (Import Ảnh + Thu chi)
   hourlyRate?: number;       // Thanh Hương: lương/giờ — Chí Nhân: đơn giá/buổi
 }

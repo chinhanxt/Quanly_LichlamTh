@@ -1,6 +1,5 @@
 export const SECRET_FIELDS = [
   'geminiApiKey',
-  'groqApiKey',
   'expenseAppsScriptUrl',
 ] as const;
 

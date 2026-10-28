@@ -149,14 +149,14 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({ settings, onSaveSettin
             </div>
             <div>
               <h3 className="font-bold text-sm text-surface-textPrimary">Cấu hình AI & Hệ thống</h3>
-              <p className="text-xs text-surface-textSecondary">Gemini API Key cho Import Ảnh lịch làm</p>
+              <p className="text-xs text-surface-textSecondary">Gemini API Key cho Import Ảnh và Thu chi</p>
             </div>
           </div>
 
           <div className="space-y-3 pt-2 border-t border-slate-100">
             <div>
               <label className="block text-xs font-semibold text-slate-700 mb-1">
-                Google Gemini API Key (đọc ảnh lịch làm)
+                Google Gemini API Key (Import Ảnh + Thu chi)
               </label>
               <input
                 type="password"
@@ -167,7 +167,7 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({ settings, onSaveSettin
               />
               <div className="flex items-center justify-between mt-1.5 flex-wrap gap-2">
                 <p className="text-[10px] text-slate-400">
-                  Tự động dùng AI Gemini 2.5 Flash đọc lịch khi có Key.
+                  Dùng cho đọc ảnh lịch làm và nhập thu chi bằng chat.
                 </p>
                 <button
                   type="button"

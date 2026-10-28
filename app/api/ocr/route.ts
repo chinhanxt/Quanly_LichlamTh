@@ -2,6 +2,7 @@ import { getSettingsForUser } from '@/lib/firebase';
 import { getAuthSessionUser } from '@/lib/auth-session';
 import { isSecretMasked } from '@/lib/secrets';
 import { NextResponse } from 'next/server';
+import { generateGemini, parseJsonText } from '@/lib/gemini';
 import { createWorker } from 'tesseract.js';
 import { matchEmployeeLine, parseScheduleLine } from '@/lib/ocr-parser';
 
@@ -35,47 +36,15 @@ Quy tắc mã ca:
 - Ca giờ tùy chỉnh ví dụ 11-18H: startTime="11:00", endTime="18:00", isOff=false, shiftCode="11-18H"
 - OFF / Nghỉ / TOM / SW / WAN: isOff=true, startTime="", endTime="", shiftCode="OFF"`;
 
-  const models = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash'];
-  let lastErr = '';
-
-  for (const model of models) {
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
-    try {
-      const res = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [
-            {
-              parts: [
-                { inlineData: { mimeType: 'image/jpeg', data: base64Data } },
-                { text: prompt },
-              ],
-            },
-          ],
-          generationConfig: {
-            responseMimeType: 'application/json',
-          },
-        }),
-      });
-
-      if (res.ok) {
-        const json = await res.json();
-        const text = json.candidates?.[0]?.content?.parts?.[0]?.text;
-        if (text) {
-          const cleanJsonText = text.replace(/```json/gi, '').replace(/```/g, '').trim();
-          return JSON.parse(cleanJsonText);
-        }
-      } else {
-        const errText = await res.text();
-        lastErr = `Gemini API (${model}) lỗi (${res.status}): ${errText}`;
-      }
-    } catch (e: any) {
-      lastErr = e.message;
-    }
-  }
-
-  throw new Error(lastErr || 'Không thể kết nối đến AI Gemini');
+  const text = await generateGemini({
+    apiKey,
+    json: true,
+    parts: [
+      { inlineData: { mimeType: 'image/jpeg', data: base64Data } },
+      { text: prompt },
+    ],
+  });
+  return parseJsonText(text);
 }
 
 export async function POST(request: Request) {

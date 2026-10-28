@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getAuthSessionUser } from '@/lib/auth-session';
-import { DEFAULT_GROQ_MODEL } from '@/lib/expense-io';
+import { generateGemini, parseJsonText } from '@/lib/gemini';
 import {
   getSettingsForUser,
   getExpenseItemsForUser,
@@ -39,18 +39,17 @@ export async function GET(request: Request) {
   }
 }
 
-async function parseWithGroq(username: string, rawText: string, autoAddK: boolean, clientDate?: string) {
-  const userSettings = await getSettingsForUser(username);
-  // Tài khoản chưa có key riêng thì dùng chung key Groq của tài khoản còn lại
-  let groqKey = userSettings.groqApiKey || process.env.GROQ_API_KEY || '';
-  for (const other of ['chinhan', 'thanhhuong']) {
-    if (groqKey) break;
-    if (other !== username) groqKey = (await getSettingsForUser(other)).groqApiKey || '';
+async function parseWithAI(username: string, rawText: string, autoAddK: boolean, clientDate?: string) {
+  // Tài khoản chưa có key riêng thì dùng chung Gemini key của tài khoản còn lại
+  let apiKey = '';
+  for (const account of [username, 'chinhan', 'thanhhuong']) {
+    apiKey = (await getSettingsForUser(account)).geminiApiKey || '';
+    if (apiKey) break;
   }
-  if (!groqKey) {
-    throw new Error('Chưa có Groq API Key — vào Cài đặt AI trong tab Thu chi để nhập.');
+  apiKey = apiKey || process.env.GEMINI_API_KEY || '';
+  if (!apiKey) {
+    throw new Error('Chưa có Gemini API Key — vào tab Cấu hình để nhập.');
   }
-  const savedModel = userSettings.groqModel || DEFAULT_GROQ_MODEL;
   const todayStr = clientDate && /^\d{4}-\d{2}-\d{2}$/.test(clientDate) ? clientDate : vnToday();
   const dayNames = ['Chủ Nhật', 'Thứ Hai', 'Thứ Ba', 'Thứ Tư', 'Thứ Năm', 'Thứ Sáu', 'Thứ Bảy'];
   const dayOfWeek = dayNames[new Date(todayStr + 'T12:00:00').getDay()];
@@ -98,33 +97,8 @@ CẤU TRÚC JSON CHUẨN NẾU HỢP LỆ:
   ]
 }`;
 
-  const callGroqOnce = (model: string) =>
-    fetch('https://api.groq.com/openai/v1/chat/completions', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${groqKey}` },
-      body: JSON.stringify({
-        model,
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: rawText },
-        ],
-        temperature: 0.1,
-        response_format: { type: 'json_object' },
-      }),
-    });
-  // Lỗi mạng chập chờn (ETIMEDOUT) → thử lại 1 lần
-  const callGroq = (model: string) => callGroqOnce(model).catch(() => callGroqOnce(model));
-
-  let groqRes = await callGroq(savedModel);
-  // Model đã lưu bị Groq gỡ (vd llama-3.3-70b-versatile) → dùng model mặc định
-  if (groqRes.status === 404 && savedModel !== DEFAULT_GROQ_MODEL) {
-    groqRes = await callGroq(DEFAULT_GROQ_MODEL);
-  }
-  if (!groqRes.ok) {
-    throw new Error(`Groq API Lỗi (${groqRes.status}): ${await groqRes.text()}`);
-  }
-  const groqData = await groqRes.json();
-  const parsedObj = JSON.parse(groqData.choices?.[0]?.message?.content || '{}');
+  const text = await generateGemini({ apiKey, systemInstruction: systemPrompt, parts: [{ text: rawText }], json: true });
+  const parsedObj = parseJsonText(text);
   if (parsedObj.isFuture) {
     throw new Error(parsedObj.futureError || 'Không thể ghi nhận thu/chi trong tương lai!');
   }
@@ -163,7 +137,7 @@ export async function POST(request: Request) {
         }))
         .filter((i: NewExpense) => i.amount > 0);
     } else if (typeof body.rawText === 'string' && body.rawText.trim()) {
-      toSave = await parseWithGroq(username, body.rawText.trim(), body.autoAddK !== false, body.clientDate);
+      toSave = await parseWithAI(username, body.rawText.trim(), body.autoAddK !== false, body.clientDate);
     } else {
       return NextResponse.json({ success: false, error: 'Vui lòng nhập nội dung thu/chi!' }, { status: 400 });
     }

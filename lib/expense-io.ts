@@ -2,13 +2,6 @@ import { ExpenseItem } from '@/types/schedule';
 
 export type ExpenseType = 'Thu' | 'Chi';
 
-export const DEFAULT_GROQ_MODEL = 'openai/gpt-oss-120b';
-
-export const GROQ_MODELS = [
-  { id: 'openai/gpt-oss-120b', label: 'GPT-OSS 120B (chuẩn)' },
-  { id: 'openai/gpt-oss-20b', label: 'GPT-OSS 20B (nhanh)' },
-];
-
 export const EXPENSE_CATEGORIES: Record<ExpenseType, string[]> = {
   Chi: ['Ăn uống', 'Di chuyển', 'Mua sắm', 'Hóa đơn', 'Giải trí', 'Khác'],
   Thu: ['Lương/Thưởng', 'Đầu tư', 'Khác'],
